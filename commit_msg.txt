@@ -1,6 +1,6 @@
-fix(modal): resolve top-strip clipping with React ModalPortal
+feat(projects): add table view, dedicated file manager, and container console
 
-- Mount all modals directly to document.body using ModalPortal
-- Eliminate clipping caused by parent CSS stacking contexts
-- Ensure html, body, and root have full-height cream background (#E6D7BE)
-- Style all modals and form controls strictly with chocolate and cream
+- Convert project cards into a clean responsive table view
+- Implement dedicated File Manager sub-environment with file listing, code editor, folder creation, and direct upload
+- Implement Portainer-style Container Console with /bin/sh, /bin/bash, custom command, user selection, and interactive shell execution
+- Add backend file manager and container exec endpoints

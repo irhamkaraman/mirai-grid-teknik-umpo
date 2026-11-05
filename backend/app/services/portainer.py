@@ -107,6 +107,41 @@ class PortainerClient:
                     lines.append(line)
                     idx += 8 + frame_size
                 return "".join(lines) if lines else res.text
-            return f"Unable to fetch logs: {res.text}"
+    async def exec_container_command(
+        self,
+        container_name: str,
+        cmd: List[str],
+        user: str = "root"
+    ) -> Dict[str, Any]:
+        """
+        Executes a command inside container via Portainer Docker Proxy API
+        and returns stdout/stderr output.
+        """
+        headers = await self._get_headers()
+        async with httpx.AsyncClient(verify=self.ssl_verify, timeout=30.0) as client:
+            # 1. Create exec instance
+            create_url = f"{self.base_url}/api/endpoints/{self.endpoint_id}/docker/containers/{container_name}/exec"
+            create_payload = {
+                "AttachStdout": True,
+                "AttachStderr": True,
+                "Tty": True,
+                "Cmd": cmd,
+                "User": user if user else "root"
+            }
+            create_res = await client.post(create_url, json=create_payload, headers=headers)
+            if create_res.status_code not in [200, 201]:
+                return {"success": False, "error": f"Failed to create exec: {create_res.text}"}
+
+            exec_id = create_res.json().get("Id")
+
+            # 2. Start exec instance
+            start_url = f"{self.base_url}/api/endpoints/{self.endpoint_id}/docker/exec/{exec_id}/start"
+            start_payload = {
+                "Detach": False,
+                "Tty": True
+            }
+            start_res = await client.post(start_url, json=start_payload, headers=headers)
+            output = start_res.text if start_res.status_code == 200 else f"Exec start error: {start_res.text}"
+            return {"success": True, "output": output}
 
 portainer = PortainerClient()
