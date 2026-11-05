@@ -1,5 +1,6 @@
-feat(deploy): implement 5-column cPanel table and dedicated detail page view
+feat(projects): add dedicated create project page with official language logos
 
-- Update deploy table to exact 5 columns: App URI, App Root Directory, Mode, Status, Actions
-- Implement full-page ProjectDetailPage (no modal) matching cPanel Web Application Selector
-- Support PHP directives/extensions, Python WSGI/pip, and Node mode/npm
+- Replace create project modal with full-page CreateProjectPage view (no modal)
+- Include high-quality official SVG logos for PHP, Python, and Node.js
+- Ensure balanced and proportional card dimensions
+- Link create flow directly to dedicated configuration detail page
