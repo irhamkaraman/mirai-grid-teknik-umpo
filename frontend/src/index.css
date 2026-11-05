@@ -3,10 +3,17 @@
 @tailwind utilities;
 
 @layer base {
+  html {
+    background-color: #E6D7BE;
+  }
   body {
     background-color: #E6D7BE; /* Warna Krim Sejati (Warm Rich Cream / Latte) */
     color: #26160F; /* Coklat Gelap */
     font-family: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+  }
+  #root {
+    background-color: #E6D7BE;
+    min-height: 100vh;
   }
 }
 

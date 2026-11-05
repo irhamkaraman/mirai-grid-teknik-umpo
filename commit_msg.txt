@@ -1,6 +1,6 @@
-refactor(theme): set true rich cream background and deep chocolate cards
+fix(modal): resolve top-strip clipping with React ModalPortal
 
-- Adjust global background to genuine warm cream (#E6D7BE)
-- Style all cards, sidebar, and modals with deep chocolate (#2B1810) and cream text (#FAF5EC)
-- Ensure all headings on the cream canvas are bold deep chocolate (#26160F)
-- Enhance quota cards with cream typography
+- Mount all modals directly to document.body using ModalPortal
+- Eliminate clipping caused by parent CSS stacking contexts
+- Ensure html, body, and root have full-height cream background (#E6D7BE)
+- Style all modals and form controls strictly with chocolate and cream

@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import { api } from '../api/client'
 import { SkeletonCard, SkeletonTable, Spinner } from '../components/Skeletons'
 import ConfirmModal from '../components/ConfirmModal'
+import ModalPortal from '../components/ModalPortal'
 
 export default function AdminView() {
   const [stats, setStats] = useState(null)
@@ -170,14 +171,14 @@ export default function AdminView() {
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-200">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-serif font-bold text-[#23150E] flex items-center space-x-2">
-            <Shield className="h-5 w-5 text-terracotta-500" />
+          <h2 className="text-2xl font-serif font-bold text-[#26160F] flex items-center space-x-2">
+            <Shield className="h-6 w-6 text-[#5A3521]" />
             <span>Admin Lab Panel — MiraiGrid</span>
           </h2>
-          <p className="text-xs text-[#7A5A48] mt-1 font-sans">
+          <p className="text-xs text-[#5C3B29] mt-1 font-sans">
             Kelola angkatan, kelas praktikum, akun mahasiswa massal, dan audit log.
           </p>
         </div>
@@ -193,21 +194,21 @@ export default function AdminView() {
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <div className="bg-[#23150E] border border-[#3E2619] p-5 rounded-3xl shadow-xl text-[#FBF9F5]">
-            <p className="text-xs text-[#DFC6AF]">Total Mahasiswa</p>
-            <p className="text-2xl font-black text-[#FBF9F5] mt-1 font-sans">{stats?.total_students ?? 0}</p>
+          <div className="bg-[#2B1810] border border-[#4D2D1E] p-5 rounded-3xl shadow-xl text-[#FAF5EC]">
+            <p className="text-xs text-[#DFCDB5]">Total Mahasiswa</p>
+            <p className="text-2xl font-black text-[#FAF5EC] mt-1 font-sans">{stats?.total_students ?? 0}</p>
           </div>
-          <div className="bg-[#23150E] border border-[#3E2619] p-5 rounded-3xl shadow-xl text-[#FBF9F5]">
-            <p className="text-xs text-[#DFC6AF]">Project Aktif</p>
-            <p className="text-2xl font-black text-terracotta-400 mt-1 font-sans">{stats?.total_projects ?? 0}</p>
+          <div className="bg-[#2B1810] border border-[#4D2D1E] p-5 rounded-3xl shadow-xl text-[#FAF5EC]">
+            <p className="text-xs text-[#DFCDB5]">Project Aktif</p>
+            <p className="text-2xl font-black text-[#E8DCB8] mt-1 font-sans">{stats?.total_projects ?? 0}</p>
           </div>
-          <div className="bg-[#23150E] border border-[#3E2619] p-5 rounded-3xl shadow-xl text-[#FBF9F5]">
-            <p className="text-xs text-[#DFC6AF]">Database Siswa</p>
+          <div className="bg-[#2B1810] border border-[#4D2D1E] p-5 rounded-3xl shadow-xl text-[#FAF5EC]">
+            <p className="text-xs text-[#DFCDB5]">Database Siswa</p>
             <p className="text-2xl font-black text-emerald-400 mt-1 font-sans">{stats?.total_databases ?? 0}</p>
           </div>
-          <div className="bg-[#23150E] border border-[#3E2619] p-5 rounded-3xl shadow-xl text-[#FBF9F5]">
-            <p className="text-xs text-[#DFC6AF]">Kelas Praktikum</p>
-            <p className="text-2xl font-black text-amber-300 mt-1 font-sans">{stats?.total_classes ?? 0}</p>
+          <div className="bg-[#2B1810] border border-[#4D2D1E] p-5 rounded-3xl shadow-xl text-[#FAF5EC]">
+            <p className="text-xs text-[#DFCDB5]">Kelas Praktikum</p>
+            <p className="text-2xl font-black text-[#E8C58D] mt-1 font-sans">{stats?.total_classes ?? 0}</p>
           </div>
         </div>
       )}
@@ -217,7 +218,7 @@ export default function AdminView() {
         <button
           onClick={() => setActiveTab('users')}
           className={`px-4 py-2.5 text-xs font-semibold border-b-2 whitespace-nowrap transition ${
-            activeTab === 'users' ? 'border-terracotta-500 text-terracotta-600 font-bold' : 'border-transparent text-[#7A5A48] hover:text-[#23150E]'
+            activeTab === 'users' ? 'border-[#5A3521] text-[#26160F] font-bold' : 'border-transparent text-[#7A5A48] hover:text-[#26160F]'
           }`}
         >
           Daftar Mahasiswa
@@ -225,7 +226,7 @@ export default function AdminView() {
         <button
           onClick={() => setActiveTab('generator')}
           className={`px-4 py-2.5 text-xs font-semibold border-b-2 whitespace-nowrap transition ${
-            activeTab === 'generator' ? 'border-terracotta-500 text-terracotta-600 font-bold' : 'border-transparent text-[#7A5A48] hover:text-[#23150E]'
+            activeTab === 'generator' ? 'border-[#5A3521] text-[#26160F] font-bold' : 'border-transparent text-[#7A5A48] hover:text-[#26160F]'
           }`}
         >
           Generator Akun Massal
@@ -233,7 +234,7 @@ export default function AdminView() {
         <button
           onClick={() => setActiveTab('classes')}
           className={`px-4 py-2.5 text-xs font-semibold border-b-2 whitespace-nowrap transition ${
-            activeTab === 'classes' ? 'border-terracotta-500 text-terracotta-600 font-bold' : 'border-transparent text-[#7A5A48] hover:text-[#23150E]'
+            activeTab === 'classes' ? 'border-[#5A3521] text-[#26160F] font-bold' : 'border-transparent text-[#7A5A48] hover:text-[#26160F]'
           }`}
         >
           Kelola Angkatan & Kelas
@@ -241,7 +242,7 @@ export default function AdminView() {
         <button
           onClick={() => setActiveTab('logs')}
           className={`px-4 py-2.5 text-xs font-semibold border-b-2 whitespace-nowrap transition ${
-            activeTab === 'logs' ? 'border-terracotta-500 text-terracotta-600 font-bold' : 'border-transparent text-[#7A5A48] hover:text-[#23150E]'
+            activeTab === 'logs' ? 'border-[#5A3521] text-[#26160F] font-bold' : 'border-transparent text-[#7A5A48] hover:text-[#26160F]'
           }`}
         >
           Audit Log
@@ -253,20 +254,20 @@ export default function AdminView() {
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
-              <Search className="h-4 w-4 text-[#A47E65] absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <Search className="h-4 w-4 text-[#7A5A48] absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 placeholder="Cari NIM atau Nama Mahasiswa..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && fetchUsers()}
-                className="w-full bg-[#EAE2D5] border border-[#D5C6B3] rounded-2xl pl-10 pr-4 py-2.5 text-xs text-[#23150E] placeholder-[#8A6D5A] focus:outline-none focus:border-terracotta-500"
+                className="w-full bg-[#DECDBD] border border-[#BFAB96] rounded-2xl pl-10 pr-4 py-2.5 text-xs text-[#26160F] placeholder-[#7A5A48] focus:outline-none focus:border-[#5A3521]"
               />
             </div>
             <select
               value={selectedClass}
               onChange={(e) => { setSelectedClass(e.target.value); setTimeout(fetchUsers, 50); }}
-              className="bg-[#EAE2D5] border border-[#D5C6B3] rounded-2xl px-4 py-2.5 text-xs text-[#23150E] focus:outline-none focus:border-terracotta-500"
+              className="bg-[#DECDBD] border border-[#BFAB96] rounded-2xl px-4 py-2.5 text-xs text-[#26160F] focus:outline-none focus:border-[#5A3521]"
             >
               <option value="">Semua Kelas</option>
               {classes.map((c) => (
@@ -275,16 +276,16 @@ export default function AdminView() {
             </select>
             <button
               onClick={fetchUsers}
-              className="px-5 py-2.5 rounded-2xl text-xs font-semibold bg-[#23150E] hover:bg-[#341F14] text-[#FBF9F5] transition"
+              className="px-5 py-2.5 rounded-2xl text-xs font-semibold bg-[#2B1810] hover:bg-[#3D2317] text-[#FAF5EC] transition"
             >
               Filter
             </button>
           </div>
 
-          <div className="bg-[#23150E] border border-[#3E2619] rounded-3xl overflow-hidden shadow-xl text-[#FBF9F5]">
+          <div className="bg-[#2B1810] border border-[#4D2D1E] rounded-3xl overflow-hidden shadow-xl text-[#FAF5EC]">
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs text-[#FBF9F5]">
-                <thead className="bg-[#180E09] text-[#DFC6AF] uppercase text-[10px] tracking-wider border-b border-[#341F14]">
+              <table className="w-full text-left text-xs text-[#FAF5EC]">
+                <thead className="bg-[#1C0F0A] text-[#DFCDB5] uppercase text-[10px] tracking-wider border-b border-[#3E2316]">
                   <tr>
                     <th className="p-4">NIM / Username</th>
                     <th className="p-4">Nama</th>
@@ -293,12 +294,12 @@ export default function AdminView() {
                     <th className="p-4 text-right">Aksi</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#341F14]">
+                <tbody className="divide-y divide-[#3E2316]">
                   {users.map((u) => (
-                    <tr key={u.id} className="hover:bg-[#2C1B12] transition">
-                      <td className="p-4 font-mono font-semibold text-[#FBF9F5]">{u.username}</td>
+                    <tr key={u.id} className="hover:bg-[#361E13] transition">
+                      <td className="p-4 font-mono font-semibold text-[#FAF5EC]">{u.username}</td>
                       <td className="p-4 font-medium">{u.name}</td>
-                      <td className="p-4 text-[#DFC6AF]">
+                      <td className="p-4 text-[#DFCDB5]">
                         {u.class_name ? `${u.class_name} (${u.cohort_year})` : '-'}
                       </td>
                       <td className="p-4">
@@ -312,7 +313,7 @@ export default function AdminView() {
                         <button
                           onClick={() => triggerResetPassword(u.id, u.name)}
                           title="Reset Password Sementara"
-                          className="p-1.5 text-[#DFC6AF] hover:text-amber-400 hover:bg-[#341F14] rounded-lg transition"
+                          className="p-1.5 text-[#DFCDB5] hover:text-[#E8C58D] hover:bg-[#3E2316] rounded-lg transition"
                         >
                           <KeyRound className="h-4 w-4" />
                         </button>
@@ -320,7 +321,7 @@ export default function AdminView() {
                           onClick={() => handleToggleStatus(u.id)}
                           title={u.is_active ? 'Suspend Akun' : 'Aktifkan Akun'}
                           className={`p-1.5 rounded-lg transition ${
-                            u.is_active ? 'text-[#DFC6AF] hover:text-rose-400 hover:bg-[#341F14]' : 'text-emerald-400 hover:bg-emerald-500/10'
+                            u.is_active ? 'text-[#DFCDB5] hover:text-rose-400 hover:bg-[#3E2316]' : 'text-emerald-400 hover:bg-emerald-500/10'
                           }`}
                         >
                           <Ban className="h-4 w-4" />
@@ -338,22 +339,22 @@ export default function AdminView() {
       {/* TAB 2: GENERATOR */}
       {activeTab === 'generator' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-[#23150E] border border-[#3E2619] rounded-3xl p-6 shadow-xl text-[#FBF9F5]">
-            <h3 className="text-base font-serif font-bold text-[#FBF9F5] mb-1 flex items-center space-x-2">
-              <UserPlus className="h-4 w-4 text-terracotta-400" />
+          <div className="bg-[#2B1810] border border-[#4D2D1E] rounded-3xl p-6 sm:p-7 shadow-xl text-[#FAF5EC]">
+            <h3 className="text-lg font-serif font-bold text-[#FAF5EC] mb-1 flex items-center space-x-2">
+              <UserPlus className="h-5 w-5 text-[#E8DCB8]" />
               <span>Generator Akun Kelas Sekali Klik</span>
             </h3>
-            <p className="text-xs text-[#DFC6AF] mb-5">
+            <p className="text-xs text-[#DFCDB5] mb-5">
               Sistem akan otomatis membuat rentang akun mahasiswa dengan password awal unik acak.
             </p>
 
             <form onSubmit={handleGenerateAccounts} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-[#DFC6AF] mb-1">Pilih Angkatan</label>
+                <label className="block text-xs font-semibold text-[#DFCDB5] mb-1">Pilih Angkatan</label>
                 <select
                   value={genCohortId}
                   onChange={(e) => setGenCohortId(e.target.value)}
-                  className="w-full bg-[#180E09] border border-[#341F14] rounded-xl px-3.5 py-2 text-xs text-[#FBF9F5] focus:outline-none focus:border-terracotta-500"
+                  className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3.5 py-2.5 text-xs text-[#FAF5EC] focus:outline-none focus:border-[#C49767]"
                 >
                   {cohorts.map((c) => (
                     <option key={c.id} value={c.id}>Angkatan {c.year} - {c.description}</option>
@@ -362,11 +363,11 @@ export default function AdminView() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[#DFC6AF] mb-1">Pilih Kelas</label>
+                <label className="block text-xs font-semibold text-[#DFCDB5] mb-1">Pilih Kelas</label>
                 <select
                   value={genClassId}
                   onChange={(e) => setGenClassId(e.target.value)}
-                  className="w-full bg-[#180E09] border border-[#341F14] rounded-xl px-3.5 py-2 text-xs text-[#FBF9F5] focus:outline-none focus:border-terracotta-500"
+                  className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3.5 py-2.5 text-xs text-[#FAF5EC] focus:outline-none focus:border-[#C49767]"
                 >
                   {classes.map((cl) => (
                     <option key={cl.id} value={cl.id}>{cl.name} (Tahun {cl.cohort_year})</option>
@@ -376,33 +377,33 @@ export default function AdminView() {
 
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-[#DFC6AF] mb-1">Prefix NIM</label>
+                  <label className="block text-xs font-semibold text-[#DFCDB5] mb-1">Prefix NIM</label>
                   <input
                     type="text"
                     required
                     value={genNimPrefix}
                     onChange={(e) => setGenNimPrefix(e.target.value)}
-                    className="w-full bg-[#180E09] border border-[#341F14] rounded-xl px-3 py-2 text-xs text-[#FBF9F5] font-mono"
+                    className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3 py-2 text-xs text-[#FAF5EC] font-mono"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-[#DFC6AF] mb-1">Nomor Awal</label>
+                  <label className="block text-xs font-semibold text-[#DFCDB5] mb-1">Nomor Awal</label>
                   <input
                     type="number"
                     required
                     value={genStartNum}
                     onChange={(e) => setGenStartNum(e.target.value)}
-                    className="w-full bg-[#180E09] border border-[#341F14] rounded-xl px-3 py-2 text-xs text-[#FBF9F5] font-mono"
+                    className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3 py-2 text-xs text-[#FAF5EC] font-mono"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-[#DFC6AF] mb-1">Jumlah</label>
+                  <label className="block text-xs font-semibold text-[#DFCDB5] mb-1">Jumlah</label>
                   <input
                     type="number"
                     required
                     value={genCount}
                     onChange={(e) => setGenCount(e.target.value)}
-                    className="w-full bg-[#180E09] border border-[#341F14] rounded-xl px-3 py-2 text-xs text-[#FBF9F5] font-mono"
+                    className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3 py-2 text-xs text-[#FAF5EC] font-mono"
                   />
                 </div>
               </div>
@@ -410,7 +411,7 @@ export default function AdminView() {
               <button
                 type="submit"
                 disabled={loadingAction}
-                className="w-full py-2.5 rounded-xl text-xs font-semibold bg-chocolate-700 hover:bg-chocolate-600 text-[#FBF9F5] border border-chocolate-500/40 shadow-lg shadow-black/20 transition disabled:opacity-50 mt-2"
+                className="w-full py-3 rounded-2xl text-xs font-semibold bg-[#5A3521] hover:bg-[#6D4029] text-[#FAF5EC] border border-[#7D492F] shadow-lg shadow-black/20 transition disabled:opacity-50 mt-2"
               >
                 {loadingAction ? (
                   <span className="flex items-center justify-center space-x-1.5">
@@ -425,23 +426,23 @@ export default function AdminView() {
           </div>
 
           {/* Results Box */}
-          <div className="bg-[#23150E] border border-[#3E2619] rounded-3xl p-6 shadow-xl flex flex-col text-[#FBF9F5]">
-            <h3 className="text-base font-serif font-bold text-[#FBF9F5] mb-1">Hasil Akun Baru</h3>
-            <p className="text-xs text-[#DFC6AF] mb-4">Salin dan bagikan password sementara ini kepada mahasiswa.</p>
+          <div className="bg-[#2B1810] border border-[#4D2D1E] rounded-3xl p-6 sm:p-7 shadow-xl flex flex-col text-[#FAF5EC]">
+            <h3 className="text-lg font-serif font-bold text-[#FAF5EC] mb-1">Hasil Akun Baru</h3>
+            <p className="text-xs text-[#DFCDB5] mb-4">Salin dan bagikan password sementara ini kepada mahasiswa.</p>
 
-            <div className="bg-[#180E09] border border-[#341F14] rounded-2xl p-4 flex-1 overflow-y-auto max-h-96 font-mono text-xs text-[#FBF9F5]">
+            <div className="bg-[#1C0F0A] border border-[#3E2316] rounded-2xl p-4 flex-1 overflow-y-auto max-h-96 font-mono text-xs text-[#FAF5EC]">
               {generatedAccounts.length === 0 ? (
-                <span className="text-[#A47E65]">Daftar akun yang baru digenerate akan muncul di sini.</span>
+                <span className="text-[#7A5A48]">Daftar akun yang baru digenerate akan muncul di sini.</span>
               ) : (
                 <div className="space-y-2">
-                  <div className="text-[10px] text-[#A47E65] pb-2 border-b border-[#341F14] flex justify-between">
+                  <div className="text-[10px] text-[#A47E65] pb-2 border-b border-[#3E2316] flex justify-between">
                     <span>NIM</span>
                     <span>INITIAL PASSWORD</span>
                   </div>
                   {generatedAccounts.map((acc) => (
-                    <div key={acc.nim} className="flex justify-between items-center text-[#FBF9F5] py-1">
-                      <span className="font-bold text-terracotta-400">{acc.nim}</span>
-                      <span className="bg-[#2E1D13] px-2 py-0.5 rounded text-amber-300 font-mono border border-[#3E2619]">{acc.initial_password}</span>
+                    <div key={acc.nim} className="flex justify-between items-center text-[#FAF5EC] py-1">
+                      <span className="font-bold text-[#E8DCB8]">{acc.nim}</span>
+                      <span className="bg-[#3A2115] px-2 py-0.5 rounded text-[#E8C58D] font-mono border border-[#543221]">{acc.initial_password}</span>
                     </div>
                   ))}
                 </div>
@@ -454,47 +455,47 @@ export default function AdminView() {
       {/* TAB 3: CLASSES & COHORTS */}
       {activeTab === 'classes' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-[#23150E] border border-[#3E2619] rounded-3xl p-6 shadow-xl text-[#FBF9F5]">
-            <h3 className="text-sm font-serif font-bold text-[#FBF9F5] mb-3">Tambah Angkatan</h3>
+          <div className="bg-[#2B1810] border border-[#4D2D1E] rounded-3xl p-6 sm:p-7 shadow-xl text-[#FAF5EC]">
+            <h3 className="text-base font-serif font-bold text-[#FAF5EC] mb-3">Tambah Angkatan</h3>
             <form onSubmit={handleCreateCohort} className="space-y-3">
               <div>
-                <label className="block text-xs font-semibold text-[#DFC6AF] mb-1">Tahun Angkatan</label>
+                <label className="block text-xs font-semibold text-[#DFCDB5] mb-1">Tahun Angkatan</label>
                 <input
                   type="number"
                   required
                   value={newCohortYear}
                   onChange={(e) => setNewCohortYear(e.target.value)}
-                  className="w-full bg-[#180E09] border border-[#341F14] rounded-xl px-3.5 py-2 text-xs text-[#FBF9F5] focus:outline-none focus:border-terracotta-500"
+                  className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3.5 py-2 text-xs text-[#FAF5EC] focus:outline-none focus:border-[#C49767]"
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-[#DFC6AF] mb-1">Deskripsi</label>
+                <label className="block text-xs font-semibold text-[#DFCDB5] mb-1">Deskripsi</label>
                 <input
                   type="text"
                   placeholder="e.g. Mahasiswa Angkatan 2024"
                   value={newCohortDesc}
                   onChange={(e) => setNewCohortDesc(e.target.value)}
-                  className="w-full bg-[#180E09] border border-[#341F14] rounded-xl px-3.5 py-2 text-xs text-[#FBF9F5] focus:outline-none focus:border-terracotta-500"
+                  className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3.5 py-2 text-xs text-[#FAF5EC] focus:outline-none focus:border-[#C49767]"
                 />
               </div>
               <button
                 type="submit"
-                className="px-4 py-2 rounded-xl text-xs font-semibold bg-chocolate-700 hover:bg-chocolate-600 text-[#FBF9F5] border border-chocolate-500/40 transition"
+                className="px-5 py-2.5 rounded-2xl text-xs font-semibold bg-[#5A3521] hover:bg-[#6D4029] text-[#FAF5EC] border border-[#7D492F] transition"
               >
                 Simpan Angkatan
               </button>
             </form>
           </div>
 
-          <div className="bg-[#23150E] border border-[#3E2619] rounded-3xl p-6 shadow-xl text-[#FBF9F5]">
-            <h3 className="text-sm font-serif font-bold text-[#FBF9F5] mb-3">Tambah Kelas Praktikum</h3>
+          <div className="bg-[#2B1810] border border-[#4D2D1E] rounded-3xl p-6 sm:p-7 shadow-xl text-[#FAF5EC]">
+            <h3 className="text-base font-serif font-bold text-[#FAF5EC] mb-3">Tambah Kelas Praktikum</h3>
             <form onSubmit={handleCreateClass} className="space-y-3">
               <div>
-                <label className="block text-xs font-semibold text-[#DFC6AF] mb-1">Pilih Angkatan</label>
+                <label className="block text-xs font-semibold text-[#DFCDB5] mb-1">Pilih Angkatan</label>
                 <select
                   value={newClassCohortId}
                   onChange={(e) => setNewClassCohortId(e.target.value)}
-                  className="w-full bg-[#180E09] border border-[#341F14] rounded-xl px-3.5 py-2 text-xs text-[#FBF9F5] focus:outline-none focus:border-terracotta-500"
+                  className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3.5 py-2 text-xs text-[#FAF5EC] focus:outline-none focus:border-[#C49767]"
                 >
                   {cohorts.map((c) => (
                     <option key={c.id} value={c.id}>Angkatan {c.year}</option>
@@ -502,19 +503,19 @@ export default function AdminView() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-[#DFC6AF] mb-1">Nama Kelas</label>
+                <label className="block text-xs font-semibold text-[#DFCDB5] mb-1">Nama Kelas</label>
                 <input
                   type="text"
                   required
                   placeholder="e.g. TI-A / Praktikum Basis Data A"
                   value={newClassName}
                   onChange={(e) => setNewClassName(e.target.value)}
-                  className="w-full bg-[#180E09] border border-[#341F14] rounded-xl px-3.5 py-2 text-xs text-[#FBF9F5] focus:outline-none focus:border-terracotta-500"
+                  className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3.5 py-2 text-xs text-[#FAF5EC] focus:outline-none focus:border-[#C49767]"
                 />
               </div>
               <button
                 type="submit"
-                className="px-4 py-2 rounded-xl text-xs font-semibold bg-emerald-700 hover:bg-emerald-600 text-[#FBF9F5] border border-emerald-500/40 transition"
+                className="px-5 py-2.5 rounded-2xl text-xs font-semibold bg-emerald-700 hover:bg-emerald-600 text-[#FAF5EC] border border-emerald-500/40 transition"
               >
                 Simpan Kelas
               </button>
@@ -525,29 +526,29 @@ export default function AdminView() {
 
       {/* TAB 4: AUDIT LOGS */}
       {activeTab === 'logs' && (
-        <div className="bg-[#23150E] border border-[#3E2619] rounded-3xl overflow-hidden shadow-xl text-[#FBF9F5]">
-          <div className="p-4 border-b border-[#341F14] flex items-center justify-between">
-            <h4 className="text-sm font-serif font-bold text-[#FBF9F5] flex items-center space-x-2">
-              <Clock className="h-4 w-4 text-terracotta-400" />
+        <div className="bg-[#2B1810] border border-[#4D2D1E] rounded-3xl overflow-hidden shadow-xl text-[#FAF5EC]">
+          <div className="p-4 sm:p-5 border-b border-[#3E2316] flex items-center justify-between">
+            <h4 className="text-base font-serif font-bold text-[#FAF5EC] flex items-center space-x-2">
+              <Clock className="h-5 w-5 text-[#E8DCB8]" />
               <span>Aktivitas Sistem & Audit Log (50 Terakhir)</span>
             </h4>
             <button
               onClick={fetchAuditLogs}
-              className="text-xs text-terracotta-400 hover:underline"
+              className="text-xs text-[#E8DCB8] hover:underline"
             >
               Refresh
             </button>
           </div>
-          <div className="divide-y divide-[#341F14] text-xs">
+          <div className="divide-y divide-[#3E2316] text-xs">
             {auditLogs.map((log) => (
-              <div key={log.id} className="p-4 hover:bg-[#2C1B12] flex items-center justify-between gap-4 transition">
+              <div key={log.id} className="p-4 hover:bg-[#361E13] flex items-center justify-between gap-4 transition">
                 <div>
                   <div className="flex items-center space-x-2">
-                    <span className="font-semibold text-[#FBF9F5]">{log.actor_name || 'System'}</span>
-                    <span className="bg-[#180E09] px-2 py-0.5 rounded-lg text-[10px] font-mono text-terracotta-400 border border-[#341F14]">{log.action}</span>
+                    <span className="font-semibold text-[#FAF5EC]">{log.actor_name || 'System'}</span>
+                    <span className="bg-[#1C0F0A] px-2 py-0.5 rounded-lg text-[10px] font-mono text-[#E8DCB8] border border-[#3E2316]">{log.action}</span>
                     <span className="text-[#A47E65] text-[11px] font-mono">[{log.ip_address}]</span>
                   </div>
-                  <p className="text-[#DFC6AF] text-xs mt-1">{log.details}</p>
+                  <p className="text-[#DFCDB5] text-xs mt-1">{log.details}</p>
                 </div>
                 <span className="text-[11px] text-[#A47E65] whitespace-nowrap">{log.created_at}</span>
               </div>
