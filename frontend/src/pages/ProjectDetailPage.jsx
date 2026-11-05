@@ -194,17 +194,26 @@ export default function ProjectDetailPage({ project, onBack, onUpdated, onOpenCo
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-[#DECDBD]">
         <div className="flex items-center space-x-3">
           <button
-            onClick={onBack}
-            className="p-2.5 rounded-2xl bg-[#DECDBD] hover:bg-[#D1BDAB] text-[#26160F] transition shadow-sm"
+            type="button"
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              onBack()
+            }}
+            className="p-2.5 rounded-2xl bg-[#DECDBD] hover:bg-[#D1BDAB] text-[#26160F] transition shadow-sm cursor-pointer shrink-0"
             title="Kembali ke Daftar Aplikasi"
           >
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeft className="h-5 w-5" />
           </button>
           <div>
-            <div className="flex items-center space-x-2">
-              <span className="text-xl">
-                {isPhp ? '🐘' : isPython ? '🐍' : '🟩'}
-              </span>
+            <div className="flex items-center space-x-3">
+              <div className="h-10 w-10 rounded-2xl bg-[#24140C] border border-[#3E2316] p-2 flex items-center justify-center shrink-0 shadow-md">
+                <img
+                  src={isPhp ? '/logos/php.svg' : isPython ? '/logos/python.svg' : '/logos/node.svg'}
+                  alt="Runtime Logo"
+                  className="h-7 w-7 object-contain"
+                />
+              </div>
               <h2 className="text-2xl font-serif font-bold text-[#26160F]">
                 {isPhp ? 'PHP' : isPython ? 'Python' : 'Node.js'} — {project.name}
               </h2>

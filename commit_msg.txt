@@ -1,6 +1,11 @@
-feat(console): implement full-page dedicated CLI console with xterm.js
+feat(filemanager): implement cPanel-style Jupiter File Manager and fix back button
 
-- Replace console modal with dedicated full-page ConsolePage view
-- Integrate @xterm/xterm and @xterm/addon-fit for true interactive terminal emulation
-- Support keyboard shortcuts: Ctrl+C (cancel), Ctrl+L (clear), Ctrl+U (clear line), Arrow Up/Down (history)
-- Style terminal with warm chocolate and cream ANSI palette
+- Replace emoji with official SVG logo in ProjectDetailPage
+- Fix onBack button navigation flow in ProjectDetailPage
+- Implement full cPanel-style File Manager layout (Image 2):
+  - Primary toolbar: File, Folder, Copy, Move, Upload, Download, Delete, Rename, Edit, Permissions, View, Extract, Compress
+  - Navigation bar: Home, Up, Back, Forward, Reload, Select All, Unselect All, Path display
+  - Left directory tree structure with folder navigation
+  - 5-column main table (Name, Size, Last Modified, Type, Permissions)
+  - Full permissions modal (User/Group/World chmod matrix)
+  - Compress and Extract modals with secure backend handlers

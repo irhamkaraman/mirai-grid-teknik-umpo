@@ -27,11 +27,11 @@ export default function ProjectsView() {
     fetchProjects()
   }, [])
 
-  const fetchProjects = async () => {
+  const fetchProjects = async (updateDetail = false) => {
     try {
       const res = await api.get('/projects')
       setProjects(res.data)
-      if (activeProjectDetail) {
+      if (updateDetail && activeProjectDetail) {
         const updated = res.data.find((p) => p.id === activeProjectDetail.id)
         if (updated) setActiveProjectDetail(updated)
       }
@@ -94,9 +94,8 @@ export default function ProjectsView() {
         project={activeProjectDetail}
         onBack={() => {
           setActiveProjectDetail(null)
-          fetchProjects()
         }}
-        onUpdated={fetchProjects}
+        onUpdated={() => fetchProjects(true)}
         onOpenConsole={(proj) => setActiveConsoleProject(proj)}
       />
     )

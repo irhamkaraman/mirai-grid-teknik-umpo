@@ -4,6 +4,7 @@ import shutil
 import pathlib
 from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Request, Query
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 import aiosqlite
 from app.core.config import settings
@@ -13,7 +14,10 @@ from app.models.schemas import ProjectCreate, ProjectResponse
 from app.services.zip_handler import safe_extract_zip
 from app.services.template_composer import TemplateComposer
 from app.services.portainer import portainer
-from app.services.file_manager import get_safe_project_path, list_directory_contents
+from app.services.file_manager import (
+    get_safe_project_path, list_directory_contents,
+    get_directory_tree, compress_items_to_zip, extract_zip_archive
+)
 from app.api.deps import get_current_user, get_client_ip
 
 router = APIRouter(prefix="/projects", tags=["Projects"])
@@ -27,6 +31,26 @@ class FileNewRequest(BaseModel):
     path: str
     name: str
     is_dir: bool = False
+
+class FileRenameRequest(BaseModel):
+    old_path: str
+    new_name: str
+
+class FileCopyMoveRequest(BaseModel):
+    source_path: str
+    dest_dir: str
+
+class FilePermissionRequest(BaseModel):
+    path: str
+    permissions: str # e.g. "0755", "0644"
+
+class FileCompressRequest(BaseModel):
+    paths: List[str]
+    destination_zip: str
+
+class FileExtractRequest(BaseModel):
+    zip_path: str
+    extract_to: Optional[str] = ""
 
 class ConsoleExecRequest(BaseModel):
     command: str = "/bin/sh"
@@ -96,7 +120,7 @@ def write_starter_template(language: str, version: str, project_dir: str, projec
         with open(os.path.join(project_dir, "index.php"), "w", encoding="utf-8") as f:
             f.write(index_php)
 
-    # 2. Python Starter (Instant zero-delay HTTP Server)
+    # 2. Python Starter
     elif language == "python":
         startup_file = cfg.get("startup_file", "app.py")
         content = f"""from http.server import HTTPServer, BaseHTTPRequestHandler
@@ -143,7 +167,7 @@ if __name__ == '__main__':
         with open(os.path.join(project_dir, "requirements.txt"), "w", encoding="utf-8") as f:
             f.write("# Tuliskan dependensi pip di sini (e.g. flask, requests, pandas)\n")
 
-    # 3. Node.js Starter (Instant zero-delay HTTP Server)
+    # 3. Node.js Starter
     elif language == "node":
         startup_file = cfg.get("startup_file", "server.js")
         content = f"""const http = require('http');
@@ -210,7 +234,6 @@ async def list_my_projects(
         env_vars = json.loads(decrypt_secret(r["env_vars_enc"])) if r["env_vars_enc"] else {}
         app_cfg = json.loads(r["config_json"]) if ("config_json" in r.keys() and r["config_json"]) else {}
 
-        # Derive language & version
         tmpl = r["template_type"]
         if tmpl.startswith("php"):
             lang = "php"
@@ -258,7 +281,6 @@ async def create_project(
     nim = current_user["username"]
     subdomain = f"{body.name}-{nim}.{settings.BASE_DOMAIN}"
 
-    # Quota check (Students are constrained, Admin has unlimited)
     if current_user.get("role") != "admin":
         cursor = await db.execute("SELECT max_projects FROM quotas WHERE user_id = ?", (current_user["id"],))
         quota_row = await cursor.fetchone()
@@ -270,7 +292,6 @@ async def create_project(
         if used_projects >= max_projects:
             raise HTTPException(status_code=400, detail=f"Batas kuota project tercapai (Maksimal: {max_projects} project).")
 
-    # Check unique name per user
     existing = await (await db.execute("SELECT id FROM projects WHERE user_id = ? AND name = ?", (current_user["id"], body.name))).fetchone()
     if existing:
         raise HTTPException(status_code=400, detail="Nama project sudah digunakan untuk akun Anda.")
@@ -278,24 +299,19 @@ async def create_project(
     allocated_port = await get_next_available_port(db)
     encrypted_env = encrypt_secret(json.dumps(body.env_vars or {}))
 
-    # Determine template_type slug
     clean_ver = body.version.replace(".", "")
     template_type = f"{body.language}{clean_ver}"
 
-    # 1. Write starter template in container local projects dir
     local_project_dir = os.path.join(settings.PROJECTS_DIR, f"{nim}_{body.name}")
     write_starter_template(body.language, body.version, local_project_dir, body.name, body.app_config)
 
-    # 2. Compute Host Path for Docker volume mount
     host_project_dir = os.path.join(settings.HOST_PROJECTS_DIR, f"{nim}_{body.name}").replace("\\", "/")
 
-    # 3. Get quotas
     q_cur = await db.execute("SELECT * FROM quotas WHERE user_id = ?", (current_user["id"],))
     quota = await q_cur.fetchone()
     mem_limit = quota["max_memory_mb"] if quota else 256
     cpus = quota["max_cpu_cores"] if quota else 0.5
 
-    # 4. Generate Compose with Host Volume Mount
     compose_yaml = TemplateComposer.generate_compose(
         nim=nim,
         project_name=body.name,
@@ -309,7 +325,6 @@ async def create_project(
         cpu_cores=cpus
     )
 
-    # 5. Deploy immediately via Portainer API
     stack_name = f"miraigrid_{nim}_{body.name}"
     deploy_res = await portainer.create_standalone_stack(stack_name, compose_yaml)
     stack_id = deploy_res["data"]["Id"] if deploy_res.get("success") else None
@@ -335,7 +350,6 @@ async def create_project(
     ))
     project_id = cursor.lastrowid
 
-    # Audit log
     ip = get_client_ip(request)
     await db.execute("""
         INSERT INTO audit_logs (actor_id, action, target_resource, ip_address, details)
@@ -370,7 +384,6 @@ async def update_project_config(
     current_user: dict = Depends(get_current_user),
     db: aiosqlite.Connection = Depends(get_db)
 ):
-    """Updates language/engine configuration and redeploys container with new settings."""
     cursor = await db.execute("SELECT * FROM projects WHERE id = ? AND user_id = ?", (project_id, current_user["id"]))
     project = await cursor.fetchone()
     if not project:
@@ -381,13 +394,11 @@ async def update_project_config(
     local_project_dir = os.path.join(settings.PROJECTS_DIR, f"{nim}_{project_name}")
     host_project_dir = os.path.join(settings.HOST_PROJECTS_DIR, f"{nim}_{project_name}").replace("\\", "/")
 
-    # Derive language & version
     tmpl = project["template_type"]
     if tmpl.startswith("php"):
         lang = "php"
         v = tmpl.replace("php", "")
         ver = f"{v[0]}.{v[1:]}" if len(v) >= 2 else "8.2"
-        # If PHP, update php.ini immediately
         directives = body.app_config.get("directives", {})
         ini_content = TemplateComposer.generate_php_ini_content(directives)
         with open(os.path.join(local_project_dir, ".miraigrid_php.ini"), "w", encoding="utf-8") as f:
@@ -451,7 +462,6 @@ async def set_project_startup_file(
     current_user: dict = Depends(get_current_user),
     db: aiosqlite.Connection = Depends(get_db)
 ):
-    """Sets a file from File Manager as the Application Startup File and redeploys container."""
     cursor = await db.execute("SELECT * FROM projects WHERE id = ? AND user_id = ?", (project_id, current_user["id"]))
     project = await cursor.fetchone()
     if not project:
@@ -461,7 +471,6 @@ async def set_project_startup_file(
     project_name = project["name"]
     clean_file = body.file_path.strip().lstrip("/\\")
 
-    # Verify file actually exists in project sandbox
     file_path = get_safe_project_path(settings.PROJECTS_DIR, nim, project_name, clean_file)
     if not os.path.exists(file_path) or os.path.isdir(file_path):
         raise HTTPException(status_code=400, detail="File startup tidak ditemukan di dalam workspace project.")
@@ -470,7 +479,6 @@ async def set_project_startup_file(
     app_cfg["startup_file"] = clean_file
     config_json_str = json.dumps(app_cfg)
 
-    # Derive language & version
     tmpl = project["template_type"]
     if tmpl.startswith("php"):
         lang = "php"
@@ -536,7 +544,6 @@ async def run_pip_install(
     current_user: dict = Depends(get_current_user),
     db: aiosqlite.Connection = Depends(get_db)
 ):
-    """Executes pip install -r requirements.txt inside Python container."""
     cursor = await db.execute("SELECT * FROM projects WHERE id = ? AND user_id = ?", (project_id, current_user["id"]))
     project = await cursor.fetchone()
     if not project or not project["portainer_stack_id"]:
@@ -556,7 +563,6 @@ async def run_npm_install(
     current_user: dict = Depends(get_current_user),
     db: aiosqlite.Connection = Depends(get_db)
 ):
-    """Executes npm install inside Node.js container."""
     cursor = await db.execute("SELECT * FROM projects WHERE id = ? AND user_id = ?", (project_id, current_user["id"]))
     project = await cursor.fetchone()
     if not project or not project["portainer_stack_id"]:
@@ -639,9 +645,9 @@ async def delete_project(
 
     return {"success": True, "message": "Project berhasil dihapus."}
 
-# ==========================================
-# FILE MANAGER ENDPOINTS
-# ==========================================
+# =========================================================
+# CPANEL-STYLE ADVANCED FILE MANAGER ENDPOINTS
+# =========================================================
 @router.get("/{project_id}/files")
 async def get_project_files(
     project_id: int,
@@ -669,6 +675,26 @@ async def get_project_files(
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+@router.get("/{project_id}/files/tree")
+async def get_project_files_tree(
+    project_id: int,
+    current_user: dict = Depends(get_current_user),
+    db: aiosqlite.Connection = Depends(get_db)
+):
+    """Returns directory tree for cPanel left sidebar."""
+    cursor = await db.execute("SELECT * FROM projects WHERE id = ? AND user_id = ?", (project_id, current_user["id"]))
+    project = await cursor.fetchone()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project tidak ditemukan.")
+
+    nim = current_user["username"]
+    try:
+        project_root = get_safe_project_path(settings.PROJECTS_DIR, nim, project["name"])
+        tree = get_directory_tree(project_root)
+        return {"tree": tree}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
 @router.get("/{project_id}/files/content")
 async def get_file_content(
     project_id: int,
@@ -688,7 +714,7 @@ async def get_file_content(
             raise HTTPException(status_code=404, detail="File tidak ditemukan.")
 
         if os.path.getsize(file_path) > 2 * 1024 * 1024:
-            raise HTTPException(status_code=400, detail="File terlalu besar untuk dibuka di web editor (Maksimal 2MB).")
+            raise HTTPException(status_code=400, detail="File terlalu besar untuk dibuka di editor (Maksimal 2MB).")
 
         with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
             content = f.read()
@@ -740,7 +766,170 @@ async def create_new_file_or_dir(
         else:
             with open(target_path, "w", encoding="utf-8") as f:
                 f.write("")
-        return {"success": True, "message": f"{'Folder' if body.is_dir else 'File'} berhasil dibuat."}
+        return {"success": True, "message": f"{'Folder' if body.is_dir else 'File'} '{body.name}' berhasil dibuat."}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.post("/{project_id}/files/rename")
+async def rename_file_or_dir(
+    project_id: int,
+    body: FileRenameRequest,
+    current_user: dict = Depends(get_current_user),
+    db: aiosqlite.Connection = Depends(get_db)
+):
+    cursor = await db.execute("SELECT * FROM projects WHERE id = ? AND user_id = ?", (project_id, current_user["id"]))
+    project = await cursor.fetchone()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project tidak ditemukan.")
+
+    nim = current_user["username"]
+    try:
+        source_path = get_safe_project_path(settings.PROJECTS_DIR, nim, project["name"], body.old_path)
+        parent_dir = os.path.dirname(source_path)
+        dest_path = os.path.join(parent_dir, body.new_name)
+        get_safe_project_path(settings.PROJECTS_DIR, nim, project["name"], os.path.relpath(dest_path, os.path.join(settings.PROJECTS_DIR, f"{nim}_{project['name']}")))
+
+        os.rename(source_path, dest_path)
+        return {"success": True, "message": f"Berhasil diubah menjadi '{body.new_name}'"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.post("/{project_id}/files/copy")
+async def copy_file_or_dir(
+    project_id: int,
+    body: FileCopyMoveRequest,
+    current_user: dict = Depends(get_current_user),
+    db: aiosqlite.Connection = Depends(get_db)
+):
+    cursor = await db.execute("SELECT * FROM projects WHERE id = ? AND user_id = ?", (project_id, current_user["id"]))
+    project = await cursor.fetchone()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project tidak ditemukan.")
+
+    nim = current_user["username"]
+    try:
+        source = get_safe_project_path(settings.PROJECTS_DIR, nim, project["name"], body.source_path)
+        dest_dir = get_safe_project_path(settings.PROJECTS_DIR, nim, project["name"], body.dest_dir)
+        dest_target = os.path.join(dest_dir, os.path.basename(source))
+
+        if os.path.isdir(source):
+            shutil.copytree(source, dest_target, dirs_exist_ok=True)
+        else:
+            shutil.copy2(source, dest_target)
+        return {"success": True, "message": "Berhasil disalin."}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.post("/{project_id}/files/move")
+async def move_file_or_dir(
+    project_id: int,
+    body: FileCopyMoveRequest,
+    current_user: dict = Depends(get_current_user),
+    db: aiosqlite.Connection = Depends(get_db)
+):
+    cursor = await db.execute("SELECT * FROM projects WHERE id = ? AND user_id = ?", (project_id, current_user["id"]))
+    project = await cursor.fetchone()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project tidak ditemukan.")
+
+    nim = current_user["username"]
+    try:
+        source = get_safe_project_path(settings.PROJECTS_DIR, nim, project["name"], body.source_path)
+        dest_dir = get_safe_project_path(settings.PROJECTS_DIR, nim, project["name"], body.dest_dir)
+        dest_target = os.path.join(dest_dir, os.path.basename(source))
+
+        shutil.move(source, dest_target)
+        return {"success": True, "message": "Berhasil dipindahkan."}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.post("/{project_id}/files/permissions")
+async def change_file_permissions(
+    project_id: int,
+    body: FilePermissionRequest,
+    current_user: dict = Depends(get_current_user),
+    db: aiosqlite.Connection = Depends(get_db)
+):
+    cursor = await db.execute("SELECT * FROM projects WHERE id = ? AND user_id = ?", (project_id, current_user["id"]))
+    project = await cursor.fetchone()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project tidak ditemukan.")
+
+    nim = current_user["username"]
+    try:
+        target = get_safe_project_path(settings.PROJECTS_DIR, nim, project["name"], body.path)
+        # Parse octal e.g. "0755"
+        mode = int(body.permissions, 8)
+        os.chmod(target, mode)
+        return {"success": True, "message": f"Permissions diubah menjadi {body.permissions}."}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.post("/{project_id}/files/compress")
+async def compress_files(
+    project_id: int,
+    body: FileCompressRequest,
+    current_user: dict = Depends(get_current_user),
+    db: aiosqlite.Connection = Depends(get_db)
+):
+    cursor = await db.execute("SELECT * FROM projects WHERE id = ? AND user_id = ?", (project_id, current_user["id"]))
+    project = await cursor.fetchone()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project tidak ditemukan.")
+
+    nim = current_user["username"]
+    try:
+        project_root = get_safe_project_path(settings.PROJECTS_DIR, nim, project["name"])
+        src_full_paths = [get_safe_project_path(settings.PROJECTS_DIR, nim, project["name"], p) for p in body.paths]
+        dest_zip = get_safe_project_path(settings.PROJECTS_DIR, nim, project["name"], body.destination_zip)
+
+        compress_items_to_zip(src_full_paths, dest_zip, project_root)
+        return {"success": True, "message": f"Berhasil dikompresi ke '{os.path.basename(dest_zip)}'"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.post("/{project_id}/files/extract")
+async def extract_archive(
+    project_id: int,
+    body: FileExtractRequest,
+    current_user: dict = Depends(get_current_user),
+    db: aiosqlite.Connection = Depends(get_db)
+):
+    cursor = await db.execute("SELECT * FROM projects WHERE id = ? AND user_id = ?", (project_id, current_user["id"]))
+    project = await cursor.fetchone()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project tidak ditemukan.")
+
+    nim = current_user["username"]
+    try:
+        project_root = get_safe_project_path(settings.PROJECTS_DIR, nim, project["name"])
+        zip_full_path = get_safe_project_path(settings.PROJECTS_DIR, nim, project["name"], body.zip_path)
+        dest_dir = get_safe_project_path(settings.PROJECTS_DIR, nim, project["name"], body.extract_to or "")
+
+        extract_zip_archive(zip_full_path, dest_dir, project_root)
+        return {"success": True, "message": f"Arsip ZIP berhasil diekstrak."}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.get("/{project_id}/files/download")
+async def download_file(
+    project_id: int,
+    path: str = Query(..., description="File path relative to project root"),
+    current_user: dict = Depends(get_current_user),
+    db: aiosqlite.Connection = Depends(get_db)
+):
+    cursor = await db.execute("SELECT * FROM projects WHERE id = ? AND user_id = ?", (project_id, current_user["id"]))
+    project = await cursor.fetchone()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project tidak ditemukan.")
+
+    nim = current_user["username"]
+    try:
+        file_path = get_safe_project_path(settings.PROJECTS_DIR, nim, project["name"], path)
+        if not os.path.exists(file_path) or os.path.isdir(file_path):
+            raise HTTPException(status_code=404, detail="File tidak ditemukan.")
+
+        return FileResponse(file_path, filename=os.path.basename(file_path))
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -762,9 +951,11 @@ async def upload_files_to_directory(
         target_dir = get_safe_project_path(settings.PROJECTS_DIR, nim, project["name"], path)
         temp_dest = os.path.join(target_dir, file.filename)
 
+        with open(temp_dest, "wb") as f:
+            shutil.copyfileobj(file.file, f)
+
+        # If it's a zip file, extract safely
         if file.filename.lower().endswith(".zip"):
-            with open(temp_dest, "wb") as f:
-                shutil.copyfileobj(file.file, f)
             success, msg = safe_extract_zip(temp_dest, target_dir)
             try:
                 os.remove(temp_dest)
@@ -772,10 +963,8 @@ async def upload_files_to_directory(
                 pass
             if not success:
                 raise HTTPException(status_code=400, detail=f"Gagal ekstrak zip: {msg}")
-            return {"success": True, "message": "File ZIP berhasil diekstrak ke folder ini."}
+            return {"success": True, "message": "File ZIP berhasil di-upload dan diekstrak."}
         else:
-            with open(temp_dest, "wb") as f:
-                shutil.copyfileobj(file.file, f)
             return {"success": True, "message": f"File '{file.filename}' berhasil di-upload."}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
