@@ -98,20 +98,15 @@ class TemplateComposer:
             service_definition["image"] = f"python:{v}-slim"
             app_root = cfg.get("app_root", "").strip().strip("/")
             startup_file = cfg.get("startup_file", "app.py").strip()
-            entry_point = cfg.get("entry_point", "app").strip()
-
-            module_name = startup_file.replace(".py", "") if startup_file.endswith(".py") else startup_file
 
             service_definition["working_dir"] = f"/app/{app_root}" if app_root else "/app"
             service_definition["volumes"] = [f"{project_src_dir}:/app"]
 
-            # Command dynamically starts application via gunicorn or uvicorn
+            # Starts immediately with python startup_file (zero delay)
             command = (
-                "sh -c 'if [ -f requirements.txt ]; then pip install --no-cache-dir -r requirements.txt; fi && "
-                "pip install --no-cache-dir gunicorn uvicorn flask && "
-                f"if [ -f {startup_file} ]; then gunicorn -w 2 -b 0.0.0.0:80 {module_name}:{entry_point}; "
-                f"elif [ -f main.py ]; then uvicorn main:app --host 0.0.0.0 --port 80; "
-                f"elif [ -f passenger_wsgi.py ]; then gunicorn -w 2 -b 0.0.0.0:80 passenger_wsgi:{entry_point}; "
+                f"sh -c 'if [ -f {startup_file} ]; then python {startup_file}; "
+                "elif [ -f main.py ]; then python main.py; "
+                "elif [ -f passenger_wsgi.py ]; then python passenger_wsgi.py; "
                 "else python -m http.server 80; fi'"
             )
             service_definition["command"] = command
@@ -128,12 +123,11 @@ class TemplateComposer:
             service_definition["working_dir"] = f"/app/{app_root}" if app_root else "/app"
             service_definition["volumes"] = [f"{project_src_dir}:/app"]
 
+            # Starts immediately with node startup_file (zero delay)
             command = (
-                "sh -c 'if [ -f package.json ]; then npm install; fi && "
-                f"if [ -f {startup_file} ]; then node {startup_file}; "
+                f"sh -c 'if [ -f {startup_file} ]; then node {startup_file}; "
                 "elif [ -f index.js ]; then node index.js; "
                 "elif [ -f app.js ]; then node app.js; "
-                "elif [ -f server.js ]; then node server.js; "
                 "else npx serve -l 80 .; fi'"
             )
             service_definition["command"] = command

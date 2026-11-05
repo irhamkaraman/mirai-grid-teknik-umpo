@@ -1,10 +1,4 @@
-feat(deploy): implement Deploy configuration with PHP/Python/Node cards and cPanel-style selectors
+feat(engines): instant zero-delay startup for Python & Node containers
 
-- Rename menu to Deploy and page to "Project Aplikasi Web" Konfigurasi Deploy
-- Present exactly 3 language cards: PHP (8.3..7.4), Python (3.12..3.9), Node.js (22..16)
-- Implement cPanel-style ProjectConfigModal:
-  - PHP: php.ini directives (display_errors, max_execution_time, memory_limit, etc.) and PHP extensions
-  - Python: App root, startup file, entry point, pip install, and script execution
-  - Node.js: App mode (dev/prod), startup file, npm install, and script execution
-- Add backend support for config_json and dynamic compose generation with custom php.ini and entrypoints
-- Pass all unit and security negative tests
+- Use standard library HTTP servers for instant 0.1s startup without pip/npm delay
+- Allow on-demand pip install and npm install via cPanel-style Config Modal

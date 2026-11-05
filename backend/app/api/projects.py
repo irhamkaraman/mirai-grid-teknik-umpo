@@ -93,50 +93,93 @@ def write_starter_template(language: str, version: str, project_dir: str, projec
         with open(os.path.join(project_dir, "index.php"), "w", encoding="utf-8") as f:
             f.write(index_php)
 
-    # 2. Python Starter
+    # 2. Python Starter (Instant zero-delay HTTP Server)
     elif language == "python":
         startup_file = cfg.get("startup_file", "app.py")
-        content = f"""from flask import Flask
-app = Flask(__name__)
+        content = f"""from http.server import HTTPServer, BaseHTTPRequestHandler
+import sys
 
-@app.route('/')
-def home():
-    return '''<!DOCTYPE html><html><body style="font-family:sans-serif;background:#E6D7BE;color:#26160F;display:flex;align-items:center;justify-content:center;height:100vh;margin:0">
-    <div style="background:#2B1810;color:#FAF5EC;padding:40px;border-radius:24px;text-align:center">
-      <h1 style="color:#FAF5EC">{project_name}</h1>
-      <p style="color:#DFCDB5">Python {version} Starter is Running!</p>
-      <p style="color:#E8DCB8;font-size:12px">Edit files via File Manager or run Pip Install.</p>
-    </div></body></html>'''
+class SimpleHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header('Content-Type', 'text/html; charset=utf-8')
+        self.end_headers()
+        html = f'''<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>{project_name} — Python {version}</title>
+  <style>
+    body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #E6D7BE; color: #26160F; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }}
+    .card {{ background: #2B1810; color: #FAF5EC; border-radius: 28px; padding: 40px; max-width: 540px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); text-align: center; }}
+    h1 {{ margin: 0 0 10px 0; font-size: 26px; font-family: serif; color: #FAF5EC; }}
+    p {{ color: #DFCDB5; font-size: 14px; line-height: 1.6; margin: 10px 0; }}
+    .badge {{ display: inline-block; background: #C49767; color: #2B1810; padding: 4px 14px; border-radius: 99px; font-size: 11px; font-weight: bold; margin-bottom: 14px; }}
+    .info {{ background: #1C0F0A; padding: 12px; border-radius: 14px; font-size: 12px; font-family: monospace; color: #E8DCB8; margin-top: 20px; }}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <span class="badge">PYTHON {version} • RUNNING</span>
+    <h1>{project_name}</h1>
+    <p>Aplikasi Python {version} Anda telah aktif di container terisolasi MiraiGrid Lab TI UMPO.</p>
+    <p>Gunakan menu Konfigurasi untuk mengatur startup file atau klik 'Run Pip Install'.</p>
+    <div class="info">Python Version: {{sys.version.split()[0]}}</div>
+  </div>
+</body>
+</html>'''
+        self.wfile.write(html.encode('utf-8'))
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=80)
+    print("Serving on port 80...")
+    HTTPServer(('0.0.0.0', 80), SimpleHandler).serve_forever()
 """
         with open(os.path.join(project_dir, startup_file), "w", encoding="utf-8") as f:
             f.write(content)
 
-        # requirements.txt
         with open(os.path.join(project_dir, "requirements.txt"), "w", encoding="utf-8") as f:
-            f.write("flask>=3.0.0\ngunicorn>=21.0.0\n")
+            f.write("# Tuliskan dependensi pip di sini (e.g. flask, requests, pandas)\n")
 
-    # 3. Node.js Starter
+    # 3. Node.js Starter (Instant zero-delay HTTP Server)
     elif language == "node":
         startup_file = cfg.get("startup_file", "server.js")
         content = f"""const http = require('http');
+
 const server = http.createServer((req, res) => {{
-  res.writeHead(200, {{'Content-Type': 'text/html'}});
-  res.end(`<!DOCTYPE html><html><body style="font-family:sans-serif;background:#E6D7BE;color:#26160F;display:flex;align-items:center;justify-content:center;height:100vh;margin:0">
-    <div style="background:#2B1810;color:#FAF5EC;padding:40px;border-radius:24px;text-align:center">
-      <h1 style="color:#FAF5EC">{project_name}</h1>
-      <p style="color:#DFCDB5">Node.js {version} Starter is Running!</p>
-      <p style="color:#E8DCB8;font-size:12px">Edit files via File Manager or run NPM Install.</p>
-    </div></body></html>`);
+  res.writeHead(200, {{ 'Content-Type': 'text/html; charset=utf-8' }});
+  res.end(`<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>{project_name} — Node.js {version}</title>
+  <style>
+    body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #E6D7BE; color: #26160F; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }}
+    .card {{ background: #2B1810; color: #FAF5EC; border-radius: 28px; padding: 40px; max-width: 540px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); text-align: center; }}
+    h1 {{ margin: 0 0 10px 0; font-size: 26px; font-family: serif; color: #FAF5EC; }}
+    p {{ color: #DFCDB5; font-size: 14px; line-height: 1.6; margin: 10px 0; }}
+    .badge {{ display: inline-block; background: #C49767; color: #2B1810; padding: 4px 14px; border-radius: 99px; font-size: 11px; font-weight: bold; margin-bottom: 14px; }}
+    .info {{ background: #1C0F0A; padding: 12px; border-radius: 14px; font-size: 12px; font-family: monospace; color: #E8DCB8; margin-top: 20px; }}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <span class="badge">NODE.JS {version} • RUNNING</span>
+    <h1>{project_name}</h1>
+    <p>Aplikasi Node.js {version} Anda telah aktif di container terisolasi MiraiGrid Lab TI UMPO.</p>
+    <p>Gunakan menu Konfigurasi untuk mengatur startup file atau klik 'Run NPM Install'.</p>
+    <div class="info">Node Version: ${{process.version}}</div>
+  </div>
+</body>
+</html>`);
 }});
-server.listen(80, '0.0.0.0');
+
+server.listen(80, '0.0.0.0', () => {{
+  console.log('Node.js server listening on port 80');
+}});
 """
         with open(os.path.join(project_dir, startup_file), "w", encoding="utf-8") as f:
             f.write(content)
 
-        # package.json
         pkg_json = {
             "name": project_name,
             "version": "1.0.0",
