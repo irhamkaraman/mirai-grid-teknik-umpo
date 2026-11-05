@@ -104,7 +104,9 @@ class ExternalDatabaseResponse(BaseModel):
 # Projects & Deployments
 class ProjectCreate(BaseModel):
     name: str = Field(min_length=3, max_length=30, pattern="^[a-z0-9-]+$")
-    template_type: str = Field(pattern="^(php82|python311|node20|static)$")
+    language: str = Field(default="php", pattern="^(php|python|node)$")
+    version: str = Field(default="8.2")
+    app_config: Optional[Dict[str, Any]] = None
     env_vars: Optional[Dict[str, str]] = None
     git_url: Optional[str] = None
 
@@ -113,6 +115,9 @@ class ProjectResponse(BaseModel):
     name: str
     subdomain: str
     template_type: str
+    language: str
+    version: str
+    app_config: Optional[Dict[str, Any]] = None
     portainer_stack_id: Optional[int] = None
     allocated_port: Optional[int] = None
     status: str

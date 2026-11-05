@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Layers, Plus, Play, Square, RotateCw, Trash2, Terminal, ExternalLink, AlertCircle, Folder, FileCode } from 'lucide-react'
+import { Layers, Plus, Play, Square, RotateCw, Trash2, Terminal, ExternalLink, AlertCircle, Folder, Settings2, Sliders, Check } from 'lucide-react'
 import { toast } from 'sonner'
 import { api } from '../api/client'
 import { SkeletonTable, Spinner } from '../components/Skeletons'
@@ -7,6 +7,7 @@ import ConfirmModal from '../components/ConfirmModal'
 import ModalPortal from '../components/ModalPortal'
 import FileManager from '../components/FileManager'
 import ContainerConsole from '../components/ContainerConsole'
+import ProjectConfigModal from '../components/ProjectConfigModal'
 
 export default function ProjectsView() {
   const [projects, setProjects] = useState([])
@@ -16,16 +17,62 @@ export default function ProjectsView() {
   // Sub-environments
   const [activeFileManagerProject, setActiveFileManagerProject] = useState(null)
   const [activeConsoleProject, setActiveConsoleProject] = useState(null)
+  const [activeConfigProject, setActiveConfigProject] = useState(null)
 
   // Confirmation modal
   const [confirmDelete, setConfirmDelete] = useState({ open: false, id: null, name: '' })
 
-  // Form states
+  // Form states for Create Project
   const [projectName, setProjectName] = useState('')
-  const [templateType, setTemplateType] = useState('php82')
+  const [selectedLanguage, setSelectedLanguage] = useState('php') // 'php', 'python', 'node'
+  const [selectedVersion, setSelectedVersion] = useState('8.2')
   const [actionLoading, setActionLoading] = useState(false)
   const [controlLoadingId, setControlLoadingId] = useState(null)
   const [error, setError] = useState('')
+
+  // Language options and versions
+  const languageOptions = [
+    {
+      id: 'php',
+      name: 'PHP',
+      icon: '🐘',
+      badge: 'Apache + PDO',
+      defaultVer: '8.2',
+      versions: [
+        { val: '8.3', label: 'PHP 8.3 (Terbaru)' },
+        { val: '8.2', label: 'PHP 8.2 (Recommended)' },
+        { val: '8.1', label: 'PHP 8.1' },
+        { val: '8.0', label: 'PHP 8.0' },
+        { val: '7.4', label: 'PHP 7.4 (Legacy)' }
+      ]
+    },
+    {
+      id: 'python',
+      name: 'Python',
+      icon: '🐍',
+      badge: 'Flask / Gunicorn',
+      defaultVer: '3.11',
+      versions: [
+        { val: '3.12', label: 'Python 3.12 (Terbaru)' },
+        { val: '3.11', label: 'Python 3.11 (Recommended)' },
+        { val: '3.10', label: 'Python 3.10' },
+        { val: '3.9', label: 'Python 3.9' }
+      ]
+    },
+    {
+      id: 'node',
+      name: 'Node.js',
+      icon: '🟩',
+      badge: 'Express / NPM',
+      defaultVer: '20',
+      versions: [
+        { val: '22', label: 'Node.js 22 (Current)' },
+        { val: '20', label: 'Node.js 20 (Recommended LTS)' },
+        { val: '18', label: 'Node.js 18 (LTS)' },
+        { val: '16', label: 'Node.js 16' }
+      ]
+    }
+  ]
 
   useEffect(() => {
     fetchProjects()
@@ -43,15 +90,28 @@ export default function ProjectsView() {
     }
   }
 
+  const handleLanguageSelect = (langId) => {
+    setSelectedLanguage(langId)
+    const found = languageOptions.find((l) => l.id === langId)
+    if (found) {
+      setSelectedVersion(found.defaultVer)
+    }
+  }
+
   const handleCreateProject = async (e) => {
     e.preventDefault()
     setError('')
     setActionLoading(true)
-    const toastId = toast.loading('Membuat project dan menyiapkan container...')
+    const toastId = toast.loading(`Membuat project ${projectName} (${selectedLanguage.toUpperCase()} ${selectedVersion})...`)
+
     try {
       await api.post('/projects/create', {
         name: projectName.toLowerCase().replace(/[^a-z0-9-]/g, '-'),
-        template_type: templateType,
+        language: selectedLanguage,
+        version: selectedVersion,
+        app_config: {
+          startup_file: selectedLanguage === 'python' ? 'app.py' : selectedLanguage === 'node' ? 'server.js' : 'index.php'
+        }
       })
       toast.success('Project berhasil dibuat dan container langsung aktif!', { id: toastId })
       setShowCreateModal(false)
@@ -109,14 +169,18 @@ export default function ProjectsView() {
     )
   }
 
+  const currentLangConfig = languageOptions.find((l) => l.id === selectedLanguage) || languageOptions[0]
+
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-serif font-bold text-[#26160F]">Project Aplikasi Web</h2>
+          <h2 className="text-2xl font-serif font-bold text-[#26160F]">
+            "Project Aplikasi Web" Konfigurasi Deploy
+          </h2>
           <p className="text-xs text-[#5C3B29] mt-1 font-sans">
-            Kelola aplikasi praktikum di container terisolasi. Gunakan File Manager untuk mengedit kode & Console untuk terminal.
+            Deploy kode praktikum (PHP, Python, Node.js) ke container terisolasi.
           </p>
         </div>
         <button
@@ -128,7 +192,7 @@ export default function ProjectsView() {
         </button>
       </div>
 
-      {/* Projects Table View (Bukan Card, Sesuai Instruksi!) */}
+      {/* Projects Table View */}
       {loading ? (
         <SkeletonTable rows={4} />
       ) : projects.length === 0 ? (
@@ -152,11 +216,11 @@ export default function ProjectsView() {
               <thead className="bg-[#1C0F0A] text-[#DFCDB5] uppercase text-[10px] tracking-wider border-b border-[#3E2316]">
                 <tr>
                   <th className="p-4">Nama Project</th>
-                  <th className="p-4">Runtime</th>
+                  <th className="p-4">Engine Runtime</th>
                   <th className="p-4">Status</th>
                   <th className="p-4">Port & URL Akses</th>
                   <th className="p-4">Terakhir Deploy</th>
-                  <th className="p-4 text-right">Aksi & Manajemen</th>
+                  <th className="p-4 text-right">Aksi & Konfigurasi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#3E2316]">
@@ -172,10 +236,10 @@ export default function ProjectsView() {
                         <div className="text-[10px] font-mono text-[#DFCDB5]/70 truncate max-w-xs">{proj.subdomain}</div>
                       </td>
 
-                      {/* Runtime */}
+                      {/* Runtime Engine */}
                       <td className="p-4">
                         <span className="px-2.5 py-1 rounded-xl text-[10px] font-bold uppercase tracking-wider bg-[#3A2115] text-[#E8DCB8] border border-[#543221]">
-                          {proj.template_type}
+                          {proj.language || proj.template_type} {proj.version || ''}
                         </span>
                       </td>
 
@@ -219,10 +283,20 @@ export default function ProjectsView() {
                       {/* Actions */}
                       <td className="p-4 text-right">
                         <div className="inline-flex items-center space-x-1.5">
-                          {/* File Manager Button (Lingkungan Terpisah) */}
+                          {/* Konfigurasi Engine Button (cPanel Style) */}
+                          <button
+                            onClick={() => setActiveConfigProject(proj)}
+                            className="px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-[#5A3521] hover:bg-[#6D4029] text-[#FAF5EC] border border-[#7D492F] inline-flex items-center space-x-1.5 transition shadow-sm"
+                            title="Konfigurasi Engine (php.ini, pip/npm, startup file)"
+                          >
+                            <Sliders className="h-3.5 w-3.5 text-[#E8DCB8]" />
+                            <span>Konfigurasi</span>
+                          </button>
+
+                          {/* File Manager Button */}
                           <button
                             onClick={() => setActiveFileManagerProject(proj)}
-                            className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#442718] hover:bg-[#5A3521] text-[#FAF5EC] border border-[#5C3825] inline-flex items-center space-x-1.5 transition shadow-sm"
+                            className="px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-[#442718] hover:bg-[#5A3521] text-[#FAF5EC] border border-[#5C3825] inline-flex items-center space-x-1.5 transition shadow-sm"
                             title="Buka File Manager Project"
                           >
                             <Folder className="h-3.5 w-3.5 text-[#E8DCB8]" />
@@ -232,7 +306,7 @@ export default function ProjectsView() {
                           {/* Container Console Button (Portainer-style) */}
                           <button
                             onClick={() => setActiveConsoleProject(proj)}
-                            className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#3A2115] hover:bg-[#482A1B] text-[#E8DCB8] border border-[#543221] inline-flex items-center space-x-1.5 transition"
+                            className="px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-[#3A2115] hover:bg-[#482A1B] text-[#E8DCB8] border border-[#543221] inline-flex items-center space-x-1.5 transition"
                             title="Buka Container Console (Shell Exec)"
                           >
                             <Terminal className="h-3.5 w-3.5" />
@@ -293,12 +367,12 @@ export default function ProjectsView() {
         </div>
       )}
 
-      {/* Modal: Create Project */}
+      {/* Modal: Create Project with 3 Language Cards (PHP, Python, Node.js) */}
       <ModalPortal isOpen={showCreateModal}>
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-150">
-          <div className="w-full max-w-md bg-[#2B1810] border border-[#4D2D1E] rounded-3xl shadow-2xl p-6 sm:p-7 text-[#FAF5EC]">
+          <div className="w-full max-w-2xl bg-[#2B1810] border border-[#4D2D1E] rounded-3xl shadow-2xl p-6 sm:p-7 text-[#FAF5EC]">
             <h3 className="text-lg font-serif font-bold text-[#FAF5EC] mb-1">Buat Project Web Baru</h3>
-            <p className="text-xs text-[#DFCDB5] mb-5">Pilih runtime stack. Container langsung aktif otomatis.</p>
+            <p className="text-xs text-[#DFCDB5] mb-5">Pilih bahasa pemrograman & versi engine untuk container terisolasi Anda.</p>
 
             {error && (
               <div className="mb-4 p-3 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs flex items-center space-x-2">
@@ -307,34 +381,76 @@ export default function ProjectsView() {
               </div>
             )}
 
-            <form onSubmit={handleCreateProject} className="space-y-4">
+            <form onSubmit={handleCreateProject} className="space-y-5">
               <div>
                 <label className="block text-xs font-semibold text-[#DFCDB5] mb-1">Nama Project (Slug)</label>
                 <input
                   type="text"
                   required
-                  placeholder="contoh: web-toko-buku"
+                  placeholder="contoh: sistem-kasir-praktikum"
                   value={projectName}
                   onChange={(e) => setProjectName(e.target.value)}
                   className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3.5 py-2.5 text-xs text-[#FAF5EC] placeholder-[#553826] focus:outline-none focus:border-[#C49767]"
                 />
               </div>
 
+              {/* 3 LANGUAGE CARDS (PHP, Python, Node.js Saja Sesuai Instruksi!) */}
               <div>
-                <label className="block text-xs font-semibold text-[#DFCDB5] mb-1">Pilih Template Runtime</label>
-                <select
-                  value={templateType}
-                  onChange={(e) => setTemplateType(e.target.value)}
-                  className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3.5 py-2.5 text-xs text-[#FAF5EC] focus:outline-none focus:border-[#C49767]"
-                >
-                  <option value="php82">PHP 8.2 (Apache + PDO MySQL/PgSQL)</option>
-                  <option value="python311">Python 3.11 (Flask / FastAPI / Gunicorn)</option>
-                  <option value="node20">Node.js 20 (Express / NPM)</option>
-                  <option value="static">Static HTML/CSS/JS (Nginx)</option>
-                </select>
+                <label className="block text-xs font-semibold text-[#DFCDB5] mb-2">
+                  Pilih Bahasa Pemrograman
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {languageOptions.map((lang) => {
+                    const isSelected = selectedLanguage === lang.id
+                    return (
+                      <button
+                        key={lang.id}
+                        type="button"
+                        onClick={() => handleLanguageSelect(lang.id)}
+                        className={`p-4 rounded-2xl border text-left flex flex-col justify-between transition-all duration-150 relative ${
+                          isSelected
+                            ? 'bg-[#3A2115] border-[#C49767] shadow-lg ring-1 ring-[#C49767]'
+                            : 'bg-[#1C0F0A] border-[#3E2316] hover:bg-[#25150E] text-[#DFCDB5]'
+                        }`}
+                      >
+                        {isSelected && (
+                          <div className="absolute top-2.5 right-2.5 h-5 w-5 rounded-full bg-[#C49767] text-[#2B1810] flex items-center justify-center">
+                            <Check className="h-3 w-3 stroke-[3]" />
+                          </div>
+                        )}
+                        <div>
+                          <div className="text-2xl mb-1">{lang.icon}</div>
+                          <h4 className="text-sm font-bold text-[#FAF5EC] font-serif">{lang.name}</h4>
+                          <p className="text-[10px] text-[#E8DCB8] font-mono mt-0.5">{lang.badge}</p>
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
 
-              <div className="flex justify-end space-x-2.5 pt-3">
+              {/* Version Selector */}
+              <div>
+                <label className="block text-xs font-semibold text-[#DFCDB5] mb-1">
+                  Pilih Versi {currentLangConfig.name}
+                </label>
+                <select
+                  value={selectedVersion}
+                  onChange={(e) => setSelectedVersion(e.target.value)}
+                  className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3.5 py-2.5 text-xs text-[#FAF5EC] font-mono focus:outline-none focus:border-[#C49767]"
+                >
+                  {currentLangConfig.versions.map((ver) => (
+                    <option key={ver.val} value={ver.val}>
+                      {ver.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[11px] text-[#A47E65] mt-1 font-mono">
+                  Container Docker resmi {currentLangConfig.name} akan otomatis di-pull dan dijalankan.
+                </p>
+              </div>
+
+              <div className="flex justify-end space-x-2.5 pt-3 border-t border-[#3E2316]">
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}
@@ -345,7 +461,7 @@ export default function ProjectsView() {
                 <button
                   type="submit"
                   disabled={actionLoading}
-                  className="px-5 py-2.5 rounded-2xl text-xs font-semibold bg-[#5A3521] hover:bg-[#6D4029] text-[#FAF5EC] border border-[#7D492F] shadow-lg shadow-black/20 transition disabled:opacity-50"
+                  className="px-6 py-2.5 rounded-2xl text-xs font-semibold bg-[#5A3521] hover:bg-[#6D4029] text-[#FAF5EC] border border-[#7D492F] shadow-lg shadow-black/20 transition disabled:opacity-50"
                 >
                   {actionLoading ? (
                     <span className="flex items-center space-x-1.5">
@@ -367,6 +483,14 @@ export default function ProjectsView() {
         project={activeConsoleProject || {}}
         isOpen={Boolean(activeConsoleProject)}
         onClose={() => setActiveConsoleProject(null)}
+      />
+
+      {/* Project Configuration Modal (cPanel Style - Image 2, 3, 4, 5) */}
+      <ProjectConfigModal
+        project={activeConfigProject}
+        isOpen={Boolean(activeConfigProject)}
+        onClose={() => setActiveConfigProject(null)}
+        onUpdated={fetchProjects}
       />
 
       {/* Confirmation Modal */}

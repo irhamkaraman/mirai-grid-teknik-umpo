@@ -133,6 +133,12 @@ async def init_db():
         );
         """)
 
+        # Check if config_json column exists, if not add it
+        try:
+            await db.execute("ALTER TABLE projects ADD COLUMN config_json TEXT;")
+        except Exception:
+            pass
+
         # Seed default Administrator if not exists
         cursor = await db.execute("SELECT id FROM users WHERE username = 'admin'")
         admin = await cursor.fetchone()

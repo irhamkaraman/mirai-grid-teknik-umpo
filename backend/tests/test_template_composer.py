@@ -5,7 +5,8 @@ def test_template_composer_php():
     compose = TemplateComposer.generate_compose(
         nim="23533001",
         project_name="web-praktikum",
-        template_type="php82",
+        language="php",
+        version="8.2",
         project_src_dir="/data/projects/23533001_web-praktikum",
         allocated_port=10001,
         env_vars={"APP_ENV": "development"}
@@ -14,6 +15,32 @@ def test_template_composer_php():
     assert "no-new-privileges:true" in compose
     assert "cap_drop:" in compose
     assert "10001:80" in compose
+
+def test_template_composer_python():
+    compose = TemplateComposer.generate_compose(
+        nim="23533001",
+        project_name="python-app",
+        language="python",
+        version="3.11",
+        project_src_dir="/data/projects/23533001_python-app",
+        allocated_port=10002,
+        app_config={"startup_file": "passenger_wsgi.py", "entry_point": "application"}
+    )
+    assert "image: python:3.11-slim" in compose
+    assert "passenger_wsgi" in compose
+
+def test_template_composer_node():
+    compose = TemplateComposer.generate_compose(
+        nim="23533001",
+        project_name="node-app",
+        language="node",
+        version="20",
+        project_src_dir="/data/projects/23533001_node-app",
+        allocated_port=10003,
+        app_config={"app_mode": "production", "startup_file": "server.js"}
+    )
+    assert "image: node:20-alpine" in compose
+    assert "NODE_ENV: production" in compose
 
 def test_template_composer_security_rejection():
     """Negative Security Test: Malicious compose injection must be rejected"""

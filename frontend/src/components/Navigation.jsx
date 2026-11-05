@@ -4,7 +4,7 @@ import { LayoutDashboard, Layers, Database, ShieldAlert, Server, ChevronLeft, Ch
 export default function Navigation({ activeTab, setActiveTab, userRole, isCollapsed, setIsCollapsed }) {
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'projects', label: 'Projects & Deploy', icon: Layers },
+    { id: 'projects', label: 'Deploy', icon: Layers },
     { id: 'databases', label: 'Databases', icon: Database },
   ]
 

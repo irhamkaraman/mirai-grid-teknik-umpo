@@ -18,20 +18,24 @@ from app.api.deps import get_current_user, get_client_ip
 
 router = APIRouter(prefix="/projects", tags=["Projects"])
 
-# Request bodies for file manager & console
+# Request bodies
 class FileSaveRequest(BaseModel):
     path: str
     content: str
 
 class FileNewRequest(BaseModel):
-    path: str # parent dir or relative path
+    path: str
     name: str
     is_dir: bool = False
 
 class ConsoleExecRequest(BaseModel):
-    command: str = "/bin/sh" # or /bin/bash or custom
+    command: str = "/bin/sh"
     user: str = "root"
     stdin_input: Optional[str] = None
+
+class ProjectConfigUpdate(BaseModel):
+    app_config: Dict[str, Any]
+    env_vars: Optional[Dict[str, str]] = None
 
 async def get_next_available_port(db: aiosqlite.Connection) -> int:
     cursor = await db.execute("SELECT MAX(allocated_port) FROM projects")
@@ -39,84 +43,110 @@ async def get_next_available_port(db: aiosqlite.Connection) -> int:
     max_port = row[0] if row and row[0] else 10000
     return max(10001, max_port + 1)
 
-def write_starter_template(template_type: str, project_dir: str, project_name: str):
+def write_starter_template(language: str, version: str, project_dir: str, project_name: str, app_config: Optional[Dict[str, Any]] = None):
     os.makedirs(project_dir, exist_ok=True)
-    if template_type == "php82":
-        content = f"""<!DOCTYPE html>
+    cfg = app_config or {}
+
+    # 1. PHP Starter & php.ini
+    if language == "php":
+        directives = cfg.get("directives", {
+            "display_errors": "Off",
+            "error_log": "error_log",
+            "log_errors": "On",
+            "max_execution_time": 60,
+            "max_input_time": 60,
+            "max_input_vars": 1000,
+            "memory_limit": "256M",
+            "post_max_size": "128M",
+            "upload_max_filesize": "128M",
+            "session.gc_maxlifetime": 1440,
+            "zlib.output_compression": "Off"
+        })
+        ini_content = TemplateComposer.generate_php_ini_content(directives)
+        with open(os.path.join(project_dir, ".miraigrid_php.ini"), "w", encoding="utf-8") as f:
+            f.write(ini_content)
+
+        index_php = f"""<!DOCTYPE html>
 <html lang="id">
 <head>
   <meta charset="UTF-8">
   <title>{project_name} — MiraiGrid Lab TI</title>
   <style>
-    body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #F5EFE6; color: #23160F; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }}
-    .card {{ background: #23160F; color: #FAF8F5; border-radius: 28px; padding: 40px; max-width: 540px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); text-align: center; }}
-    h1 {{ margin: 0 0 10px 0; font-size: 26px; font-family: serif; color: #F5EFE6; }}
-    p {{ color: #DFC6AF; font-size: 14px; line-height: 1.6; margin: 10px 0; }}
-    .badge {{ display: inline-block; background: #D97757; color: #fff; padding: 4px 14px; border-radius: 99px; font-size: 11px; font-weight: bold; margin-bottom: 14px; }}
-    .info {{ background: #180D07; padding: 12px; border-radius: 14px; font-size: 12px; font-family: monospace; color: #CEAA8D; margin-top: 20px; }}
+    body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #E6D7BE; color: #26160F; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }}
+    .card {{ background: #2B1810; color: #FAF5EC; border-radius: 28px; padding: 40px; max-width: 540px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); text-align: center; }}
+    h1 {{ margin: 0 0 10px 0; font-size: 26px; font-family: serif; color: #FAF5EC; }}
+    p {{ color: #DFCDB5; font-size: 14px; line-height: 1.6; margin: 10px 0; }}
+    .badge {{ display: inline-block; background: #C49767; color: #2B1810; padding: 4px 14px; border-radius: 99px; font-size: 11px; font-weight: bold; margin-bottom: 14px; }}
+    .info {{ background: #1C0F0A; padding: 12px; border-radius: 14px; font-size: 12px; font-family: monospace; color: #E8DCB8; margin-top: 20px; }}
   </style>
 </head>
 <body>
   <div class="card">
-    <span class="badge">PHP 8.2 • ACTIVE</span>
+    <span class="badge">PHP {version} • RUNNING</span>
     <h1>{project_name}</h1>
-    <p>Aplikasi web Anda telah berhasil online di server container terisolasi MiraiGrid Lab TI UMPO.</p>
+    <p>Aplikasi PHP {version} Anda telah aktif di container terisolasi MiraiGrid Lab TI UMPO.</p>
     <p>Gunakan File Manager untuk mengedit file secara langsung atau meng-upload kode praktikum.</p>
     <div class="info">PHP Version: <?php echo phpversion(); ?> | Server: <?php echo $_SERVER['HTTP_HOST']; ?></div>
   </div>
 </body>
 </html>"""
         with open(os.path.join(project_dir, "index.php"), "w", encoding="utf-8") as f:
-            f.write(content)
+            f.write(index_php)
 
-    elif template_type == "python311":
+    # 2. Python Starter
+    elif language == "python":
+        startup_file = cfg.get("startup_file", "app.py")
         content = f"""from flask import Flask
 app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return '''<!DOCTYPE html><html><body style="font-family:sans-serif;background:#F5EFE6;color:#23160F;display:flex;align-items:center;justify-content:center;height:100vh;margin:0">
-    <div style="background:#23160F;color:#fff;padding:40px;border-radius:24px;text-align:center">
-      <h1 style="color:#F5EFE6">{project_name}</h1>
-      <p style="color:#DFC6AF">Python 3.11 Starter is Running!</p>
-      <p style="color:#A47454;font-size:12px">Edit files via File Manager or upload code.</p>
+    return '''<!DOCTYPE html><html><body style="font-family:sans-serif;background:#E6D7BE;color:#26160F;display:flex;align-items:center;justify-content:center;height:100vh;margin:0">
+    <div style="background:#2B1810;color:#FAF5EC;padding:40px;border-radius:24px;text-align:center">
+      <h1 style="color:#FAF5EC">{project_name}</h1>
+      <p style="color:#DFCDB5">Python {version} Starter is Running!</p>
+      <p style="color:#E8DCB8;font-size:12px">Edit files via File Manager or run Pip Install.</p>
     </div></body></html>'''
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=80)
 """
-        with open(os.path.join(project_dir, "app.py"), "w", encoding="utf-8") as f:
+        with open(os.path.join(project_dir, startup_file), "w", encoding="utf-8") as f:
             f.write(content)
 
-    elif template_type == "node20":
+        # requirements.txt
+        with open(os.path.join(project_dir, "requirements.txt"), "w", encoding="utf-8") as f:
+            f.write("flask>=3.0.0\ngunicorn>=21.0.0\n")
+
+    # 3. Node.js Starter
+    elif language == "node":
+        startup_file = cfg.get("startup_file", "server.js")
         content = f"""const http = require('http');
 const server = http.createServer((req, res) => {{
   res.writeHead(200, {{'Content-Type': 'text/html'}});
-  res.end(`<!DOCTYPE html><html><body style="font-family:sans-serif;background:#F5EFE6;color:#23160F;display:flex;align-items:center;justify-content:center;height:100vh;margin:0">
-    <div style="background:#23160F;color:#fff;padding:40px;border-radius:24px;text-align:center">
-      <h1 style="color:#F5EFE6">{project_name}</h1>
-      <p style="color:#DFC6AF">Node.js 20 Starter is Running!</p>
-      <p style="color:#A47454;font-size:12px">Edit files via File Manager or upload code.</p>
+  res.end(`<!DOCTYPE html><html><body style="font-family:sans-serif;background:#E6D7BE;color:#26160F;display:flex;align-items:center;justify-content:center;height:100vh;margin:0">
+    <div style="background:#2B1810;color:#FAF5EC;padding:40px;border-radius:24px;text-align:center">
+      <h1 style="color:#FAF5EC">{project_name}</h1>
+      <p style="color:#DFCDB5">Node.js {version} Starter is Running!</p>
+      <p style="color:#E8DCB8;font-size:12px">Edit files via File Manager or run NPM Install.</p>
     </div></body></html>`);
 }});
 server.listen(80, '0.0.0.0');
 """
-        with open(os.path.join(project_dir, "index.js"), "w", encoding="utf-8") as f:
+        with open(os.path.join(project_dir, startup_file), "w", encoding="utf-8") as f:
             f.write(content)
 
-    else:
-        content = f"""<!DOCTYPE html>
-<html>
-<head><title>{project_name} — MiraiGrid</title></head>
-<body style="font-family:sans-serif;background:#F5EFE6;color:#23160F;display:flex;align-items:center;justify-content:center;height:100vh;margin:0">
-  <div style="background:#23160F;color:#fff;padding:40px;border-radius:24px;text-align:center">
-    <h1 style="color:#F5EFE6">{project_name}</h1>
-    <p style="color:#DFC6AF">Static Web Site is Running!</p>
-  </div>
-</body>
-</html>"""
-        with open(os.path.join(project_dir, "index.html"), "w", encoding="utf-8") as f:
-            f.write(content)
+        # package.json
+        pkg_json = {
+            "name": project_name,
+            "version": "1.0.0",
+            "main": startup_file,
+            "scripts": {
+                "start": f"node {startup_file}"
+            }
+        }
+        with open(os.path.join(project_dir, "package.json"), "w", encoding="utf-8") as f:
+            f.write(json.dumps(pkg_json, indent=2))
 
 @router.get("", response_model=List[ProjectResponse])
 async def list_my_projects(
@@ -132,12 +162,34 @@ async def list_my_projects(
     results = []
     for r in rows:
         env_vars = json.loads(decrypt_secret(r["env_vars_enc"])) if r["env_vars_enc"] else {}
+        app_cfg = json.loads(r["config_json"]) if ("config_json" in r.keys() and r["config_json"]) else {}
+
+        # Derive language & version
+        tmpl = r["template_type"]
+        if tmpl.startswith("php"):
+            lang = "php"
+            v = tmpl.replace("php", "")
+            ver = f"{v[0]}.{v[1:]}" if len(v) >= 2 else "8.2"
+        elif tmpl.startswith("python"):
+            lang = "python"
+            v = tmpl.replace("python", "")
+            ver = f"{v[0]}.{v[1:]}" if len(v) >= 2 else "3.11"
+        elif tmpl.startswith("node"):
+            lang = "node"
+            ver = tmpl.replace("node", "") or "20"
+        else:
+            lang = "php"
+            ver = "8.2"
+
         access_url = f"http://{settings.BASE_DOMAIN}:{r['allocated_port']}"
         results.append({
             "id": r["id"],
             "name": r["name"],
             "subdomain": r["subdomain"],
             "template_type": r["template_type"],
+            "language": lang,
+            "version": ver,
+            "app_config": app_cfg,
             "portainer_stack_id": r["portainer_stack_id"],
             "allocated_port": r["allocated_port"],
             "status": r["status"],
@@ -180,9 +232,13 @@ async def create_project(
     allocated_port = await get_next_available_port(db)
     encrypted_env = encrypt_secret(json.dumps(body.env_vars or {}))
 
+    # Determine template_type slug
+    clean_ver = body.version.replace(".", "")
+    template_type = f"{body.language}{clean_ver}"
+
     # 1. Write starter template in container local projects dir
     local_project_dir = os.path.join(settings.PROJECTS_DIR, f"{nim}_{body.name}")
-    write_starter_template(body.template_type, local_project_dir, body.name)
+    write_starter_template(body.language, body.version, local_project_dir, body.name, body.app_config)
 
     # 2. Compute Host Path for Docker volume mount
     host_project_dir = os.path.join(settings.HOST_PROJECTS_DIR, f"{nim}_{body.name}").replace("\\", "/")
@@ -197,9 +253,11 @@ async def create_project(
     compose_yaml = TemplateComposer.generate_compose(
         nim=nim,
         project_name=body.name,
-        template_type=body.template_type,
+        language=body.language,
+        version=body.version,
         project_src_dir=host_project_dir,
         allocated_port=allocated_port,
+        app_config=body.app_config or {},
         env_vars=body.env_vars or {},
         mem_limit_mb=mem_limit,
         cpu_cores=cpus
@@ -211,18 +269,21 @@ async def create_project(
     stack_id = deploy_res["data"]["Id"] if deploy_res.get("success") else None
     status = "running" if stack_id else "error"
 
+    config_json_str = json.dumps(body.app_config or {})
+
     cursor = await db.execute("""
-        INSERT INTO projects (user_id, name, subdomain, template_type, allocated_port, portainer_stack_id, status, env_vars_enc, source_type, git_url, last_deployed_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        INSERT INTO projects (user_id, name, subdomain, template_type, allocated_port, portainer_stack_id, status, env_vars_enc, config_json, source_type, git_url, last_deployed_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
     """, (
         current_user["id"],
         body.name,
         subdomain,
-        body.template_type,
+        template_type,
         allocated_port,
         stack_id,
         status,
         encrypted_env,
+        config_json_str,
         "git" if body.git_url else "zip",
         body.git_url
     ))
@@ -233,14 +294,17 @@ async def create_project(
     await db.execute("""
         INSERT INTO audit_logs (actor_id, action, target_resource, ip_address, details)
         VALUES (?, 'CREATE_PROJECT', ?, ?, ?)
-    """, (current_user["id"], body.name, ip, f"Created & deployed {body.template_type} project (Stack ID: {stack_id})"))
+    """, (current_user["id"], body.name, ip, f"Created {body.language} {body.version} project (Stack ID: {stack_id})"))
     await db.commit()
 
     return {
         "id": project_id,
         "name": body.name,
         "subdomain": subdomain,
-        "template_type": body.template_type,
+        "template_type": template_type,
+        "language": body.language,
+        "version": body.version,
+        "app_config": body.app_config,
         "portainer_stack_id": stack_id,
         "allocated_port": allocated_port,
         "status": status,
@@ -252,10 +316,132 @@ async def create_project(
         "created_at": "Baru saja"
     }
 
+@router.post("/{project_id}/config")
+async def update_project_config(
+    project_id: int,
+    body: ProjectConfigUpdate,
+    request: Request,
+    current_user: dict = Depends(get_current_user),
+    db: aiosqlite.Connection = Depends(get_db)
+):
+    """Updates language/engine configuration and redeploys container with new settings."""
+    cursor = await db.execute("SELECT * FROM projects WHERE id = ? AND user_id = ?", (project_id, current_user["id"]))
+    project = await cursor.fetchone()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project tidak ditemukan.")
+
+    nim = current_user["username"]
+    project_name = project["name"]
+    local_project_dir = os.path.join(settings.PROJECTS_DIR, f"{nim}_{project_name}")
+    host_project_dir = os.path.join(settings.HOST_PROJECTS_DIR, f"{nim}_{project_name}").replace("\\", "/")
+
+    # Derive language & version
+    tmpl = project["template_type"]
+    if tmpl.startswith("php"):
+        lang = "php"
+        v = tmpl.replace("php", "")
+        ver = f"{v[0]}.{v[1:]}" if len(v) >= 2 else "8.2"
+        # If PHP, update php.ini immediately
+        directives = body.app_config.get("directives", {})
+        ini_content = TemplateComposer.generate_php_ini_content(directives)
+        with open(os.path.join(local_project_dir, ".miraigrid_php.ini"), "w", encoding="utf-8") as f:
+            f.write(ini_content)
+    elif tmpl.startswith("python"):
+        lang = "python"
+        v = tmpl.replace("python", "")
+        ver = f"{v[0]}.{v[1:]}" if len(v) >= 2 else "3.11"
+    elif tmpl.startswith("node"):
+        lang = "node"
+        ver = tmpl.replace("node", "") or "20"
+    else:
+        lang = "php"
+        ver = "8.2"
+
+    q_cur = await db.execute("SELECT * FROM quotas WHERE user_id = ?", (current_user["id"],))
+    quota = await q_cur.fetchone()
+    mem_limit = quota["max_memory_mb"] if quota else 256
+    cpus = quota["max_cpu_cores"] if quota else 0.5
+
+    env_vars = body.env_vars or (json.loads(decrypt_secret(project["env_vars_enc"])) if project["env_vars_enc"] else {})
+    encrypted_env = encrypt_secret(json.dumps(env_vars))
+    config_json_str = json.dumps(body.app_config)
+
+    compose_yaml = TemplateComposer.generate_compose(
+        nim=nim,
+        project_name=project_name,
+        language=lang,
+        version=ver,
+        project_src_dir=host_project_dir,
+        allocated_port=project["allocated_port"],
+        app_config=body.app_config,
+        env_vars=env_vars,
+        mem_limit_mb=mem_limit,
+        cpu_cores=cpus
+    )
+
+    stack_name = f"miraigrid_{nim}_{project_name}"
+    if project["portainer_stack_id"]:
+        try:
+            await portainer.delete_stack(project["portainer_stack_id"])
+        except Exception:
+            pass
+
+    deploy_res = await portainer.create_standalone_stack(stack_name, compose_yaml)
+    stack_id = deploy_res["data"]["Id"] if deploy_res.get("success") else None
+
+    await db.execute("""
+        UPDATE projects
+        SET portainer_stack_id = ?, config_json = ?, env_vars_enc = ?, status = 'running', last_deployed_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+    """, (stack_id, config_json_str, encrypted_env, project_id))
+    await db.commit()
+
+    return {"success": True, "message": "Konfigurasi engine berhasil disimpan dan container di-restart!"}
+
+@router.post("/{project_id}/pip-install")
+async def run_pip_install(
+    project_id: int,
+    current_user: dict = Depends(get_current_user),
+    db: aiosqlite.Connection = Depends(get_db)
+):
+    """Executes pip install -r requirements.txt inside Python container."""
+    cursor = await db.execute("SELECT * FROM projects WHERE id = ? AND user_id = ?", (project_id, current_user["id"]))
+    project = await cursor.fetchone()
+    if not project or not project["portainer_stack_id"]:
+        raise HTTPException(status_code=400, detail="Container tidak tersedia.")
+
+    container_name = f"app_{current_user['username']}_{project['name']}"
+    res = await portainer.exec_container_command(
+        container_name=container_name,
+        cmd=["sh", "-c", "pip install -r requirements.txt"],
+        user="root"
+    )
+    return res
+
+@router.post("/{project_id}/npm-install")
+async def run_npm_install(
+    project_id: int,
+    current_user: dict = Depends(get_current_user),
+    db: aiosqlite.Connection = Depends(get_db)
+):
+    """Executes npm install inside Node.js container."""
+    cursor = await db.execute("SELECT * FROM projects WHERE id = ? AND user_id = ?", (project_id, current_user["id"]))
+    project = await cursor.fetchone()
+    if not project or not project["portainer_stack_id"]:
+        raise HTTPException(status_code=400, detail="Container tidak tersedia.")
+
+    container_name = f"app_{current_user['username']}_{project['name']}"
+    res = await portainer.exec_container_command(
+        container_name=container_name,
+        cmd=["sh", "-c", "npm install"],
+        user="root"
+    )
+    return res
+
 @router.post("/{project_id}/control")
 async def control_project(
     project_id: int,
-    action: str, # 'start', 'stop', 'restart'
+    action: str,
     current_user: dict = Depends(get_current_user),
     db: aiosqlite.Connection = Depends(get_db)
 ):
@@ -322,7 +508,7 @@ async def delete_project(
     return {"success": True, "message": "Project berhasil dihapus."}
 
 # ==========================================
-# FILE MANAGER ENDPOINTS (Sanitized Sandbox)
+# FILE MANAGER ENDPOINTS
 # ==========================================
 @router.get("/{project_id}/files")
 async def get_project_files(
@@ -369,7 +555,6 @@ async def get_file_content(
         if not os.path.exists(file_path) or os.path.isdir(file_path):
             raise HTTPException(status_code=404, detail="File tidak ditemukan.")
 
-        # Limit editable file size (max 2MB for browser editor)
         if os.path.getsize(file_path) > 2 * 1024 * 1024:
             raise HTTPException(status_code=400, detail="File terlalu besar untuk dibuka di web editor (Maksimal 2MB).")
 
@@ -416,7 +601,6 @@ async def create_new_file_or_dir(
     try:
         parent_dir = get_safe_project_path(settings.PROJECTS_DIR, nim, project["name"], body.path)
         target_path = os.path.join(parent_dir, body.name)
-        # Verify target is still in safe boundary
         get_safe_project_path(settings.PROJECTS_DIR, nim, project["name"], os.path.relpath(target_path, os.path.join(settings.PROJECTS_DIR, f"{nim}_{project['name']}")))
 
         if body.is_dir:
@@ -446,7 +630,6 @@ async def upload_files_to_directory(
         target_dir = get_safe_project_path(settings.PROJECTS_DIR, nim, project["name"], path)
         temp_dest = os.path.join(target_dir, file.filename)
 
-        # If it's a zip file, offer auto-extract
         if file.filename.lower().endswith(".zip"):
             with open(temp_dest, "wb") as f:
                 shutil.copyfileobj(file.file, f)
@@ -492,7 +675,7 @@ async def delete_file_or_dir(
         raise HTTPException(status_code=400, detail=str(e))
 
 # ==========================================
-# CONTAINER CONSOLE (Portainer-Style Exec)
+# CONTAINER CONSOLE
 # ==========================================
 @router.post("/{project_id}/console/exec")
 async def execute_console_command(
@@ -508,7 +691,6 @@ async def execute_console_command(
 
     container_name = f"app_{current_user['username']}_{project['name']}"
 
-    # Build command list
     command_str = body.command.strip()
     if body.stdin_input:
         full_cmd = [command_str, "-c", body.stdin_input]
