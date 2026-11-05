@@ -1,7 +1,5 @@
-feat(files): add dedicated File Manager menu with strict sandbox isolation
+feat(deploy): implement 5-column cPanel table and dedicated detail page view
 
-- Add File Manager top-level menu item to sidebar navigation
-- Implement dedicated FilesView with project workspace selector
-- Add set as Application Startup File action directly from File Manager
-- Fortify backend file manager with realpath, resolve, and strict commonpath sandbox check
-- Add negative security tests for anti-path-traversal and null-byte injection
+- Update deploy table to exact 5 columns: App URI, App Root Directory, Mode, Status, Actions
+- Implement full-page ProjectDetailPage (no modal) matching cPanel Web Application Selector
+- Support PHP directives/extensions, Python WSGI/pip, and Node mode/npm

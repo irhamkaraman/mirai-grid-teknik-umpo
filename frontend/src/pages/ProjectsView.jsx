@@ -1,23 +1,21 @@
 import React, { useState, useEffect } from 'react'
-import { Layers, Plus, Play, Square, RotateCw, Trash2, Terminal, ExternalLink, AlertCircle, Folder, Settings2, Sliders, Check } from 'lucide-react'
+import { Plus, Play, Square, RotateCw, Trash2, Edit2, ExternalLink, AlertCircle, Check } from 'lucide-react'
 import { toast } from 'sonner'
 import { api } from '../api/client'
 import { SkeletonTable, Spinner } from '../components/Skeletons'
 import ConfirmModal from '../components/ConfirmModal'
 import ModalPortal from '../components/ModalPortal'
 import FileManager from '../components/FileManager'
-import ContainerConsole from '../components/ContainerConsole'
-import ProjectConfigModal from '../components/ProjectConfigModal'
+import ProjectDetailPage from './ProjectDetailPage'
 
 export default function ProjectsView() {
   const [projects, setProjects] = useState([])
   const [loading, setLoading] = useState(true)
   const [showCreateModal, setShowCreateModal] = useState(false)
 
-  // Sub-environments
+  // Sub-environments (Full Page Views, BUKAN MODAL!)
+  const [activeProjectDetail, setActiveProjectDetail] = useState(null)
   const [activeFileManagerProject, setActiveFileManagerProject] = useState(null)
-  const [activeConsoleProject, setActiveConsoleProject] = useState(null)
-  const [activeConfigProject, setActiveConfigProject] = useState(null)
 
   // Confirmation modal
   const [confirmDelete, setConfirmDelete] = useState({ open: false, id: null, name: '' })
@@ -30,7 +28,7 @@ export default function ProjectsView() {
   const [controlLoadingId, setControlLoadingId] = useState(null)
   const [error, setError] = useState('')
 
-  // Language options and versions
+  // Language options
   const languageOptions = [
     {
       id: 'php',
@@ -82,6 +80,11 @@ export default function ProjectsView() {
     try {
       const res = await api.get('/projects')
       setProjects(res.data)
+      // Keep active detail updated if currently open
+      if (activeProjectDetail) {
+        const updated = res.data.find((p) => p.id === activeProjectDetail.id)
+        if (updated) setActiveProjectDetail(updated)
+      }
     } catch (err) {
       console.error(err)
       toast.error('Gagal memuat daftar project.')
@@ -105,7 +108,7 @@ export default function ProjectsView() {
     const toastId = toast.loading(`Membuat project ${projectName} (${selectedLanguage.toUpperCase()} ${selectedVersion})...`)
 
     try {
-      await api.post('/projects/create', {
+      const res = await api.post('/projects/create', {
         name: projectName.toLowerCase().replace(/[^a-z0-9-]/g, '-'),
         language: selectedLanguage,
         version: selectedVersion,
@@ -116,7 +119,9 @@ export default function ProjectsView() {
       toast.success('Project berhasil dibuat dan container langsung aktif!', { id: toastId })
       setShowCreateModal(false)
       setProjectName('')
-      fetchProjects()
+      await fetchProjects()
+      // Open detail page immediately
+      setActiveProjectDetail(res.data)
     } catch (err) {
       const msg = err.response?.data?.detail || 'Gagal membuat project.'
       setError(msg)
@@ -156,7 +161,21 @@ export default function ProjectsView() {
     }
   }
 
-  // If File Manager sub-environment is active, render dedicated File Manager view
+  // 1. If Detail Page is Active (BUKAN MODAL!)
+  if (activeProjectDetail) {
+    return (
+      <ProjectDetailPage
+        project={activeProjectDetail}
+        onBack={() => {
+          setActiveProjectDetail(null)
+          fetchProjects()
+        }}
+        onUpdated={fetchProjects}
+      />
+    )
+  }
+
+  // 2. If File Manager is Active (BUKAN MODAL!)
   if (activeFileManagerProject) {
     return (
       <FileManager
@@ -192,21 +211,20 @@ export default function ProjectsView() {
         </button>
       </div>
 
-      {/* Projects Table View */}
+      {/* 5-COLUMN TABLE ALA CPANEL (App URI, App Root Directory, Mode, Status, Actions) */}
       {loading ? (
         <SkeletonTable rows={4} />
       ) : projects.length === 0 ? (
         <div className="text-center py-16 bg-[#2B1810] border border-[#4D2D1E] rounded-3xl p-8 shadow-xl text-[#FAF5EC]">
-          <Layers className="h-10 w-10 text-[#A47E65] mx-auto mb-3" />
-          <h4 className="text-base font-serif font-bold text-[#FAF5EC]">Belum Ada Project</h4>
+          <h4 className="text-base font-serif font-bold text-[#FAF5EC]">Belum Ada Aplikasi Terdaftar</h4>
           <p className="text-xs text-[#DFCDB5] max-w-sm mx-auto mt-1 mb-6">
-            Klik tombol di bawah untuk membuat project web pertama Anda. Container akan otomatis berjalan.
+            Klik tombol di bawah untuk membuat aplikasi baru. Container akan langsung otomatis berjalan.
           </p>
           <button
             onClick={() => setShowCreateModal(true)}
             className="px-5 py-2.5 rounded-2xl text-xs font-semibold bg-[#5A3521] hover:bg-[#6D4029] text-[#FAF5EC] transition"
           >
-            Mulai Buat Project
+            Mulai Buat Aplikasi
           </button>
         </div>
       ) : (
@@ -215,144 +233,107 @@ export default function ProjectsView() {
             <table className="w-full text-left text-xs">
               <thead className="bg-[#1C0F0A] text-[#DFCDB5] uppercase text-[10px] tracking-wider border-b border-[#3E2316]">
                 <tr>
-                  <th className="p-4">Nama Project</th>
-                  <th className="p-4">Engine Runtime</th>
-                  <th className="p-4">Status</th>
-                  <th className="p-4">Port & URL Akses</th>
-                  <th className="p-4">Terakhir Deploy</th>
-                  <th className="p-4 text-right">Aksi & Konfigurasi</th>
+                  {/* EXACTLY 5 COLUMNS AS REQUESTED IN CPANEL STYLE */}
+                  <th className="p-4 font-semibold">App URI</th>
+                  <th className="p-4 font-semibold">App Root Directory</th>
+                  <th className="p-4 font-semibold">Mode</th>
+                  <th className="p-4 font-semibold">Status</th>
+                  <th className="p-4 text-right font-semibold">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#3E2316]">
                 {projects.map((proj) => {
                   const isRunning = proj.status === 'running'
                   const isBusy = controlLoadingId === proj.id
+                  const appCfg = proj.app_config || {}
+                  const appRoot = appCfg.app_root ? `/home/student/${proj.name}/${appCfg.app_root}` : `/home/student/${proj.name}`
+                  const mode = appCfg.app_mode || 'development'
 
                   return (
-                    <tr key={proj.id} className="hover:bg-[#361E13] transition">
-                      {/* Name */}
+                    <tr key={proj.id} className="hover:bg-[#361E13] transition group">
+                      {/* 1. App URI */}
                       <td className="p-4">
-                        <div className="font-bold text-sm text-[#FAF5EC] font-serif">{proj.name}</div>
-                        <div className="text-[10px] font-mono text-[#DFCDB5]/70 truncate max-w-xs">{proj.subdomain}</div>
-                      </td>
-
-                      {/* Runtime Engine */}
-                      <td className="p-4">
-                        <span className="px-2.5 py-1 rounded-xl text-[10px] font-bold uppercase tracking-wider bg-[#3A2115] text-[#E8DCB8] border border-[#543221]">
-                          {proj.language || proj.template_type} {proj.version || ''}
-                        </span>
-                      </td>
-
-                      {/* Status */}
-                      <td className="p-4">
-                        <span
-                          className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-semibold uppercase tracking-wider ${
-                            isRunning
-                              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                              : 'bg-[#1C0F0A] text-[#DFCDB5]/60 border border-[#3E2316]'
-                          }`}
+                        <button
+                          onClick={() => setActiveProjectDetail(proj)}
+                          className="font-bold text-sm text-[#E8DCB8] hover:underline font-mono text-left flex items-center space-x-1.5"
                         >
-                          <span className={`h-1.5 w-1.5 rounded-full mr-1.5 ${isRunning ? 'bg-emerald-400 animate-pulse' : 'bg-[#553826]'}`}></span>
-                          {proj.status}
-                        </span>
-                      </td>
-
-                      {/* Port & URL */}
-                      <td className="p-4">
-                        <div className="flex items-center space-x-1.5 font-mono">
-                          <span className="text-[#DFCDB5]/70">Port:</span>
-                          <span className="text-[#FAF5EC] font-bold">{proj.allocated_port}</span>
-                          <a
-                            href={proj.access_url}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="ml-2 px-2 py-0.5 rounded-lg bg-[#3A2115] hover:bg-[#482A1B] text-[#E8DCB8] text-[10px] inline-flex items-center space-x-1 transition"
-                            title="Buka Website"
-                          >
-                            <span>Buka</span>
-                            <ExternalLink className="h-3 w-3" />
-                          </a>
+                          <span>{proj.name}</span>
+                          <ExternalLink className="h-3 w-3 text-[#A47E65]" />
+                        </button>
+                        <div className="text-[10px] font-mono text-[#DFCDB5]/60 mt-0.5 truncate max-w-xs">
+                          {proj.access_url}
                         </div>
                       </td>
 
-                      {/* Last deployed */}
-                      <td className="p-4 font-mono text-[11px] text-[#DFCDB5]/70">
-                        {proj.last_deployed_at}
+                      {/* 2. App Root Directory */}
+                      <td className="p-4 font-mono text-[#DFCDB5]/80 text-[11px]">
+                        {appRoot}
                       </td>
 
-                      {/* Actions */}
+                      {/* 3. Mode */}
+                      <td className="p-4 font-mono text-xs text-[#DFCDB5]">
+                        <span className="capitalize">{mode}</span>
+                      </td>
+
+                      {/* 4. Status */}
+                      <td className="p-4">
+                        <div className="flex items-center space-x-2">
+                          <span className={`h-2 w-2 rounded-full ${isRunning ? 'bg-emerald-400 animate-pulse' : 'bg-rose-500'}`}></span>
+                          <span className="font-mono text-xs">
+                            {isRunning ? `started (v${proj.version})` : 'stopped'}
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* 5. Actions (Stop/Start, Restart, Edit/Detail, Delete) */}
                       <td className="p-4 text-right">
                         <div className="inline-flex items-center space-x-1.5">
-                          {/* Konfigurasi Engine Button (cPanel Style) */}
-                          <button
-                            onClick={() => setActiveConfigProject(proj)}
-                            className="px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-[#5A3521] hover:bg-[#6D4029] text-[#FAF5EC] border border-[#7D492F] inline-flex items-center space-x-1.5 transition shadow-sm"
-                            title="Konfigurasi Engine (php.ini, pip/npm, startup file)"
-                          >
-                            <Sliders className="h-3.5 w-3.5 text-[#E8DCB8]" />
-                            <span>Konfigurasi</span>
-                          </button>
-
-                          {/* File Manager Button */}
-                          <button
-                            onClick={() => setActiveFileManagerProject(proj)}
-                            className="px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-[#442718] hover:bg-[#5A3521] text-[#FAF5EC] border border-[#5C3825] inline-flex items-center space-x-1.5 transition shadow-sm"
-                            title="Buka File Manager Project"
-                          >
-                            <Folder className="h-3.5 w-3.5 text-[#E8DCB8]" />
-                            <span>Files</span>
-                          </button>
-
-                          {/* Container Console Button (Portainer-style) */}
-                          <button
-                            onClick={() => setActiveConsoleProject(proj)}
-                            className="px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-[#3A2115] hover:bg-[#482A1B] text-[#E8DCB8] border border-[#543221] inline-flex items-center space-x-1.5 transition"
-                            title="Buka Container Console (Shell Exec)"
-                          >
-                            <Terminal className="h-3.5 w-3.5" />
-                            <span>Console</span>
-                          </button>
-
-                          {/* Power Toggle */}
+                          {/* Stop / Start Icon */}
                           {isBusy ? (
                             <div className="p-1.5">
                               <Spinner size="xs" />
                             </div>
+                          ) : isRunning ? (
+                            <button
+                              onClick={() => handleControl(proj.id, 'stop')}
+                              title="Stop Application"
+                              className="p-1.5 rounded-lg text-[#DFCDB5] hover:text-amber-400 hover:bg-[#3A2115] transition"
+                            >
+                              <Square className="h-4 w-4" />
+                            </button>
                           ) : (
-                            <>
-                              {isRunning ? (
-                                <button
-                                  onClick={() => handleControl(proj.id, 'stop')}
-                                  title="Stop Container"
-                                  className="p-1.5 text-amber-400 hover:bg-amber-500/10 rounded-lg transition"
-                                >
-                                  <Square className="h-4 w-4" />
-                                </button>
-                              ) : (
-                                <button
-                                  onClick={() => handleControl(proj.id, 'start')}
-                                  title="Start Container"
-                                  className="p-1.5 text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition"
-                                >
-                                  <Play className="h-4 w-4" />
-                                </button>
-                              )}
-
-                              <button
-                                onClick={() => handleControl(proj.id, 'restart')}
-                                title="Restart Container"
-                                className="p-1.5 text-[#DFCDB5] hover:text-[#FAF5EC] hover:bg-[#3A2115] rounded-lg transition"
-                              >
-                                <RotateCw className="h-4 w-4" />
-                              </button>
-                            </>
+                            <button
+                              onClick={() => handleControl(proj.id, 'start')}
+                              title="Start Application"
+                              className="p-1.5 rounded-lg text-[#DFCDB5] hover:text-emerald-400 hover:bg-[#3A2115] transition"
+                            >
+                              <Play className="h-4 w-4" />
+                            </button>
                           )}
 
-                          {/* Delete */}
+                          {/* Restart Icon */}
+                          <button
+                            onClick={() => handleControl(proj.id, 'restart')}
+                            title="Restart Application"
+                            className="p-1.5 rounded-lg text-[#DFCDB5] hover:text-white hover:bg-[#3A2115] transition"
+                          >
+                            <RotateCw className="h-4 w-4" />
+                          </button>
+
+                          {/* Edit / Detail Page (Pencil Icon) -> BUKAN MODAL! */}
+                          <button
+                            onClick={() => setActiveProjectDetail(proj)}
+                            title="Buka Halaman Detail Konfigurasi"
+                            className="p-1.5 rounded-lg text-[#E8DCB8] hover:text-white hover:bg-[#5A3521] transition"
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </button>
+
+                          {/* Delete Icon (Trash) */}
                           <button
                             onClick={() => triggerDelete(proj.id, proj.name)}
-                            title="Hapus Project"
-                            className="p-1.5 text-rose-400 hover:bg-rose-500/10 rounded-lg transition"
+                            title="Destroy Application"
+                            className="p-1.5 rounded-lg text-[#DFCDB5] hover:text-rose-400 hover:bg-[#3A2115] transition"
                           >
                             <Trash2 className="h-4 w-4" />
                           </button>
@@ -394,7 +375,7 @@ export default function ProjectsView() {
                 />
               </div>
 
-              {/* 3 LANGUAGE CARDS (PHP, Python, Node.js Saja Sesuai Instruksi!) */}
+              {/* 3 LANGUAGE CARDS (PHP, Python, Node.js) */}
               <div>
                 <label className="block text-xs font-semibold text-[#DFCDB5] mb-2">
                   Pilih Bahasa Pemrograman
@@ -478,27 +459,12 @@ export default function ProjectsView() {
         </div>
       </ModalPortal>
 
-      {/* Container Console Modal (Portainer Style - Image 3) */}
-      <ContainerConsole
-        project={activeConsoleProject || {}}
-        isOpen={Boolean(activeConsoleProject)}
-        onClose={() => setActiveConsoleProject(null)}
-      />
-
-      {/* Project Configuration Modal (cPanel Style - Image 2, 3, 4, 5) */}
-      <ProjectConfigModal
-        project={activeConfigProject}
-        isOpen={Boolean(activeConfigProject)}
-        onClose={() => setActiveConfigProject(null)}
-        onUpdated={fetchProjects}
-      />
-
       {/* Confirmation Modal */}
       <ConfirmModal
         isOpen={confirmDelete.open}
-        title="Hapus Project?"
-        message={`Apakah Anda yakin ingin menghapus project '${confirmDelete.name}' beserta container dan filenya? Tindakan ini tidak dapat dibatalkan.`}
-        confirmText="Hapus Project"
+        title="Destroy Application?"
+        message={`Apakah Anda yakin ingin menghapus aplikasi '${confirmDelete.name}' beserta container dan filenya?`}
+        confirmText="Destroy Application"
         onConfirm={executeDelete}
         onClose={() => setConfirmDelete({ open: false, id: null, name: '' })}
       />
