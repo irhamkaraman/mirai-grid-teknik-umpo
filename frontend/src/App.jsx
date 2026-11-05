@@ -71,32 +71,31 @@ export default function App() {
 
   if (!user) {
     return (
-      <>
+      <div className="bg-[#E6D7BE] min-h-screen">
         <Toaster richColors position="top-right" theme="dark" />
         <LoginPage onLoginSuccess={handleLoginSuccess} />
-      </>
+      </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[#F6F1E8] text-[#2C1910] flex flex-col font-sans selection:bg-terracotta-500 selection:text-white relative">
-      {/* Toast Notification Container */}
+    <div className="min-h-screen bg-[#E6D7BE] text-[#26160F] flex flex-col font-sans selection:bg-[#5A3521] selection:text-[#FAF5EC] relative">
+      {/* Toast Notification Container (Tema Coklat & Krim) */}
       <Toaster
         richColors
         position="top-right"
-        theme="dark"
         toastOptions={{
           style: {
-            background: '#23150E',
-            border: '1px solid #3E2619',
-            color: '#FAF8F5',
-            borderRadius: '16px',
+            background: '#2B1810',
+            border: '1px solid #5A3521',
+            color: '#FAF5EC',
+            borderRadius: '18px',
             fontFamily: 'Plus Jakarta Sans, sans-serif',
           },
         }}
       />
 
-      {/* Floating Profile Avatar (Pojok Kanan Atas) */}
+      {/* 1. Floating Profile Avatar (Pojok Kanan Atas) */}
       <ProfileFloating
         user={user}
         onLogout={handleLogout}
@@ -106,7 +105,7 @@ export default function App() {
         }}
       />
 
-      {/* Floating Navigation (Sidebar Mengambang di Kiri + Floating Nav di Mobile) */}
+      {/* 2. Floating Navigation (Sidebar Mengambang Coklat di Kiri + Nav Mobile) */}
       <Navigation
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -115,7 +114,7 @@ export default function App() {
         setIsCollapsed={handleToggleCollapse}
       />
 
-      {/* Main Content: Margin menyesuaikan sidebar secara dinamis dan mulus */}
+      {/* 3. Main Content Container */}
       <main
         className={`flex-1 transition-all duration-300 ease-in-out p-4 sm:p-6 md:p-8 md:pr-24 pb-24 md:pb-12 ${
           isCollapsed ? 'md:ml-[110px]' : 'md:ml-[290px]'
@@ -131,7 +130,7 @@ export default function App() {
         </div>
       </main>
 
-      {/* Password Change Modal */}
+      {/* 4. Password Change Modal */}
       <ChangePasswordModal
         isOpen={showPasswordModal}
         isMandatory={isMandatoryPasswordChange}

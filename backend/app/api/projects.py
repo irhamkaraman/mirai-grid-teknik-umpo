@@ -142,16 +142,17 @@ async def create_project(
     nim = current_user["username"]
     subdomain = f"{body.name}-{nim}.{settings.BASE_DOMAIN}"
 
-    # Quota check
-    cursor = await db.execute("SELECT max_projects FROM quotas WHERE user_id = ?", (current_user["id"],))
-    quota_row = await cursor.fetchone()
-    max_projects = quota_row["max_projects"] if quota_row else 2
+    # Quota check (Students are constrained, Admin has unlimited)
+    if current_user.get("role") != "admin":
+        cursor = await db.execute("SELECT max_projects FROM quotas WHERE user_id = ?", (current_user["id"],))
+        quota_row = await cursor.fetchone()
+        max_projects = quota_row["max_projects"] if quota_row else 2
 
-    c_cur = await db.execute("SELECT COUNT(*) FROM projects WHERE user_id = ?", (current_user["id"],))
-    used_projects = (await c_cur.fetchone())[0]
+        c_cur = await db.execute("SELECT COUNT(*) FROM projects WHERE user_id = ?", (current_user["id"],))
+        used_projects = (await c_cur.fetchone())[0]
 
-    if used_projects >= max_projects:
-        raise HTTPException(status_code=400, detail=f"Batas kuota project tercapai (Maksimal: {max_projects} project).")
+        if used_projects >= max_projects:
+            raise HTTPException(status_code=400, detail=f"Batas kuota project tercapai (Maksimal: {max_projects} project).")
 
     # Check unique name per user
     existing = await (await db.execute("SELECT id FROM projects WHERE user_id = ? AND name = ?", (current_user["id"], body.name))).fetchone()

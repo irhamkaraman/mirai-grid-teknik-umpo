@@ -1,4 +1,6 @@
-fix(compose): resolve compose v2 pids_limit schema conflict
+refactor(theme): set true rich cream background and deep chocolate cards
 
-- Move pids limit to deploy.resources.limits.pids to comply with Compose v2 schema
-- Enable successful Portainer stack deployment and container startup
+- Adjust global background to genuine warm cream (#E6D7BE)
+- Style all cards, sidebar, and modals with deep chocolate (#2B1810) and cream text (#FAF5EC)
+- Ensure all headings on the cream canvas are bold deep chocolate (#26160F)
+- Enhance quota cards with cream typography

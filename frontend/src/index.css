@@ -4,28 +4,29 @@
 
 @layer base {
   body {
-    background-color: #15100D;
-    color: #EDE6DE;
+    background-color: #E6D7BE; /* Warna Krim Sejati (Warm Rich Cream / Latte) */
+    color: #26160F; /* Coklat Gelap */
+    font-family: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
   }
 }
 
-/* Custom scrollbars with warm chocolate tone */
+/* Custom scrollbars dengan tema coklat dan krim */
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #17120F;
+  background: #DFCEA9;
 }
 ::-webkit-scrollbar-thumb {
-  background: #342B25;
+  background: #5A3521;
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #4D2F1E;
+  background: #3B2215;
 }
 
-/* Shimmer Skeleton effect */
+/* Shimmer Skeleton effect tema coklat */
 @keyframes shimmer {
   0% {
     background-position: -200% 0;
@@ -36,7 +37,7 @@
 }
 
 .skeleton-shimmer {
-  background: linear-gradient(90deg, #201A16 25%, #2C231E 50%, #201A16 75%);
+  background: linear-gradient(90deg, #362015 25%, #4C2D1E 50%, #362015 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }
