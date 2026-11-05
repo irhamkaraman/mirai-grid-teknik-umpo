@@ -144,6 +144,18 @@ export default function FileManager({ project, onClose }) {
     }
   }
 
+  const handleSetStartupFile = async (filePath) => {
+    const toastId = toast.loading(`Mengatur ${filePath} sebagai Startup File...`)
+    try {
+      const res = await api.post(`/projects/${project.id}/set-startup-file`, {
+        file_path: filePath,
+      })
+      toast.success(res.data.message, { id: toastId })
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Gagal mengatur startup file.', { id: toastId })
+    }
+  }
+
   const formatBytes = (bytes) => {
     if (bytes === 0) return '0 B'
     const k = 1024
@@ -270,15 +282,26 @@ export default function FileManager({ project, onClose }) {
                     <td className="p-4 text-[#DFCDB5]/70 font-mono text-[11px]">
                       {new Date(item.modified * 1000).toLocaleString('id-ID')}
                     </td>
-                    <td className="p-4 text-right space-x-1.5">
+                    <td className="p-4 text-right space-x-1.5 whitespace-nowrap">
                       {!item.is_dir && (
-                        <button
-                          onClick={() => handleOpenFile(item)}
-                          title="Edit Kode"
-                          className="p-1.5 text-[#DFCDB5] hover:text-[#E8DCB8] hover:bg-[#3E2316] rounded-lg transition"
-                        >
-                          <Edit3 className="h-4 w-4" />
-                        </button>
+                        <>
+                          {(item.extension === '.py' || item.extension === '.js' || item.extension === '.php') && (
+                            <button
+                              onClick={() => handleSetStartupFile(item.path)}
+                              title="Jadikan sebagai Application Startup File"
+                              className="px-2 py-1 rounded-lg text-[10px] font-semibold bg-[#3A2115] hover:bg-[#482A1B] text-[#E8DCB8] border border-[#543221] inline-flex items-center space-x-1 transition"
+                            >
+                              <span>★ Startup File</span>
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleOpenFile(item)}
+                            title="Edit Kode"
+                            className="p-1.5 text-[#DFCDB5] hover:text-[#E8DCB8] hover:bg-[#3E2316] rounded-lg transition"
+                          >
+                            <Edit3 className="h-4 w-4" />
+                          </button>
+                        </>
                       )}
                       <button
                         onClick={() => setConfirmDelete({ open: true, path: item.path, name: item.name })}

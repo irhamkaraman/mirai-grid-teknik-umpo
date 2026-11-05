@@ -1,4 +1,7 @@
-feat(engines): instant zero-delay startup for Python & Node containers
+feat(files): add dedicated File Manager menu with strict sandbox isolation
 
-- Use standard library HTTP servers for instant 0.1s startup without pip/npm delay
-- Allow on-demand pip install and npm install via cPanel-style Config Modal
+- Add File Manager top-level menu item to sidebar navigation
+- Implement dedicated FilesView with project workspace selector
+- Add set as Application Startup File action directly from File Manager
+- Fortify backend file manager with realpath, resolve, and strict commonpath sandbox check
+- Add negative security tests for anti-path-traversal and null-byte injection

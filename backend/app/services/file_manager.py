@@ -1,34 +1,58 @@
 import os
 import shutil
 import pathlib
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 
 def get_safe_project_path(base_projects_dir: str, nim: str, project_name: str, subpath: str = "") -> str:
     """
     Returns the absolute path inside project workspace and strictly verifies
-    that the resolved path is within the project's sandbox (Anti Path Traversal).
+    that the resolved realpath is strictly within the project's sandbox.
+    Guards against:
+    - Path traversal (../../)
+    - Symlink redirection outside sandbox
+    - Null-byte injection
+    - Absolute path override
     """
-    project_root = os.path.abspath(os.path.join(base_projects_dir, f"{nim}_{project_name}"))
-    os.makedirs(project_root, exist_ok=True)
+    if "\x00" in subpath or "\x00" in nim or "\x00" in project_name:
+        raise ValueError("Security Alert: Null byte detected in path parameter.")
 
-    if not subpath or subpath.strip() == "/" or subpath.strip() == ".":
+    # Sandbox root for this specific student and project
+    raw_root = os.path.join(base_projects_dir, f"{nim}_{project_name}")
+    os.makedirs(raw_root, exist_ok=True)
+    project_root = os.path.realpath(raw_root)
+
+    if not subpath or subpath.strip() in ["/", "\\", "."]:
         return project_root
 
-    # Clean leading slashes
-    clean_sub = subpath.lstrip("/\\")
-    target_path = os.path.abspath(os.path.join(project_root, clean_sub))
+    # Clean leading slashes and strip whitespace
+    clean_sub = subpath.strip().lstrip("/\\")
+    combined_path = os.path.join(project_root, clean_sub)
+    resolved_target = os.path.realpath(combined_path)
 
-    # Strict sandbox boundary enforcement
-    if os.path.commonpath([project_root, target_path]) != project_root:
-        raise ValueError("Security Violation: Access outside project workspace is strictly prohibited.")
+    # Strict sandbox boundary enforcement:
+    # 1. Target must start with project_root
+    # 2. commonpath between target and project_root must be project_root
+    try:
+        common = os.path.commonpath([project_root, resolved_target])
+    except ValueError:
+        # Different drives on Windows
+        raise ValueError("Security Violation: Access outside project workspace drive is strictly prohibited.")
 
-    return target_path
+    if common != project_root:
+        raise ValueError("Security Violation: Access outside your project sandbox is strictly prohibited.")
+
+    return resolved_target
 
 def list_directory_contents(dir_path: str, project_root: str) -> List[Dict[str, Any]]:
     items = []
     try:
         entries = sorted(os.scandir(dir_path), key=lambda e: (not e.is_dir(), e.name.lower()))
         for entry in entries:
+            # Check if entry is a symlink pointing outside
+            real_entry_path = os.path.realpath(entry.path)
+            if os.path.commonpath([project_root, real_entry_path]) != project_root:
+                continue # Skip symlinks pointing outside sandbox
+
             rel_path = os.path.relpath(entry.path, project_root).replace("\\", "/")
             stat = entry.stat()
             items.append({

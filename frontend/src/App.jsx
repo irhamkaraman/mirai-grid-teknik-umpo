@@ -7,6 +7,7 @@ import LoginPage from './pages/LoginPage'
 import StudentDashboard from './pages/StudentDashboard'
 import ProjectsView from './pages/ProjectsView'
 import DatabasesView from './pages/DatabasesView'
+import FilesView from './pages/FilesView'
 import AdminView from './pages/AdminView'
 
 export default function App() {
@@ -128,6 +129,7 @@ export default function App() {
             <StudentDashboard user={user} onNavigate={(tab) => setActiveTab(tab)} />
           )}
           {activeTab === 'projects' && <ProjectsView />}
+          {activeTab === 'files' && <FilesView onNavigate={(tab) => setActiveTab(tab)} />}
           {activeTab === 'databases' && <DatabasesView />}
           {activeTab === 'admin' && user.role === 'admin' && <AdminView />}
         </div>

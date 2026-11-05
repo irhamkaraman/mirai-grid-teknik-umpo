@@ -37,6 +37,9 @@ class ProjectConfigUpdate(BaseModel):
     app_config: Dict[str, Any]
     env_vars: Optional[Dict[str, str]] = None
 
+class StartupFileRequest(BaseModel):
+    file_path: str
+
 async def get_next_available_port(db: aiosqlite.Connection) -> int:
     cursor = await db.execute("SELECT MAX(allocated_port) FROM projects")
     row = await cursor.fetchone()
@@ -440,6 +443,92 @@ async def update_project_config(
     await db.commit()
 
     return {"success": True, "message": "Konfigurasi engine berhasil disimpan dan container di-restart!"}
+
+@router.post("/{project_id}/set-startup-file")
+async def set_project_startup_file(
+    project_id: int,
+    body: StartupFileRequest,
+    current_user: dict = Depends(get_current_user),
+    db: aiosqlite.Connection = Depends(get_db)
+):
+    """Sets a file from File Manager as the Application Startup File and redeploys container."""
+    cursor = await db.execute("SELECT * FROM projects WHERE id = ? AND user_id = ?", (project_id, current_user["id"]))
+    project = await cursor.fetchone()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project tidak ditemukan.")
+
+    nim = current_user["username"]
+    project_name = project["name"]
+    clean_file = body.file_path.strip().lstrip("/\\")
+
+    # Verify file actually exists in project sandbox
+    file_path = get_safe_project_path(settings.PROJECTS_DIR, nim, project_name, clean_file)
+    if not os.path.exists(file_path) or os.path.isdir(file_path):
+        raise HTTPException(status_code=400, detail="File startup tidak ditemukan di dalam workspace project.")
+
+    app_cfg = json.loads(project["config_json"]) if ("config_json" in project.keys() and project["config_json"]) else {}
+    app_cfg["startup_file"] = clean_file
+    config_json_str = json.dumps(app_cfg)
+
+    # Derive language & version
+    tmpl = project["template_type"]
+    if tmpl.startswith("php"):
+        lang = "php"
+        v = tmpl.replace("php", "")
+        ver = f"{v[0]}.{v[1:]}" if len(v) >= 2 else "8.2"
+    elif tmpl.startswith("python"):
+        lang = "python"
+        v = tmpl.replace("python", "")
+        ver = f"{v[0]}.{v[1:]}" if len(v) >= 2 else "3.11"
+    elif tmpl.startswith("node"):
+        lang = "node"
+        ver = tmpl.replace("node", "") or "20"
+    else:
+        lang = "php"
+        ver = "8.2"
+
+    host_project_dir = os.path.join(settings.HOST_PROJECTS_DIR, f"{nim}_{project_name}").replace("\\", "/")
+    q_cur = await db.execute("SELECT * FROM quotas WHERE user_id = ?", (current_user["id"],))
+    quota = await q_cur.fetchone()
+    mem_limit = quota["max_memory_mb"] if quota else 256
+    cpus = quota["max_cpu_cores"] if quota else 0.5
+    env_vars = json.loads(decrypt_secret(project["env_vars_enc"])) if project["env_vars_enc"] else {}
+
+    compose_yaml = TemplateComposer.generate_compose(
+        nim=nim,
+        project_name=project_name,
+        language=lang,
+        version=ver,
+        project_src_dir=host_project_dir,
+        allocated_port=project["allocated_port"],
+        app_config=app_cfg,
+        env_vars=env_vars,
+        mem_limit_mb=mem_limit,
+        cpu_cores=cpus
+    )
+
+    stack_name = f"miraigrid_{nim}_{project_name}"
+    if project["portainer_stack_id"]:
+        try:
+            await portainer.delete_stack(project["portainer_stack_id"])
+        except Exception:
+            pass
+
+    deploy_res = await portainer.create_standalone_stack(stack_name, compose_yaml)
+    stack_id = deploy_res["data"]["Id"] if deploy_res.get("success") else None
+
+    await db.execute("""
+        UPDATE projects
+        SET portainer_stack_id = ?, config_json = ?, status = 'running', last_deployed_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+    """, (stack_id, config_json_str, project_id))
+    await db.commit()
+
+    return {
+        "success": True,
+        "message": f"File '{clean_file}' berhasil diatur sebagai Application Startup File!",
+        "startup_file": clean_file
+    }
 
 @router.post("/{project_id}/pip-install")
 async def run_pip_install(

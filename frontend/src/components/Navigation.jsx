@@ -1,10 +1,11 @@
 import React from 'react'
-import { LayoutDashboard, Layers, Database, ShieldAlert, Server, ChevronLeft, ChevronRight } from 'lucide-react'
+import { LayoutDashboard, Layers, Database, ShieldAlert, Server, ChevronLeft, ChevronRight, Folder } from 'lucide-react'
 
 export default function Navigation({ activeTab, setActiveTab, userRole, isCollapsed, setIsCollapsed }) {
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'projects', label: 'Deploy', icon: Layers },
+    { id: 'files', label: 'File Manager', icon: Folder },
     { id: 'databases', label: 'Databases', icon: Database },
   ]
 
