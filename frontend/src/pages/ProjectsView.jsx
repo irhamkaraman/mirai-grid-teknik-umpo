@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Plus, Play, Square, RotateCw, Trash2, Edit2, ExternalLink, Layers, AlertCircle } from 'lucide-react'
+import { Plus, Play, Square, RotateCw, Trash2, Edit2, ExternalLink, Layers, AlertCircle, Terminal } from 'lucide-react'
 import { toast } from 'sonner'
 import { api } from '../api/client'
 import { SkeletonTable, Spinner } from '../components/Skeletons'
@@ -7,6 +7,7 @@ import ConfirmModal from '../components/ConfirmModal'
 import FileManager from '../components/FileManager'
 import ProjectDetailPage from './ProjectDetailPage'
 import CreateProjectPage from './CreateProjectPage'
+import ConsolePage from './ConsolePage'
 
 export default function ProjectsView() {
   const [projects, setProjects] = useState([])
@@ -16,6 +17,7 @@ export default function ProjectsView() {
   const [isCreatingProject, setIsCreatingProject] = useState(false)
   const [activeProjectDetail, setActiveProjectDetail] = useState(null)
   const [activeFileManagerProject, setActiveFileManagerProject] = useState(null)
+  const [activeConsoleProject, setActiveConsoleProject] = useState(null)
 
   // Confirmation modal
   const [confirmDelete, setConfirmDelete] = useState({ open: false, id: null, name: '' })
@@ -95,6 +97,7 @@ export default function ProjectsView() {
           fetchProjects()
         }}
         onUpdated={fetchProjects}
+        onOpenConsole={(proj) => setActiveConsoleProject(proj)}
       />
     )
   }
@@ -106,6 +109,19 @@ export default function ProjectsView() {
         project={activeFileManagerProject}
         onClose={() => {
           setActiveFileManagerProject(null)
+          fetchProjects()
+        }}
+      />
+    )
+  }
+
+  // 4. If Container Console is Active (Dedicated CLI Page, BUKAN MODAL!)
+  if (activeConsoleProject) {
+    return (
+      <ConsolePage
+        project={activeConsoleProject}
+        onBack={() => {
+          setActiveConsoleProject(null)
           fetchProjects()
         }}
       />
@@ -240,6 +256,15 @@ export default function ProjectsView() {
                             className="p-1.5 rounded-lg text-[#DFCDB5] hover:text-white hover:bg-[#3A2115] transition"
                           >
                             <RotateCw className="h-4 w-4" />
+                          </button>
+
+                          {/* Terminal / Console (CLI Halaman Terpisah) */}
+                          <button
+                            onClick={() => setActiveConsoleProject(proj)}
+                            title="Buka Console Container (CLI)"
+                            className="p-1.5 rounded-lg text-[#DFCDB5] hover:text-[#E8DCB8] hover:bg-[#3A2115] transition"
+                          >
+                            <Terminal className="h-4 w-4" />
                           </button>
 
                           {/* Edit / Detail Page (Pencil Icon) -> BUKAN MODAL! */}

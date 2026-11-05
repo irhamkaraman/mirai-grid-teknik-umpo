@@ -1,4 +1,6 @@
-fix(ui): update deploy page header to 'Konfigurasi Deploy'
+feat(console): implement full-page dedicated CLI console with xterm.js
 
-- Remove 'Project Aplikasi Web' text from header title
-- Keep title concise as 'Konfigurasi Deploy'
+- Replace console modal with dedicated full-page ConsolePage view
+- Integrate @xterm/xterm and @xterm/addon-fit for true interactive terminal emulation
+- Support keyboard shortcuts: Ctrl+C (cancel), Ctrl+L (clear), Ctrl+U (clear line), Arrow Up/Down (history)
+- Style terminal with warm chocolate and cream ANSI palette

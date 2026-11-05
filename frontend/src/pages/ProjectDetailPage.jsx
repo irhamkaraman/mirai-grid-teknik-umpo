@@ -7,9 +7,8 @@ import { toast } from 'sonner'
 import { api } from '../api/client'
 import { Spinner } from '../components/Skeletons'
 import ConfirmModal from '../components/ConfirmModal'
-import ContainerConsole from '../components/ContainerConsole'
 
-export default function ProjectDetailPage({ project, onBack, onUpdated }) {
+export default function ProjectDetailPage({ project, onBack, onUpdated, onOpenConsole }) {
   const isPhp = project.language === 'php' || project.template_type?.startsWith('php')
   const isPython = project.language === 'python' || project.template_type?.startsWith('python')
   const isNode = project.language === 'node' || project.template_type?.startsWith('node')
@@ -22,7 +21,6 @@ export default function ProjectDetailPage({ project, onBack, onUpdated }) {
   const [controlLoading, setControlLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [runningAction, setRunningAction] = useState(false)
-  const [showConsole, setShowConsole] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
 
   // PHP Directives State (Image 2)
@@ -249,9 +247,9 @@ export default function ProjectDetailPage({ project, onBack, onUpdated }) {
           </button>
 
           <button
-            onClick={() => setShowConsole(true)}
+            onClick={() => onOpenConsole?.(project)}
             className="px-4 py-2 rounded-2xl text-xs font-semibold bg-[#2B1810] hover:bg-[#3D2317] text-[#E8DCB8] border border-[#4D2D1E] shadow-md transition flex items-center space-x-1.5"
-            title="Buka Terminal Container"
+            title="Buka Halaman Console CLI"
           >
             <Terminal className="h-3.5 w-3.5" />
             <span>CONSOLE</span>
@@ -685,13 +683,6 @@ export default function ProjectDetailPage({ project, onBack, onUpdated }) {
           </div>
         )}
       </div>
-
-      {/* Container Console Modal */}
-      <ContainerConsole
-        project={project}
-        isOpen={showConsole}
-        onClose={() => setShowConsole(false)}
-      />
 
       {/* Confirmation Modal */}
       <ConfirmModal
