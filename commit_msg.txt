@@ -1,8 +1,4 @@
-feat(ui): implement Sonner toasts, confirm modal, and cream-chocolate theme
+fix(compose): resolve compose v2 pids_limit schema conflict
 
-- Replace all native alert() and confirm() with Sonner toast notifications and ConfirmModal
-- Redesign layout with warm cream background and dark chocolate cards
-- Implement collapsible floating sidebar with smooth animation and content auto-offset
-- Remove bottom lab infrastructure card from sidebar
-- Add auto starter template generation and immediate container deployment on project creation
-- Route host ports 10001-10050 to labdocker container ports
+- Move pids limit to deploy.resources.limits.pids to comply with Compose v2 schema
+- Enable successful Portainer stack deployment and container startup

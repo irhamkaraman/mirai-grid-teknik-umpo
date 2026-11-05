@@ -33,17 +33,17 @@ class TemplateComposer:
         container_name = f"app_{nim}_{project_name}"
         network_name = f"net_{nim}_{project_name}"
 
-        # Base security configuration
+        # Base security configuration (compatible with Compose v2 schema)
         security_config = {
             "restart": "unless-stopped",
-            "pids_limit": 100,
             "security_opt": ["no-new-privileges:true"],
             "cap_drop": ["ALL"],
             "deploy": {
                 "resources": {
                     "limits": {
                         "cpus": str(cpu_cores),
-                        "memory": f"{mem_limit_mb}M"
+                        "memory": f"{mem_limit_mb}M",
+                        "pids": 100
                     }
                 }
             },
