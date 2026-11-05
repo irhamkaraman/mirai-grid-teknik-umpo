@@ -45,6 +45,15 @@ class BulkCsvImportRequest(BaseModel):
     class_id: int
     students: List[BulkCsvStudentItem]
 
+class UserCreateManual(BaseModel):
+    username: str = Field(min_length=3, max_length=50)
+    name: str = Field(min_length=2, max_length=100)
+    password: str = Field(min_length=6)
+    email: Optional[str] = None
+    role: str = Field(default="student", pattern="^(student|admin)$")
+    class_id: Optional[int] = None
+    must_change_password: bool = True
+
 class UserResponse(BaseModel):
     id: int
     username: str

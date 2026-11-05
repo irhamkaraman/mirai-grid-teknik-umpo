@@ -7,7 +7,7 @@ from app.core.database import get_db
 from app.core.security import hash_password
 from app.models.schemas import (
     CohortCreate, ClassCreate, BulkAccountGenerateRequest,
-    BulkCsvImportRequest, UserResponse, AuditLogResponse
+    BulkCsvImportRequest, UserResponse, AuditLogResponse, UserCreateManual
 )
 from app.api.deps import require_admin, get_client_ip
 
@@ -29,9 +29,31 @@ async def create_cohort(body: CohortCreate, admin: dict = Depends(require_admin)
 
 @router.get("/cohorts")
 async def list_cohorts(admin: dict = Depends(require_admin), db: aiosqlite.Connection = Depends(get_db)):
-    cursor = await db.execute("SELECT * FROM cohorts ORDER BY year DESC")
+    cursor = await db.execute("""
+        SELECT c.*, COUNT(DISTINCT cl.id) as class_count
+        FROM cohorts c
+        LEFT JOIN classes cl ON cl.cohort_id = c.id
+        GROUP BY c.id
+        ORDER BY c.year DESC
+    """)
     rows = await cursor.fetchall()
     return [dict(r) for r in rows]
+
+@router.delete("/cohorts/{cohort_id}")
+async def delete_cohort(cohort_id: int, request: Request, admin: dict = Depends(require_admin), db: aiosqlite.Connection = Depends(get_db)):
+    cursor = await db.execute("SELECT * FROM cohorts WHERE id = ?", (cohort_id,))
+    cohort = await cursor.fetchone()
+    if not cohort:
+        raise HTTPException(status_code=404, detail="Angkatan tidak ditemukan.")
+
+    await db.execute("DELETE FROM cohorts WHERE id = ?", (cohort_id,))
+    ip = get_client_ip(request)
+    await db.execute("""
+        INSERT INTO audit_logs (actor_id, action, target_resource, ip_address, details)
+        VALUES (?, 'DELETE_COHORT', ?, ?, ?)
+    """, (admin["id"], str(cohort["year"]), ip, f"Deleted cohort {cohort['year']}"))
+    await db.commit()
+    return {"success": True, "message": "Angkatan berhasil dihapus."}
 
 @router.post("/classes")
 async def create_class(body: ClassCreate, admin: dict = Depends(require_admin), db: aiosqlite.Connection = Depends(get_db)):
@@ -59,6 +81,94 @@ async def list_classes(cohort_id: Optional[int] = None, admin: dict = Depends(re
     cursor = await db.execute(query, params)
     rows = await cursor.fetchall()
     return [dict(r) for r in rows]
+
+@router.delete("/classes/{class_id}")
+async def delete_class(class_id: int, request: Request, admin: dict = Depends(require_admin), db: aiosqlite.Connection = Depends(get_db)):
+    cursor = await db.execute("SELECT * FROM classes WHERE id = ?", (class_id,))
+    cl = await cursor.fetchone()
+    if not cl:
+        raise HTTPException(status_code=404, detail="Kelas tidak ditemukan.")
+
+    await db.execute("DELETE FROM classes WHERE id = ?", (class_id,))
+    ip = get_client_ip(request)
+    await db.execute("""
+        INSERT INTO audit_logs (actor_id, action, target_resource, ip_address, details)
+        VALUES (?, 'DELETE_CLASS', ?, ?, ?)
+    """, (admin["id"], cl["name"], ip, f"Deleted class {cl['name']}"))
+    await db.commit()
+    return {"success": True, "message": "Kelas berhasil dihapus."}
+
+# Manual Single User Account Creation (Custom username & password)
+@router.post("/users/create")
+async def create_manual_user(
+    body: UserCreateManual,
+    request: Request,
+    admin: dict = Depends(require_admin),
+    db: aiosqlite.Connection = Depends(get_db)
+):
+    clean_username = body.username.strip()
+    clean_name = body.name.strip()
+
+    # Check unique username
+    existing = await (await db.execute("SELECT id FROM users WHERE username = ?", (clean_username,))).fetchone()
+    if existing:
+        raise HTTPException(status_code=400, detail=f"Username/NIM '{clean_username}' sudah digunakan.")
+
+    pass_hash = hash_password(body.password)
+    must_change = 1 if body.must_change_password else 0
+
+    cursor = await db.execute("""
+        INSERT INTO users (username, name, email, password_hash, role, class_id, must_change_password, is_active)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+    """, (clean_username, clean_name, body.email, pass_hash, body.role, body.class_id, must_change))
+    user_id = cursor.lastrowid
+
+    # Create quota (admin has larger quota)
+    max_proj = 999 if body.role == "admin" else 2
+    max_db = 999 if body.role == "admin" else 2
+    await db.execute("""
+        INSERT INTO quotas (user_id, max_projects, max_databases, max_memory_mb, max_cpu_cores, max_disk_mb)
+        VALUES (?, ?, ?, 512, 1.0, 1000)
+    """, (user_id, max_proj, max_db))
+
+    ip = get_client_ip(request)
+    await db.execute("""
+        INSERT INTO audit_logs (actor_id, action, target_resource, ip_address, details)
+        VALUES (?, 'CREATE_USER_MANUAL', ?, ?, ?)
+    """, (admin["id"], clean_username, ip, f"Created {body.role} user '{clean_username}'"))
+    await db.commit()
+
+    return {
+        "success": True,
+        "id": user_id,
+        "username": clean_username,
+        "name": clean_name,
+        "role": body.role
+    }
+
+@router.delete("/users/{user_id}")
+async def delete_user(
+    user_id: int,
+    request: Request,
+    admin: dict = Depends(require_admin),
+    db: aiosqlite.Connection = Depends(get_db)
+):
+    if user_id == admin["id"]:
+        raise HTTPException(status_code=400, detail="Tidak dapat menghapus akun Anda sendiri.")
+
+    cursor = await db.execute("SELECT * FROM users WHERE id = ?", (user_id,))
+    u = await cursor.fetchone()
+    if not u:
+        raise HTTPException(status_code=404, detail="User tidak ditemukan.")
+
+    await db.execute("DELETE FROM users WHERE id = ?", (user_id,))
+    ip = get_client_ip(request)
+    await db.execute("""
+        INSERT INTO audit_logs (actor_id, action, target_resource, ip_address, details)
+        VALUES (?, 'DELETE_USER', ?, ?, ?)
+    """, (admin["id"], u["username"], ip, f"Deleted user '{u['username']}'"))
+    await db.commit()
+    return {"success": True, "message": f"Akun '{u['username']}' berhasil dihapus."}
 
 # 2. Bulk Account Generation
 @router.post("/generate-bulk-accounts")

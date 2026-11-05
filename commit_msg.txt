@@ -1,5 +1,6 @@
-refactor(header): replace floating avatar pill with seamless circular initial in header
+feat(admin): add delete cohort/class and manual custom account creation
 
-- Convert floating absolute profile button into header flow to prevent covering buttons
-- Display sleek circular initial avatar without text or navbar background
-- Keep seamless cream and chocolate theme
+- Add delete cohort and delete class endpoints with cascading integrity
+- Display list of existing cohorts and classes with delete action
+- Add manual custom account creation with arbitrary username and password
+- Allow deleting student accounts from admin panel

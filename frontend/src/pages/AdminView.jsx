@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Shield, Users, UserPlus, KeyRound, Ban, Search, Clock } from 'lucide-react'
+import { Shield, Users, UserPlus, KeyRound, Ban, Search, Clock, Trash2, Plus, Sparkles, UserCheck } from 'lucide-react'
 import { toast } from 'sonner'
 import { api } from '../api/client'
 import { SkeletonCard, SkeletonTable, Spinner } from '../components/Skeletons'
@@ -17,10 +17,13 @@ export default function AdminView() {
   const [selectedClass, setSelectedClass] = useState('')
   const [activeTab, setActiveTab] = useState('users') // 'users', 'generator', 'classes', 'logs'
 
+  // Sub-tabs in generator
+  const [generatorMode, setGeneratorMode] = useState('bulk') // 'bulk' or 'manual'
+
   // Confirmation modal
   const [confirmModal, setConfirmModal] = useState({ open: false, title: '', message: '', onConfirm: () => {} })
 
-  // Generator states
+  // Bulk Generator states
   const [genCohortId, setGenCohortId] = useState('')
   const [genClassId, setGenClassId] = useState('')
   const [genNimPrefix, setGenNimPrefix] = useState('23533')
@@ -29,8 +32,16 @@ export default function AdminView() {
   const [generatedAccounts, setGeneratedAccounts] = useState([])
   const [loadingAction, setLoadingAction] = useState(false)
 
-  // Class create states
-  const [newCohortYear, setNewCohortYear] = useState(2024)
+  // Manual Single Account states
+  const [manualUsername, setManualUsername] = useState('')
+  const [manualName, setManualName] = useState('')
+  const [manualPassword, setManualPassword] = useState('')
+  const [manualRole, setManualRole] = useState('student')
+  const [manualClassId, setManualClassId] = useState('')
+  const [manualMustChange, setManualMustChange] = useState(true)
+
+  // Class & Cohort create states
+  const [newCohortYear, setNewCohortYear] = useState(2025)
   const [newCohortDesc, setNewCohortDesc] = useState('')
   const [newClassName, setNewClassName] = useState('')
   const [newClassCohortId, setNewClassCohortId] = useState('')
@@ -98,6 +109,7 @@ export default function AdminView() {
     } catch (err) {}
   }
 
+  // 1. Bulk Generate
   const handleGenerateAccounts = async (e) => {
     e.preventDefault()
     setLoadingAction(true)
@@ -121,17 +133,65 @@ export default function AdminView() {
     }
   }
 
+  // 2. Manual User Create (Custom Username & Password)
+  const handleCreateManualUser = async (e) => {
+    e.preventDefault()
+    setLoadingAction(true)
+    const toastId = toast.loading('Membuat akun kustom...')
+    try {
+      await api.post('/admin/users/create', {
+        username: manualUsername.trim(),
+        name: manualName.trim(),
+        password: manualPassword,
+        role: manualRole,
+        class_id: manualClassId ? parseInt(manualClassId) : null,
+        must_change_password: manualMustChange,
+      })
+      toast.success(`Akun '${manualUsername}' berhasil dibuat!`, { id: toastId })
+      setManualUsername('')
+      setManualName('')
+      setManualPassword('')
+      fetchUsers()
+      fetchStats()
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Gagal membuat akun kustom.', { id: toastId })
+    } finally {
+      setLoadingAction(false)
+    }
+  }
+
+  // 3. Cohorts CRUD
   const handleCreateCohort = async (e) => {
     e.preventDefault()
     try {
       await api.post('/admin/cohorts', { year: parseInt(newCohortYear), description: newCohortDesc })
       fetchCohorts()
+      setNewCohortDesc('')
       toast.success('Angkatan berhasil ditambahkan.')
     } catch (err) {
-      toast.error('Gagal menambah angkatan.')
+      toast.error(err.response?.data?.detail || 'Gagal menambah angkatan.')
     }
   }
 
+  const triggerDeleteCohort = (cohortId, year) => {
+    setConfirmModal({
+      open: true,
+      title: 'Hapus Angkatan?',
+      message: `Hapus Angkatan ${year}? Kelas yang terhubung dengan angkatan ini juga akan terhapus.`,
+      onConfirm: async () => {
+        try {
+          await api.delete(`/admin/cohorts/${cohortId}`)
+          toast.success(`Angkatan ${year} berhasil dihapus.`)
+          fetchCohorts()
+          fetchClasses()
+        } catch (err) {
+          toast.error('Gagal menghapus angkatan.')
+        }
+      }
+    })
+  }
+
+  // 4. Classes CRUD
   const handleCreateClass = async (e) => {
     e.preventDefault()
     try {
@@ -140,21 +200,58 @@ export default function AdminView() {
       setNewClassName('')
       toast.success('Kelas praktikum berhasil ditambahkan.')
     } catch (err) {
-      toast.error('Gagal menambah kelas.')
+      toast.error(err.response?.data?.detail || 'Gagal menambah kelas.')
     }
   }
 
+  const triggerDeleteClass = (classId, name) => {
+    setConfirmModal({
+      open: true,
+      title: 'Hapus Kelas Praktikum?',
+      message: `Hapus kelas '${name}'? Tindakan ini tidak dapat dibatalkan.`,
+      onConfirm: async () => {
+        try {
+          await api.delete(`/admin/classes/${classId}`)
+          toast.success(`Kelas '${name}' berhasil dihapus.`)
+          fetchClasses()
+          fetchUsers()
+        } catch (err) {
+          toast.error('Gagal menghapus kelas.')
+        }
+      }
+    })
+  }
+
+  // 5. User Account Actions
   const triggerResetPassword = (userId, name) => {
     setConfirmModal({
       open: true,
       title: 'Reset Password?',
-      message: `Reset password untuk mahasiswa '${name}' ke password sementara?`,
+      message: `Reset password untuk '${name}' ke password sementara?`,
       onConfirm: async () => {
         try {
           const res = await api.post(`/admin/users/${userId}/reset-password`)
           toast.success(`Password sementara baru: ${res.data.new_temporary_password}`, { duration: 10000 })
         } catch (err) {
           toast.error('Gagal reset password.')
+        }
+      }
+    })
+  }
+
+  const triggerDeleteUser = (userId, username) => {
+    setConfirmModal({
+      open: true,
+      title: 'Hapus Akun?',
+      message: `Hapus akun '${username}' beserta seluruh datanya? Tindakan ini tidak dapat dibatalkan.`,
+      onConfirm: async () => {
+        try {
+          await api.delete(`/admin/users/${userId}`)
+          toast.success(`Akun '${username}' berhasil dihapus.`)
+          fetchUsers()
+          fetchStats()
+        } catch (err) {
+          toast.error(err.response?.data?.detail || 'Gagal menghapus akun.')
         }
       }
     })
@@ -179,7 +276,7 @@ export default function AdminView() {
             <span>Admin Lab Panel — MiraiGrid</span>
           </h2>
           <p className="text-xs text-[#5C3B29] mt-1 font-sans">
-            Kelola angkatan, kelas praktikum, akun mahasiswa massal, dan audit log.
+            Kelola angkatan, kelas praktikum, akun mahasiswa massal & kustom, dan audit log.
           </p>
         </div>
       </div>
@@ -229,7 +326,7 @@ export default function AdminView() {
             activeTab === 'generator' ? 'border-[#5A3521] text-[#26160F] font-bold' : 'border-transparent text-[#7A5A48] hover:text-[#26160F]'
           }`}
         >
-          Generator Akun Massal
+          Pembuatan Akun (Massal & Kustom)
         </button>
         <button
           onClick={() => setActiveTab('classes')}
@@ -289,6 +386,7 @@ export default function AdminView() {
                   <tr>
                     <th className="p-4">NIM / Username</th>
                     <th className="p-4">Nama</th>
+                    <th className="p-4">Role</th>
                     <th className="p-4">Kelas / Angkatan</th>
                     <th className="p-4">Status</th>
                     <th className="p-4 text-right">Aksi</th>
@@ -299,6 +397,13 @@ export default function AdminView() {
                     <tr key={u.id} className="hover:bg-[#361E13] transition">
                       <td className="p-4 font-mono font-semibold text-[#FAF5EC]">{u.username}</td>
                       <td className="p-4 font-medium">{u.name}</td>
+                      <td className="p-4">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono uppercase tracking-wider ${
+                          u.role === 'admin' ? 'bg-[#5A3521] text-[#E8DCB8] border border-[#7D492F]' : 'bg-[#1C0F0A] text-[#DFCDB5]'
+                        }`}>
+                          {u.role}
+                        </span>
+                      </td>
                       <td className="p-4 text-[#DFCDB5]">
                         {u.class_name ? `${u.class_name} (${u.cohort_year})` : '-'}
                       </td>
@@ -326,6 +431,15 @@ export default function AdminView() {
                         >
                           <Ban className="h-4 w-4" />
                         </button>
+                        {u.role !== 'admin' && (
+                          <button
+                            onClick={() => triggerDeleteUser(u.id, u.username)}
+                            title="Hapus Akun"
+                            className="p-1.5 text-rose-400 hover:bg-rose-500/10 rounded-lg transition"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -336,190 +450,392 @@ export default function AdminView() {
         </div>
       )}
 
-      {/* TAB 2: GENERATOR */}
+      {/* TAB 2: GENERATOR & MANUAL USER CREATION */}
       {activeTab === 'generator' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-[#2B1810] border border-[#4D2D1E] rounded-3xl p-6 sm:p-7 shadow-xl text-[#FAF5EC]">
-            <h3 className="text-lg font-serif font-bold text-[#FAF5EC] mb-1 flex items-center space-x-2">
-              <UserPlus className="h-5 w-5 text-[#E8DCB8]" />
-              <span>Generator Akun Kelas Sekali Klik</span>
-            </h3>
-            <p className="text-xs text-[#DFCDB5] mb-5">
-              Sistem akan otomatis membuat rentang akun mahasiswa dengan password awal unik acak.
-            </p>
-
-            <form onSubmit={handleGenerateAccounts} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-[#DFCDB5] mb-1">Pilih Angkatan</label>
-                <select
-                  value={genCohortId}
-                  onChange={(e) => setGenCohortId(e.target.value)}
-                  className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3.5 py-2.5 text-xs text-[#FAF5EC] focus:outline-none focus:border-[#C49767]"
-                >
-                  {cohorts.map((c) => (
-                    <option key={c.id} value={c.id}>Angkatan {c.year} - {c.description}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-[#DFCDB5] mb-1">Pilih Kelas</label>
-                <select
-                  value={genClassId}
-                  onChange={(e) => setGenClassId(e.target.value)}
-                  className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3.5 py-2.5 text-xs text-[#FAF5EC] focus:outline-none focus:border-[#C49767]"
-                >
-                  {classes.map((cl) => (
-                    <option key={cl.id} value={cl.id}>{cl.name} (Tahun {cl.cohort_year})</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-[#DFCDB5] mb-1">Prefix NIM</label>
-                  <input
-                    type="text"
-                    required
-                    value={genNimPrefix}
-                    onChange={(e) => setGenNimPrefix(e.target.value)}
-                    className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3 py-2 text-xs text-[#FAF5EC] font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-[#DFCDB5] mb-1">Nomor Awal</label>
-                  <input
-                    type="number"
-                    required
-                    value={genStartNum}
-                    onChange={(e) => setGenStartNum(e.target.value)}
-                    className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3 py-2 text-xs text-[#FAF5EC] font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-[#DFCDB5] mb-1">Jumlah</label>
-                  <input
-                    type="number"
-                    required
-                    value={genCount}
-                    onChange={(e) => setGenCount(e.target.value)}
-                    className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3 py-2 text-xs text-[#FAF5EC] font-mono"
-                  />
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={loadingAction}
-                className="w-full py-3 rounded-2xl text-xs font-semibold bg-[#5A3521] hover:bg-[#6D4029] text-[#FAF5EC] border border-[#7D492F] shadow-lg shadow-black/20 transition disabled:opacity-50 mt-2"
-              >
-                {loadingAction ? (
-                  <span className="flex items-center justify-center space-x-1.5">
-                    <Spinner size="xs" />
-                    <span>Sedang Memproses Akun...</span>
-                  </span>
-                ) : (
-                  'Generate Akun Sekarang'
-                )}
-              </button>
-            </form>
+        <div className="space-y-6">
+          {/* Sub-mode Buttons: Massal vs Kustom */}
+          <div className="flex space-x-2">
+            <button
+              onClick={() => setGeneratorMode('bulk')}
+              className={`px-4 py-2 rounded-xl text-xs font-semibold transition ${
+                generatorMode === 'bulk'
+                  ? 'bg-[#2B1810] text-[#FAF5EC] border border-[#4D2D1E] shadow-md'
+                  : 'bg-[#DECDBD] text-[#5C3B29] hover:bg-[#D1BDAB]'
+              }`}
+            >
+              Generator Massal (Rentang NIM)
+            </button>
+            <button
+              onClick={() => setGeneratorMode('manual')}
+              className={`px-4 py-2 rounded-xl text-xs font-semibold transition ${
+                generatorMode === 'manual'
+                  ? 'bg-[#2B1810] text-[#FAF5EC] border border-[#4D2D1E] shadow-md'
+                  : 'bg-[#DECDBD] text-[#5C3B29] hover:bg-[#D1BDAB]'
+              }`}
+            >
+              + Buat Akun Kustom (Username & Password Bebas)
+            </button>
           </div>
 
-          {/* Results Box */}
-          <div className="bg-[#2B1810] border border-[#4D2D1E] rounded-3xl p-6 sm:p-7 shadow-xl flex flex-col text-[#FAF5EC]">
-            <h3 className="text-lg font-serif font-bold text-[#FAF5EC] mb-1">Hasil Akun Baru</h3>
-            <p className="text-xs text-[#DFCDB5] mb-4">Salin dan bagikan password sementara ini kepada mahasiswa.</p>
+          {generatorMode === 'bulk' ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="bg-[#2B1810] border border-[#4D2D1E] rounded-3xl p-6 sm:p-7 shadow-xl text-[#FAF5EC]">
+                <h3 className="text-lg font-serif font-bold text-[#FAF5EC] mb-1 flex items-center space-x-2">
+                  <UserPlus className="h-5 w-5 text-[#E8DCB8]" />
+                  <span>Generator Akun Kelas Sekali Klik</span>
+                </h3>
+                <p className="text-xs text-[#DFCDB5] mb-5">
+                  Sistem akan otomatis membuat rentang akun mahasiswa dengan password awal unik acak.
+                </p>
 
-            <div className="bg-[#1C0F0A] border border-[#3E2316] rounded-2xl p-4 flex-1 overflow-y-auto max-h-96 font-mono text-xs text-[#FAF5EC]">
-              {generatedAccounts.length === 0 ? (
-                <span className="text-[#7A5A48]">Daftar akun yang baru digenerate akan muncul di sini.</span>
-              ) : (
-                <div className="space-y-2">
-                  <div className="text-[10px] text-[#A47E65] pb-2 border-b border-[#3E2316] flex justify-between">
-                    <span>NIM</span>
-                    <span>INITIAL PASSWORD</span>
+                <form onSubmit={handleGenerateAccounts} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-[#DFCDB5] mb-1">Pilih Angkatan</label>
+                    <select
+                      value={genCohortId}
+                      onChange={(e) => setGenCohortId(e.target.value)}
+                      className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3.5 py-2.5 text-xs text-[#FAF5EC] focus:outline-none focus:border-[#C49767]"
+                    >
+                      {cohorts.map((c) => (
+                        <option key={c.id} value={c.id}>Angkatan {c.year} - {c.description}</option>
+                      ))}
+                    </select>
                   </div>
-                  {generatedAccounts.map((acc) => (
-                    <div key={acc.nim} className="flex justify-between items-center text-[#FAF5EC] py-1">
-                      <span className="font-bold text-[#E8DCB8]">{acc.nim}</span>
-                      <span className="bg-[#3A2115] px-2 py-0.5 rounded text-[#E8C58D] font-mono border border-[#543221]">{acc.initial_password}</span>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-[#DFCDB5] mb-1">Pilih Kelas</label>
+                    <select
+                      value={genClassId}
+                      onChange={(e) => setGenClassId(e.target.value)}
+                      className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3.5 py-2.5 text-xs text-[#FAF5EC] focus:outline-none focus:border-[#C49767]"
+                    >
+                      {classes.map((cl) => (
+                        <option key={cl.id} value={cl.id}>{cl.name} (Tahun {cl.cohort_year})</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-[#DFCDB5] mb-1">Prefix NIM</label>
+                      <input
+                        type="text"
+                        required
+                        value={genNimPrefix}
+                        onChange={(e) => setGenNimPrefix(e.target.value)}
+                        className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3 py-2 text-xs text-[#FAF5EC] font-mono"
+                      />
                     </div>
-                  ))}
+                    <div>
+                      <label className="block text-xs font-semibold text-[#DFCDB5] mb-1">Nomor Awal</label>
+                      <input
+                        type="number"
+                        required
+                        value={genStartNum}
+                        onChange={(e) => setGenStartNum(e.target.value)}
+                        className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3 py-2 text-xs text-[#FAF5EC] font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-[#DFCDB5] mb-1">Jumlah</label>
+                      <input
+                        type="number"
+                        required
+                        value={genCount}
+                        onChange={(e) => setGenCount(e.target.value)}
+                        className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3 py-2 text-xs text-[#FAF5EC] font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={loadingAction}
+                    className="w-full py-3 rounded-2xl text-xs font-semibold bg-[#5A3521] hover:bg-[#6D4029] text-[#FAF5EC] border border-[#7D492F] shadow-lg shadow-black/20 transition disabled:opacity-50 mt-2"
+                  >
+                    {loadingAction ? (
+                      <span className="flex items-center justify-center space-x-1.5">
+                        <Spinner size="xs" />
+                        <span>Sedang Memproses Akun...</span>
+                      </span>
+                    ) : (
+                      'Generate Akun Sekarang'
+                    )}
+                  </button>
+                </form>
+              </div>
+
+              {/* Results Box */}
+              <div className="bg-[#2B1810] border border-[#4D2D1E] rounded-3xl p-6 sm:p-7 shadow-xl flex flex-col text-[#FAF5EC]">
+                <h3 className="text-lg font-serif font-bold text-[#FAF5EC] mb-1">Hasil Akun Baru</h3>
+                <p className="text-xs text-[#DFCDB5] mb-4">Salin dan bagikan password sementara ini kepada mahasiswa.</p>
+
+                <div className="bg-[#1C0F0A] border border-[#3E2316] rounded-2xl p-4 flex-1 overflow-y-auto max-h-96 font-mono text-xs text-[#FAF5EC]">
+                  {generatedAccounts.length === 0 ? (
+                    <span className="text-[#7A5A48]">Daftar akun yang baru digenerate akan muncul di sini.</span>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="text-[10px] text-[#A47E65] pb-2 border-b border-[#3E2316] flex justify-between">
+                        <span>NIM</span>
+                        <span>INITIAL PASSWORD</span>
+                      </div>
+                      {generatedAccounts.map((acc) => (
+                        <div key={acc.nim} className="flex justify-between items-center text-[#FAF5EC] py-1">
+                          <span className="font-bold text-[#E8DCB8]">{acc.nim}</span>
+                          <span className="bg-[#3A2115] px-2 py-0.5 rounded text-[#E8C58D] font-mono border border-[#543221]">{acc.initial_password}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
             </div>
-          </div>
+          ) : (
+            /* MANUAL SINGLE ACCOUNT CREATION (Custom Username & Password) */
+            <div className="bg-[#2B1810] border border-[#4D2D1E] rounded-3xl p-6 sm:p-8 shadow-xl text-[#FAF5EC] max-w-xl">
+              <h3 className="text-lg font-serif font-bold text-[#FAF5EC] mb-1 flex items-center space-x-2">
+                <UserCheck className="h-5 w-5 text-[#E8DCB8]" />
+                <span>Buat Akun Kustom (Username & Password Bebas)</span>
+              </h3>
+              <p className="text-xs text-[#DFCDB5] mb-6">
+                Admin dapat membuat akun selain format NIM (misal: aslab, dosen, akun khusus praktikum) dengan username dan password yang ditentukan bebas.
+              </p>
+
+              <form onSubmit={handleCreateManualUser} className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-[#DFCDB5] mb-1">Username / NIM</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. aslab_jarkom / 23533999"
+                      value={manualUsername}
+                      onChange={(e) => setManualUsername(e.target.value)}
+                      className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3.5 py-2 text-xs text-[#FAF5EC] font-mono focus:outline-none focus:border-[#C49767]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-[#DFCDB5] mb-1">Nama Lengkap</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Asisten Praktikum Basis Data"
+                      value={manualName}
+                      onChange={(e) => setManualName(e.target.value)}
+                      className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3.5 py-2 text-xs text-[#FAF5EC] focus:outline-none focus:border-[#C49767]"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-[#DFCDB5] mb-1">Password</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Minimal 6 karakter"
+                      value={manualPassword}
+                      onChange={(e) => setManualPassword(e.target.value)}
+                      className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3.5 py-2 text-xs text-[#FAF5EC] font-mono focus:outline-none focus:border-[#C49767]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-[#DFCDB5] mb-1">Role / Peran Akun</label>
+                    <select
+                      value={manualRole}
+                      onChange={(e) => setManualRole(e.target.value)}
+                      className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3.5 py-2 text-xs text-[#FAF5EC] focus:outline-none focus:border-[#C49767]"
+                    >
+                      <option value="student">Mahasiswa (Praktikan)</option>
+                      <option value="admin">Administrator Lab</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-[#DFCDB5] mb-1">Kelas Praktikum (Opsional)</label>
+                  <select
+                    value={manualClassId}
+                    onChange={(e) => setManualClassId(e.target.value)}
+                    className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3.5 py-2 text-xs text-[#FAF5EC] focus:outline-none focus:border-[#C49767]"
+                  >
+                    <option value="">-- Tanpa Kelas (Umum/Staff) --</option>
+                    {classes.map((cl) => (
+                      <option key={cl.id} value={cl.id}>{cl.name} (Tahun {cl.cohort_year})</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex items-center space-x-2 pt-1">
+                  <input
+                    type="checkbox"
+                    id="mustChangeCheck"
+                    checked={manualMustChange}
+                    onChange={(e) => setManualMustChange(e.target.checked)}
+                    className="h-4 w-4 rounded accent-[#5A3521] bg-[#1C0F0A] border-[#3E2316]"
+                  />
+                  <label htmlFor="mustChangeCheck" className="text-xs text-[#DFCDB5] cursor-pointer">
+                    Wajibkan ganti password saat user pertama kali login
+                  </label>
+                </div>
+
+                <div className="pt-2">
+                  <button
+                    type="submit"
+                    disabled={loadingAction}
+                    className="px-6 py-2.5 rounded-2xl text-xs font-semibold bg-[#5A3521] hover:bg-[#6D4029] text-[#FAF5EC] border border-[#7D492F] shadow-lg transition disabled:opacity-50"
+                  >
+                    {loadingAction ? 'Menyimpan...' : 'Buat Akun Kustom Sekarang'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
         </div>
       )}
 
-      {/* TAB 3: CLASSES & COHORTS */}
+      {/* TAB 3: CLASSES & COHORTS (Lengkap dengan List & Hapus Angkatan / Kelas!) */}
       {activeTab === 'classes' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-[#2B1810] border border-[#4D2D1E] rounded-3xl p-6 sm:p-7 shadow-xl text-[#FAF5EC]">
-            <h3 className="text-base font-serif font-bold text-[#FAF5EC] mb-3">Tambah Angkatan</h3>
-            <form onSubmit={handleCreateCohort} className="space-y-3">
-              <div>
-                <label className="block text-xs font-semibold text-[#DFCDB5] mb-1">Tahun Angkatan</label>
-                <input
-                  type="number"
-                  required
-                  value={newCohortYear}
-                  onChange={(e) => setNewCohortYear(e.target.value)}
-                  className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3.5 py-2 text-xs text-[#FAF5EC] focus:outline-none focus:border-[#C49767]"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-[#DFCDB5] mb-1">Deskripsi</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Mahasiswa Angkatan 2024"
-                  value={newCohortDesc}
-                  onChange={(e) => setNewCohortDesc(e.target.value)}
-                  className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3.5 py-2 text-xs text-[#FAF5EC] focus:outline-none focus:border-[#C49767]"
-                />
-              </div>
-              <button
-                type="submit"
-                className="px-5 py-2.5 rounded-2xl text-xs font-semibold bg-[#5A3521] hover:bg-[#6D4029] text-[#FAF5EC] border border-[#7D492F] transition"
-              >
-                Simpan Angkatan
-              </button>
-            </form>
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Form Tambah Angkatan */}
+            <div className="bg-[#2B1810] border border-[#4D2D1E] rounded-3xl p-6 shadow-xl text-[#FAF5EC]">
+              <h3 className="text-base font-serif font-bold text-[#FAF5EC] mb-1">Tambah Angkatan Baru</h3>
+              <p className="text-xs text-[#DFCDB5] mb-4">Daftarkan tahun angkatan mahasiswa (misal: 2025).</p>
+              <form onSubmit={handleCreateCohort} className="space-y-3">
+                <div>
+                  <label className="block text-xs font-semibold text-[#DFCDB5] mb-1">Tahun Angkatan</label>
+                  <input
+                    type="number"
+                    required
+                    value={newCohortYear}
+                    onChange={(e) => setNewCohortYear(e.target.value)}
+                    className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3.5 py-2 text-xs text-[#FAF5EC] focus:outline-none focus:border-[#C49767]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[#DFCDB5] mb-1">Deskripsi</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Mahasiswa Baru Angkatan 2025"
+                    value={newCohortDesc}
+                    onChange={(e) => setNewCohortDesc(e.target.value)}
+                    className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3.5 py-2 text-xs text-[#FAF5EC] focus:outline-none focus:border-[#C49767]"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 rounded-2xl text-xs font-semibold bg-[#5A3521] hover:bg-[#6D4029] text-[#FAF5EC] border border-[#7D492F] transition"
+                >
+                  Simpan Angkatan
+                </button>
+              </form>
+            </div>
+
+            {/* Form Tambah Kelas */}
+            <div className="bg-[#2B1810] border border-[#4D2D1E] rounded-3xl p-6 shadow-xl text-[#FAF5EC]">
+              <h3 className="text-base font-serif font-bold text-[#FAF5EC] mb-1">Tambah Kelas Praktikum</h3>
+              <p className="text-xs text-[#DFCDB5] mb-4">Tambahkan kelas praktikum di bawah angkatan terkait.</p>
+              <form onSubmit={handleCreateClass} className="space-y-3">
+                <div>
+                  <label className="block text-xs font-semibold text-[#DFCDB5] mb-1">Pilih Angkatan</label>
+                  <select
+                    value={newClassCohortId}
+                    onChange={(e) => setNewClassCohortId(e.target.value)}
+                    className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3.5 py-2 text-xs text-[#FAF5EC] focus:outline-none focus:border-[#C49767]"
+                  >
+                    {cohorts.map((c) => (
+                      <option key={c.id} value={c.id}>Angkatan {c.year} - {c.description}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[#DFCDB5] mb-1">Nama Kelas</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. TI-A / Praktikum Basis Data A"
+                    value={newClassName}
+                    onChange={(e) => setNewClassName(e.target.value)}
+                    className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3.5 py-2 text-xs text-[#FAF5EC] focus:outline-none focus:border-[#C49767]"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 rounded-2xl text-xs font-semibold bg-emerald-700 hover:bg-emerald-600 text-[#FAF5EC] border border-emerald-500/40 transition"
+                >
+                  Simpan Kelas
+                </button>
+              </form>
+            </div>
           </div>
 
-          <div className="bg-[#2B1810] border border-[#4D2D1E] rounded-3xl p-6 sm:p-7 shadow-xl text-[#FAF5EC]">
-            <h3 className="text-base font-serif font-bold text-[#FAF5EC] mb-3">Tambah Kelas Praktikum</h3>
-            <form onSubmit={handleCreateClass} className="space-y-3">
-              <div>
-                <label className="block text-xs font-semibold text-[#DFCDB5] mb-1">Pilih Angkatan</label>
-                <select
-                  value={newClassCohortId}
-                  onChange={(e) => setNewClassCohortId(e.target.value)}
-                  className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3.5 py-2 text-xs text-[#FAF5EC] focus:outline-none focus:border-[#C49767]"
-                >
-                  {cohorts.map((c) => (
-                    <option key={c.id} value={c.id}>Angkatan {c.year}</option>
-                  ))}
-                </select>
+          {/* List & Kelola Data Angkatan yang Ada (Sesuai Permintaan Bos!) */}
+          <div className="bg-[#2B1810] border border-[#4D2D1E] rounded-3xl p-6 shadow-xl text-[#FAF5EC]">
+            <h3 className="text-base font-serif font-bold text-[#FAF5EC] mb-3 flex items-center justify-between">
+              <span>Daftar Angkatan Terdaftar</span>
+              <span className="text-xs text-[#DFCDB5] font-normal">{cohorts.length} Angkatan</span>
+            </h3>
+
+            {cohorts.length === 0 ? (
+              <p className="text-xs text-[#7A5A48]">Belum ada angkatan terdaftar.</p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {cohorts.map((c) => (
+                  <div key={c.id} className="bg-[#1C0F0A] border border-[#3E2316] p-4 rounded-2xl flex items-center justify-between shadow-sm">
+                    <div>
+                      <h4 className="text-sm font-bold text-[#E8DCB8] font-mono">Angkatan {c.year}</h4>
+                      <p className="text-xs text-[#DFCDB5]/70 mt-0.5">{c.description || 'Tidak ada deskripsi'}</p>
+                      <span className="text-[10px] text-[#A47E65] font-mono block mt-1">
+                        {c.class_count ?? 0} Kelas Terhubung
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => triggerDeleteCohort(c.id, c.year)}
+                      title="Hapus Angkatan"
+                      className="p-2 text-rose-400 hover:bg-rose-500/10 rounded-xl transition"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
               </div>
-              <div>
-                <label className="block text-xs font-semibold text-[#DFCDB5] mb-1">Nama Kelas</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. TI-A / Praktikum Basis Data A"
-                  value={newClassName}
-                  onChange={(e) => setNewClassName(e.target.value)}
-                  className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3.5 py-2 text-xs text-[#FAF5EC] focus:outline-none focus:border-[#C49767]"
-                />
+            )}
+          </div>
+
+          {/* List & Kelola Data Kelas yang Ada */}
+          <div className="bg-[#2B1810] border border-[#4D2D1E] rounded-3xl p-6 shadow-xl text-[#FAF5EC]">
+            <h3 className="text-base font-serif font-bold text-[#FAF5EC] mb-3 flex items-center justify-between">
+              <span>Daftar Kelas Praktikum Terdaftar</span>
+              <span className="text-xs text-[#DFCDB5] font-normal">{classes.length} Kelas</span>
+            </h3>
+
+            {classes.length === 0 ? (
+              <p className="text-xs text-[#7A5A48]">Belum ada kelas praktikum terdaftar.</p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {classes.map((cl) => (
+                  <div key={cl.id} className="bg-[#1C0F0A] border border-[#3E2316] p-4 rounded-2xl flex items-center justify-between shadow-sm">
+                    <div>
+                      <h4 className="text-sm font-bold text-[#FAF5EC]">{cl.name}</h4>
+                      <p className="text-xs text-[#E8DCB8] font-mono mt-0.5">Tahun Angkatan {cl.cohort_year}</p>
+                      <span className="text-[10px] text-emerald-400 font-mono block mt-1">
+                        {cl.student_count ?? 0} Mahasiswa Terdaftar
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => triggerDeleteClass(cl.id, cl.name)}
+                      title="Hapus Kelas"
+                      className="p-2 text-rose-400 hover:bg-rose-500/10 rounded-xl transition"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                ))}
               </div>
-              <button
-                type="submit"
-                className="px-5 py-2.5 rounded-2xl text-xs font-semibold bg-emerald-700 hover:bg-emerald-600 text-[#FAF5EC] border border-emerald-500/40 transition"
-              >
-                Simpan Kelas
-              </button>
-            </form>
+            )}
           </div>
         </div>
       )}
@@ -557,7 +873,7 @@ export default function AdminView() {
         </div>
       )}
 
-      {/* Confirmation Modal */}
+      {/* Reusable Confirmation Modal */}
       <ConfirmModal
         isOpen={confirmModal.open}
         title={confirmModal.title}
