@@ -1,6 +1,5 @@
-feat(projects): add table view, dedicated file manager, and container console
+refactor(header): replace floating avatar pill with seamless circular initial in header
 
-- Convert project cards into a clean responsive table view
-- Implement dedicated File Manager sub-environment with file listing, code editor, folder creation, and direct upload
-- Implement Portainer-style Container Console with /bin/sh, /bin/bash, custom command, user selection, and interactive shell execution
-- Add backend file manager and container exec endpoints
+- Convert floating absolute profile button into header flow to prevent covering buttons
+- Display sleek circular initial avatar without text or navbar background
+- Keep seamless cream and chocolate theme

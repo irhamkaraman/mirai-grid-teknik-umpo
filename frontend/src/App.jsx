@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Toaster } from 'sonner'
 import Navigation from './components/Navigation'
-import ProfileFloating from './components/ProfileFloating'
+import ProfileAvatar from './components/ProfileFloating'
 import ChangePasswordModal from './components/ChangePasswordModal'
 import LoginPage from './pages/LoginPage'
 import StudentDashboard from './pages/StudentDashboard'
@@ -95,17 +95,7 @@ export default function App() {
         }}
       />
 
-      {/* 1. Floating Profile Avatar (Pojok Kanan Atas) */}
-      <ProfileFloating
-        user={user}
-        onLogout={handleLogout}
-        onChangePassword={() => {
-          setIsMandatoryPasswordChange(false)
-          setShowPasswordModal(true)
-        }}
-      />
-
-      {/* 2. Floating Navigation (Sidebar Mengambang Coklat di Kiri + Nav Mobile) */}
+      {/* Floating Navigation (Sidebar Coklat di Kiri + Nav Mobile) */}
       <Navigation
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -114,13 +104,26 @@ export default function App() {
         setIsCollapsed={handleToggleCollapse}
       />
 
-      {/* 3. Main Content Container */}
+      {/* Main Content: Margin menyesuaikan sidebar secara dinamis */}
       <main
-        className={`flex-1 transition-all duration-300 ease-in-out p-4 sm:p-6 md:p-8 md:pr-24 pb-24 md:pb-12 ${
+        className={`flex-1 transition-all duration-300 ease-in-out p-4 sm:p-6 md:p-8 pb-24 md:pb-12 ${
           isCollapsed ? 'md:ml-[110px]' : 'md:ml-[290px]'
         }`}
       >
-        <div className="max-w-6xl mx-auto pt-14 md:pt-4">
+        <div className="max-w-6xl mx-auto">
+          {/* Header Tanpa Latar Belakang Navbar: Cukup lingkaran inisial di pojok kanan atas */}
+          <header className="flex items-center justify-end pb-4 pt-1">
+            <ProfileAvatar
+              user={user}
+              onLogout={handleLogout}
+              onChangePassword={() => {
+                setIsMandatoryPasswordChange(false)
+                setShowPasswordModal(true)
+              }}
+            />
+          </header>
+
+          {/* Views */}
           {activeTab === 'dashboard' && (
             <StudentDashboard user={user} onNavigate={(tab) => setActiveTab(tab)} />
           )}
@@ -130,7 +133,7 @@ export default function App() {
         </div>
       </main>
 
-      {/* 4. Password Change Modal */}
+      {/* Password Change Modal */}
       <ChangePasswordModal
         isOpen={showPasswordModal}
         isMandatory={isMandatoryPasswordChange}
