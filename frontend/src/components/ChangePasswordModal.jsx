@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
-import { KeyRound, AlertCircle, CheckCircle } from 'lucide-react'
+import { KeyRound, AlertCircle } from 'lucide-react'
 import { api } from '../api/client'
+import { Spinner } from './Skeletons'
 
 export default function ChangePasswordModal({ isOpen, onClose, isMandatory = false, onSuccess }) {
   const [oldPassword, setOldPassword] = useState('')
@@ -41,17 +42,17 @@ export default function ChangePasswordModal({ isOpen, onClose, isMandatory = fal
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
-      <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-6">
-        <div className="flex items-center space-x-3 text-sky-400 mb-4">
-          <div className="p-2.5 rounded-xl bg-sky-500/10 border border-sky-500/20">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-warmdark-950/80 backdrop-blur-sm p-4">
+      <div className="w-full max-w-md bg-warmdark-850 border border-warmdark-700 rounded-3xl shadow-2xl p-6">
+        <div className="flex items-center space-x-3 text-terracotta-400 mb-4">
+          <div className="p-2.5 rounded-2xl bg-chocolate-700/50 border border-chocolate-500/40 text-cream-200">
             <KeyRound className="h-5 w-5" />
           </div>
           <div>
-            <h3 className="text-base font-bold text-white">
+            <h3 className="text-base font-serif font-bold text-cream-100">
               {isMandatory ? 'Ganti Password Pertama Kali' : 'Perbarui Password'}
             </h3>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-cream-400/80">
               {isMandatory
                 ? 'Untuk keamanan praktikum, silakan ganti password awal Anda.'
                 : 'Masukkan password lama dan password baru Anda.'}
@@ -60,45 +61,45 @@ export default function ChangePasswordModal({ isOpen, onClose, isMandatory = fal
         </div>
 
         {error && (
-          <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center space-x-2 text-rose-400 text-xs">
-            <AlertCircle className="h-4 w-4 shrink-0" />
+          <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center space-x-2 text-rose-300 text-xs">
+            <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
             <span>{error}</span>
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1">Password Lama</label>
+            <label className="block text-xs font-semibold text-cream-200 mb-1">Password Lama</label>
             <input
               type="password"
               required
               value={oldPassword}
               onChange={(e) => setOldPassword(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500"
+              className="w-full bg-warmdark-900 border border-warmdark-700 rounded-xl px-3.5 py-2 text-xs text-cream-100 placeholder-warmdark-700 focus:outline-none focus:border-terracotta-500"
               placeholder="••••••••"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1">Password Baru (Min. 8 Karakter)</label>
+            <label className="block text-xs font-semibold text-cream-200 mb-1">Password Baru (Min. 8 Karakter)</label>
             <input
               type="password"
               required
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500"
+              className="w-full bg-warmdark-900 border border-warmdark-700 rounded-xl px-3.5 py-2 text-xs text-cream-100 placeholder-warmdark-700 focus:outline-none focus:border-terracotta-500"
               placeholder="••••••••"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1">Konfirmasi Password Baru</label>
+            <label className="block text-xs font-semibold text-cream-200 mb-1">Konfirmasi Password Baru</label>
             <input
               type="password"
               required
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500"
+              className="w-full bg-warmdark-900 border border-warmdark-700 rounded-xl px-3.5 py-2 text-xs text-cream-100 placeholder-warmdark-700 focus:outline-none focus:border-terracotta-500"
               placeholder="••••••••"
             />
           </div>
@@ -108,7 +109,7 @@ export default function ChangePasswordModal({ isOpen, onClose, isMandatory = fal
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition"
+                className="px-4 py-2 rounded-xl text-xs font-medium text-cream-400 hover:text-cream-200 hover:bg-warmdark-750 transition"
               >
                 Batal
               </button>
@@ -116,9 +117,16 @@ export default function ChangePasswordModal({ isOpen, onClose, isMandatory = fal
             <button
               type="submit"
               disabled={loading}
-              className="px-5 py-2 rounded-xl text-xs font-semibold bg-sky-600 hover:bg-sky-500 text-white shadow-md shadow-sky-600/20 transition disabled:opacity-50"
+              className="px-5 py-2 rounded-xl text-xs font-semibold bg-chocolate-700 hover:bg-chocolate-600 text-cream-100 border border-chocolate-500/40 shadow-md shadow-chocolate-950/30 transition disabled:opacity-50"
             >
-              {loading ? 'Menyimpan...' : 'Simpan Password'}
+              {loading ? (
+                <span className="flex items-center space-x-1.5">
+                  <Spinner size="xs" />
+                  <span>Menyimpan...</span>
+                </span>
+              ) : (
+                'Simpan Password'
+              )}
             </button>
           </div>
         </form>

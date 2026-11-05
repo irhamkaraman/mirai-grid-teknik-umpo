@@ -1,0 +1,7 @@
+refactor(ui): redesign with warm chocolate and cream Anthropic theme
+
+- Replace full top navbar with top-right floating circular profile menu
+- Implement floating sidebar on desktop and floating fixed bottom bar on mobile
+- Add Alpine.js integration
+- Add skeleton shimmer loaders and async action spinners
+- Style with warm chocolate and cream color palette and Anthropic typography

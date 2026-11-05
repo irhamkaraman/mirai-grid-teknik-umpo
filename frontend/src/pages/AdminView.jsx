@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
-import { Shield, Users, UserPlus, FileSpreadsheet, KeyRound, Ban, CheckCircle, Search, Clock, Plus } from 'lucide-react'
+import { Shield, Users, UserPlus, KeyRound, Ban, Search, Clock, Sparkles } from 'lucide-react'
 import { api } from '../api/client'
+import { SkeletonCard, SkeletonTable, Spinner } from '../components/Skeletons'
 
 export default function AdminView() {
   const [stats, setStats] = useState(null)
@@ -8,6 +9,7 @@ export default function AdminView() {
   const [classes, setClasses] = useState([])
   const [users, setUsers] = useState([])
   const [auditLogs, setAuditLogs] = useState([])
+  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [selectedClass, setSelectedClass] = useState('')
   const [activeTab, setActiveTab] = useState('users') // 'users', 'generator', 'classes', 'logs'
@@ -28,20 +30,26 @@ export default function AdminView() {
   const [newClassCohortId, setNewClassCohortId] = useState('')
 
   useEffect(() => {
-    fetchStats()
-    fetchCohorts()
-    fetchClasses()
-    fetchUsers()
-    fetchAuditLogs()
+    loadAll()
   }, [])
+
+  const loadAll = async () => {
+    setLoading(true)
+    await Promise.allSettled([
+      fetchStats(),
+      fetchCohorts(),
+      fetchClasses(),
+      fetchUsers(),
+      fetchAuditLogs(),
+    ])
+    setLoading(false)
+  }
 
   const fetchStats = async () => {
     try {
       const res = await api.get('/admin/stats')
       setStats(res.data)
-    } catch (err) {
-      console.error(err)
-    }
+    } catch (err) {}
   }
 
   const fetchCohorts = async () => {
@@ -70,8 +78,8 @@ export default function AdminView() {
       const res = await api.get('/admin/users', {
         params: {
           search: search || undefined,
-          class_id: selectedClass || undefined
-        }
+          class_id: selectedClass || undefined,
+        },
       })
       setUsers(res.data)
     } catch (err) {}
@@ -93,7 +101,7 @@ export default function AdminView() {
         class_id: parseInt(genClassId),
         nim_prefix: genNimPrefix,
         start_number: parseInt(genStartNum),
-        count: parseInt(genCount)
+        count: parseInt(genCount),
       })
       setGeneratedAccounts(res.data.accounts)
       fetchUsers()
@@ -149,69 +157,78 @@ export default function AdminView() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-in fade-in duration-200">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold text-white flex items-center space-x-2">
-            <Shield className="h-5 w-5 text-amber-400" />
+          <h2 className="text-xl font-serif font-bold text-cream-50 flex items-center space-x-2">
+            <Shield className="h-5 w-5 text-terracotta-400" />
             <span>Admin Lab Panel — MiraiGrid</span>
           </h2>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs text-cream-400/80 mt-1 font-sans">
             Kelola angkatan, kelas praktikum, akun mahasiswa massal, dan audit log.
           </p>
         </div>
       </div>
 
       {/* Global Stat Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl">
-          <p className="text-xs text-slate-400">Total Mahasiswa</p>
-          <p className="text-2xl font-black text-white mt-1">{stats?.total_students ?? 0}</p>
+      {loading ? (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <SkeletonCard />
+          <SkeletonCard />
+          <SkeletonCard />
+          <SkeletonCard />
         </div>
-        <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl">
-          <p className="text-xs text-slate-400">Project Aktif</p>
-          <p className="text-2xl font-black text-sky-400 mt-1">{stats?.total_projects ?? 0}</p>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="bg-warmdark-850/90 border border-warmdark-750 p-5 rounded-2xl shadow-sm">
+            <p className="text-xs text-cream-400/70">Total Mahasiswa</p>
+            <p className="text-2xl font-black text-cream-50 mt-1 font-sans">{stats?.total_students ?? 0}</p>
+          </div>
+          <div className="bg-warmdark-850/90 border border-warmdark-750 p-5 rounded-2xl shadow-sm">
+            <p className="text-xs text-cream-400/70">Project Aktif</p>
+            <p className="text-2xl font-black text-terracotta-400 mt-1 font-sans">{stats?.total_projects ?? 0}</p>
+          </div>
+          <div className="bg-warmdark-850/90 border border-warmdark-750 p-5 rounded-2xl shadow-sm">
+            <p className="text-xs text-cream-400/70">Database Siswa</p>
+            <p className="text-2xl font-black text-emerald-400 mt-1 font-sans">{stats?.total_databases ?? 0}</p>
+          </div>
+          <div className="bg-warmdark-850/90 border border-warmdark-750 p-5 rounded-2xl shadow-sm">
+            <p className="text-xs text-cream-400/70">Kelas Praktikum</p>
+            <p className="text-2xl font-black text-amber-300 mt-1 font-sans">{stats?.total_classes ?? 0}</p>
+          </div>
         </div>
-        <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl">
-          <p className="text-xs text-slate-400">Database Siswa</p>
-          <p className="text-2xl font-black text-emerald-400 mt-1">{stats?.total_databases ?? 0}</p>
-        </div>
-        <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl">
-          <p className="text-xs text-slate-400">Kelas Praktikum</p>
-          <p className="text-2xl font-black text-purple-400 mt-1">{stats?.total_classes ?? 0}</p>
-        </div>
-      </div>
+      )}
 
       {/* Sub Navigation */}
-      <div className="flex border-b border-slate-800 space-x-2">
+      <div className="flex border-b border-warmdark-750 space-x-2 overflow-x-auto">
         <button
           onClick={() => setActiveTab('users')}
-          className={`px-4 py-2 text-xs font-semibold border-b-2 transition ${
-            activeTab === 'users' ? 'border-sky-500 text-sky-400' : 'border-transparent text-slate-400 hover:text-slate-200'
+          className={`px-4 py-2.5 text-xs font-semibold border-b-2 whitespace-nowrap transition ${
+            activeTab === 'users' ? 'border-terracotta-500 text-terracotta-400' : 'border-transparent text-cream-400/70 hover:text-cream-200'
           }`}
         >
           Daftar Mahasiswa
         </button>
         <button
           onClick={() => setActiveTab('generator')}
-          className={`px-4 py-2 text-xs font-semibold border-b-2 transition ${
-            activeTab === 'generator' ? 'border-sky-500 text-sky-400' : 'border-transparent text-slate-400 hover:text-slate-200'
+          className={`px-4 py-2.5 text-xs font-semibold border-b-2 whitespace-nowrap transition ${
+            activeTab === 'generator' ? 'border-terracotta-500 text-terracotta-400' : 'border-transparent text-cream-400/70 hover:text-cream-200'
           }`}
         >
           Generator Akun Massal
         </button>
         <button
           onClick={() => setActiveTab('classes')}
-          className={`px-4 py-2 text-xs font-semibold border-b-2 transition ${
-            activeTab === 'classes' ? 'border-sky-500 text-sky-400' : 'border-transparent text-slate-400 hover:text-slate-200'
+          className={`px-4 py-2.5 text-xs font-semibold border-b-2 whitespace-nowrap transition ${
+            activeTab === 'classes' ? 'border-terracotta-500 text-terracotta-400' : 'border-transparent text-cream-400/70 hover:text-cream-200'
           }`}
         >
           Kelola Angkatan & Kelas
         </button>
         <button
           onClick={() => setActiveTab('logs')}
-          className={`px-4 py-2 text-xs font-semibold border-b-2 transition ${
-            activeTab === 'logs' ? 'border-sky-500 text-sky-400' : 'border-transparent text-slate-400 hover:text-slate-200'
+          className={`px-4 py-2.5 text-xs font-semibold border-b-2 whitespace-nowrap transition ${
+            activeTab === 'logs' ? 'border-terracotta-500 text-terracotta-400' : 'border-transparent text-cream-400/70 hover:text-cream-200'
           }`}
         >
           Audit Log
@@ -223,20 +240,20 @@ export default function AdminView() {
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
-              <Search className="h-4 w-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <Search className="h-4 w-4 text-cream-400/60 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 placeholder="Cari NIM atau Nama Mahasiswa..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && fetchUsers()}
-                className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-10 pr-4 py-2 text-xs text-slate-200 focus:outline-none focus:border-sky-500"
+                className="w-full bg-warmdark-900 border border-warmdark-700 rounded-xl pl-10 pr-4 py-2 text-xs text-cream-100 placeholder-warmdark-700 focus:outline-none focus:border-terracotta-500"
               />
             </div>
             <select
               value={selectedClass}
               onChange={(e) => { setSelectedClass(e.target.value); setTimeout(fetchUsers, 50); }}
-              className="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-sky-500"
+              className="bg-warmdark-900 border border-warmdark-700 rounded-xl px-3 py-2 text-xs text-cream-100 focus:outline-none focus:border-terracotta-500"
             >
               <option value="">Semua Kelas</option>
               {classes.map((c) => (
@@ -245,16 +262,16 @@ export default function AdminView() {
             </select>
             <button
               onClick={fetchUsers}
-              className="px-4 py-2 rounded-xl text-xs font-semibold bg-sky-600 hover:bg-sky-500 text-white transition"
+              className="px-4 py-2 rounded-xl text-xs font-semibold bg-chocolate-700 hover:bg-chocolate-600 text-cream-100 border border-chocolate-500/40 transition"
             >
               Filter
             </button>
           </div>
 
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+          <div className="bg-warmdark-850/90 border border-warmdark-750 rounded-2xl overflow-hidden shadow-sm">
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs text-slate-300">
-                <thead className="bg-slate-950 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
+              <table className="w-full text-left text-xs text-cream-200">
+                <thead className="bg-warmdark-950 text-cream-400/80 uppercase text-[10px] tracking-wider border-b border-warmdark-750">
                   <tr>
                     <th className="p-3.5">NIM / Username</th>
                     <th className="p-3.5">Nama</th>
@@ -263,17 +280,17 @@ export default function AdminView() {
                     <th className="p-3.5 text-right">Aksi</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800">
+                <tbody className="divide-y divide-warmdark-750/70">
                   {users.map((u) => (
-                    <tr key={u.id} className="hover:bg-slate-800/40 transition">
-                      <td className="p-3.5 font-mono font-semibold text-white">{u.username}</td>
-                      <td className="p-3.5">{u.name}</td>
-                      <td className="p-3.5 text-slate-400">
+                    <tr key={u.id} className="hover:bg-warmdark-800/40 transition">
+                      <td className="p-3.5 font-mono font-semibold text-cream-50">{u.username}</td>
+                      <td className="p-3.5 font-medium">{u.name}</td>
+                      <td className="p-3.5 text-cream-400/80">
                         {u.class_name ? `${u.class_name} (${u.cohort_year})` : '-'}
                       </td>
                       <td className="p-3.5">
                         <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-                          u.is_active ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'
+                          u.is_active ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
                         }`}>
                           {u.is_active ? 'Aktif' : 'Suspended'}
                         </span>
@@ -282,7 +299,7 @@ export default function AdminView() {
                         <button
                           onClick={() => handleResetPassword(u.id, u.name)}
                           title="Reset Password Sementara"
-                          className="p-1.5 text-slate-400 hover:text-amber-400 hover:bg-slate-800 rounded-lg transition"
+                          className="p-1.5 text-cream-400 hover:text-amber-400 hover:bg-warmdark-750 rounded-lg transition"
                         >
                           <KeyRound className="h-4 w-4" />
                         </button>
@@ -290,7 +307,7 @@ export default function AdminView() {
                           onClick={() => handleToggleStatus(u.id)}
                           title={u.is_active ? 'Suspend Akun' : 'Aktifkan Akun'}
                           className={`p-1.5 rounded-lg transition ${
-                            u.is_active ? 'text-slate-400 hover:text-rose-400 hover:bg-slate-800' : 'text-emerald-400 hover:bg-emerald-500/10'
+                            u.is_active ? 'text-cream-400 hover:text-rose-400 hover:bg-warmdark-750' : 'text-emerald-400 hover:bg-emerald-500/10'
                           }`}
                         >
                           <Ban className="h-4 w-4" />
@@ -308,22 +325,22 @@ export default function AdminView() {
       {/* TAB 2: GENERATOR */}
       {activeTab === 'generator' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
-            <h3 className="text-base font-bold text-white mb-2 flex items-center space-x-2">
-              <UserPlus className="h-4 w-4 text-sky-400" />
+          <div className="bg-warmdark-850/90 border border-warmdark-750 rounded-3xl p-6 shadow-sm">
+            <h3 className="text-base font-serif font-bold text-cream-100 mb-1 flex items-center space-x-2">
+              <UserPlus className="h-4 w-4 text-terracotta-400" />
               <span>Generator Akun Kelas Sekali Klik</span>
             </h3>
-            <p className="text-xs text-slate-400 mb-6">
+            <p className="text-xs text-cream-400/80 mb-5">
               Sistem akan otomatis membuat rentang akun mahasiswa dengan password awal unik acak.
             </p>
 
             <form onSubmit={handleGenerateAccounts} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Pilih Angkatan</label>
+                <label className="block text-xs font-semibold text-cream-200 mb-1">Pilih Angkatan</label>
                 <select
                   value={genCohortId}
                   onChange={(e) => setGenCohortId(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-slate-200"
+                  className="w-full bg-warmdark-900 border border-warmdark-700 rounded-xl px-3.5 py-2 text-xs text-cream-100 focus:outline-none focus:border-terracotta-500"
                 >
                   {cohorts.map((c) => (
                     <option key={c.id} value={c.id}>Angkatan {c.year} - {c.description}</option>
@@ -332,11 +349,11 @@ export default function AdminView() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Pilih Kelas</label>
+                <label className="block text-xs font-semibold text-cream-200 mb-1">Pilih Kelas</label>
                 <select
                   value={genClassId}
                   onChange={(e) => setGenClassId(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-slate-200"
+                  className="w-full bg-warmdark-900 border border-warmdark-700 rounded-xl px-3.5 py-2 text-xs text-cream-100 focus:outline-none focus:border-terracotta-500"
                 >
                   {classes.map((cl) => (
                     <option key={cl.id} value={cl.id}>{cl.name} (Tahun {cl.cohort_year})</option>
@@ -346,33 +363,33 @@ export default function AdminView() {
 
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">Prefix NIM</label>
+                  <label className="block text-xs font-semibold text-cream-200 mb-1">Prefix NIM</label>
                   <input
                     type="text"
                     required
                     value={genNimPrefix}
                     onChange={(e) => setGenNimPrefix(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 font-mono"
+                    className="w-full bg-warmdark-900 border border-warmdark-700 rounded-xl px-3 py-2 text-xs text-cream-100 font-mono"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">Nomor Awal</label>
+                  <label className="block text-xs font-semibold text-cream-200 mb-1">Nomor Awal</label>
                   <input
                     type="number"
                     required
                     value={genStartNum}
                     onChange={(e) => setGenStartNum(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 font-mono"
+                    className="w-full bg-warmdark-900 border border-warmdark-700 rounded-xl px-3 py-2 text-xs text-cream-100 font-mono"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">Jumlah</label>
+                  <label className="block text-xs font-semibold text-cream-200 mb-1">Jumlah</label>
                   <input
                     type="number"
                     required
                     value={genCount}
                     onChange={(e) => setGenCount(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 font-mono"
+                    className="w-full bg-warmdark-900 border border-warmdark-700 rounded-xl px-3 py-2 text-xs text-cream-100 font-mono"
                   />
                 </div>
               </div>
@@ -380,31 +397,38 @@ export default function AdminView() {
               <button
                 type="submit"
                 disabled={loadingAction}
-                className="w-full py-2.5 rounded-xl text-xs font-semibold bg-sky-600 hover:bg-sky-500 text-white shadow-md shadow-sky-600/20 transition disabled:opacity-50 mt-2"
+                className="w-full py-2.5 rounded-xl text-xs font-semibold bg-chocolate-700 hover:bg-chocolate-600 text-cream-100 border border-chocolate-500/40 shadow-lg shadow-chocolate-950/40 transition disabled:opacity-50 mt-2"
               >
-                {loadingAction ? 'Sedang Memproses Akun...' : 'Generate Akun Sekarang'}
+                {loadingAction ? (
+                  <span className="flex items-center justify-center space-x-1.5">
+                    <Spinner size="xs" />
+                    <span>Sedang Memproses Akun...</span>
+                  </span>
+                ) : (
+                  'Generate Akun Sekarang'
+                )}
               </button>
             </form>
           </div>
 
           {/* Results Box */}
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 flex flex-col">
-            <h3 className="text-base font-bold text-white mb-2">Hasil Akun Baru</h3>
-            <p className="text-xs text-slate-400 mb-4">Salin dan bagikan password sementara ini kepada mahasiswa.</p>
+          <div className="bg-warmdark-850/90 border border-warmdark-750 rounded-3xl p-6 shadow-sm flex flex-col">
+            <h3 className="text-base font-serif font-bold text-cream-100 mb-1">Hasil Akun Baru</h3>
+            <p className="text-xs text-cream-400/80 mb-4">Salin dan bagikan password sementara ini kepada mahasiswa.</p>
 
-            <div className="bg-slate-950 border border-slate-800/80 rounded-xl p-4 flex-1 overflow-y-auto max-h-96 font-mono text-xs text-slate-300">
+            <div className="bg-warmdark-950 border border-warmdark-750/80 rounded-2xl p-4 flex-1 overflow-y-auto max-h-96 font-mono text-xs text-cream-200">
               {generatedAccounts.length === 0 ? (
-                <span className="text-slate-600">Daftar akun yang baru digenerate akan muncul di sini.</span>
+                <span className="text-cream-400/40">Daftar akun yang baru digenerate akan muncul di sini.</span>
               ) : (
                 <div className="space-y-2">
-                  <div className="text-[10px] text-slate-500 pb-2 border-b border-slate-800 flex justify-between">
+                  <div className="text-[10px] text-cream-400/60 pb-2 border-b border-warmdark-750 flex justify-between">
                     <span>NIM</span>
                     <span>INITIAL PASSWORD</span>
                   </div>
                   {generatedAccounts.map((acc) => (
-                    <div key={acc.nim} className="flex justify-between items-center text-slate-200 py-1">
-                      <span className="font-bold text-sky-400">{acc.nim}</span>
-                      <span className="bg-slate-900 px-2 py-0.5 rounded text-amber-300 font-mono">{acc.initial_password}</span>
+                    <div key={acc.nim} className="flex justify-between items-center text-cream-200 py-1">
+                      <span className="font-bold text-terracotta-400">{acc.nim}</span>
+                      <span className="bg-warmdark-900 px-2 py-0.5 rounded text-amber-300 font-mono border border-warmdark-750">{acc.initial_password}</span>
                     </div>
                   ))}
                 </div>
@@ -417,47 +441,47 @@ export default function AdminView() {
       {/* TAB 3: CLASSES & COHORTS */}
       {activeTab === 'classes' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
-            <h3 className="text-sm font-bold text-white mb-3">Tambah Angkatan</h3>
+          <div className="bg-warmdark-850/90 border border-warmdark-750 rounded-3xl p-6 shadow-sm">
+            <h3 className="text-sm font-serif font-bold text-cream-100 mb-3">Tambah Angkatan</h3>
             <form onSubmit={handleCreateCohort} className="space-y-3">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Tahun Angkatan</label>
+                <label className="block text-xs font-semibold text-cream-200 mb-1">Tahun Angkatan</label>
                 <input
                   type="number"
                   required
                   value={newCohortYear}
                   onChange={(e) => setNewCohortYear(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-slate-200"
+                  className="w-full bg-warmdark-900 border border-warmdark-700 rounded-xl px-3.5 py-2 text-xs text-cream-100 focus:outline-none focus:border-terracotta-500"
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Deskripsi</label>
+                <label className="block text-xs font-semibold text-cream-200 mb-1">Deskripsi</label>
                 <input
                   type="text"
                   placeholder="e.g. Mahasiswa Angkatan 2024"
                   value={newCohortDesc}
                   onChange={(e) => setNewCohortDesc(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-slate-200"
+                  className="w-full bg-warmdark-900 border border-warmdark-700 rounded-xl px-3.5 py-2 text-xs text-cream-100 focus:outline-none focus:border-terracotta-500"
                 />
               </div>
               <button
                 type="submit"
-                className="px-4 py-2 rounded-xl text-xs font-semibold bg-sky-600 hover:bg-sky-500 text-white transition"
+                className="px-4 py-2 rounded-xl text-xs font-semibold bg-chocolate-700 hover:bg-chocolate-600 text-cream-100 border border-chocolate-500/40 transition"
               >
                 Simpan Angkatan
               </button>
             </form>
           </div>
 
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
-            <h3 className="text-sm font-bold text-white mb-3">Tambah Kelas Praktikum</h3>
+          <div className="bg-warmdark-850/90 border border-warmdark-750 rounded-3xl p-6 shadow-sm">
+            <h3 className="text-sm font-serif font-bold text-cream-100 mb-3">Tambah Kelas Praktikum</h3>
             <form onSubmit={handleCreateClass} className="space-y-3">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Pilih Angkatan</label>
+                <label className="block text-xs font-semibold text-cream-200 mb-1">Pilih Angkatan</label>
                 <select
                   value={newClassCohortId}
                   onChange={(e) => setNewClassCohortId(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-slate-200"
+                  className="w-full bg-warmdark-900 border border-warmdark-700 rounded-xl px-3.5 py-2 text-xs text-cream-100 focus:outline-none focus:border-terracotta-500"
                 >
                   {cohorts.map((c) => (
                     <option key={c.id} value={c.id}>Angkatan {c.year}</option>
@@ -465,19 +489,19 @@ export default function AdminView() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Nama Kelas</label>
+                <label className="block text-xs font-semibold text-cream-200 mb-1">Nama Kelas</label>
                 <input
                   type="text"
                   required
                   placeholder="e.g. TI-A / Praktikum Basis Data A"
                   value={newClassName}
                   onChange={(e) => setNewClassName(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-slate-200"
+                  className="w-full bg-warmdark-900 border border-warmdark-700 rounded-xl px-3.5 py-2 text-xs text-cream-100 focus:outline-none focus:border-terracotta-500"
                 />
               </div>
               <button
                 type="submit"
-                className="px-4 py-2 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition"
+                className="px-4 py-2 rounded-xl text-xs font-semibold bg-emerald-700 hover:bg-emerald-600 text-cream-100 border border-emerald-500/40 transition"
               >
                 Simpan Kelas
               </button>
@@ -488,31 +512,31 @@ export default function AdminView() {
 
       {/* TAB 4: AUDIT LOGS */}
       {activeTab === 'logs' && (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
-          <div className="p-4 border-b border-slate-800 flex items-center justify-between">
-            <h4 className="text-sm font-bold text-white flex items-center space-x-2">
-              <Clock className="h-4 w-4 text-sky-400" />
+        <div className="bg-warmdark-850/90 border border-warmdark-750 rounded-3xl overflow-hidden shadow-sm">
+          <div className="p-4 border-b border-warmdark-750 flex items-center justify-between">
+            <h4 className="text-sm font-serif font-bold text-cream-100 flex items-center space-x-2">
+              <Clock className="h-4 w-4 text-terracotta-400" />
               <span>Aktivitas Sistem & Audit Log (50 Terakhir)</span>
             </h4>
             <button
               onClick={fetchAuditLogs}
-              className="text-xs text-sky-400 hover:underline"
+              className="text-xs text-terracotta-400 hover:underline"
             >
               Refresh
             </button>
           </div>
-          <div className="divide-y divide-slate-800 text-xs">
+          <div className="divide-y divide-warmdark-750 text-xs">
             {auditLogs.map((log) => (
-              <div key={log.id} className="p-3.5 hover:bg-slate-800/40 flex items-center justify-between gap-4 transition">
+              <div key={log.id} className="p-4 hover:bg-warmdark-800/40 flex items-center justify-between gap-4 transition">
                 <div>
                   <div className="flex items-center space-x-2">
-                    <span className="font-semibold text-white">{log.actor_name || 'System'}</span>
-                    <span className="bg-slate-800 px-2 py-0.5 rounded text-[10px] font-mono text-sky-400">{log.action}</span>
-                    <span className="text-slate-500 text-[11px] font-mono">[{log.ip_address}]</span>
+                    <span className="font-semibold text-cream-100">{log.actor_name || 'System'}</span>
+                    <span className="bg-warmdark-950 px-2 py-0.5 rounded-lg text-[10px] font-mono text-terracotta-400 border border-warmdark-750">{log.action}</span>
+                    <span className="text-cream-400/50 text-[11px] font-mono">[{log.ip_address}]</span>
                   </div>
-                  <p className="text-slate-400 text-xs mt-0.5">{log.details}</p>
+                  <p className="text-cream-300/80 text-xs mt-1">{log.details}</p>
                 </div>
-                <span className="text-[11px] text-slate-500 whitespace-nowrap">{log.created_at}</span>
+                <span className="text-[11px] text-cream-400/50 whitespace-nowrap">{log.created_at}</span>
               </div>
             ))}
           </div>

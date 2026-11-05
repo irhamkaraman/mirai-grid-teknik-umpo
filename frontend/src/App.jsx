@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
-import Navbar from './components/Navbar'
-import Sidebar from './components/Sidebar'
+import Navigation from './components/Navigation'
+import ProfileFloating from './components/ProfileFloating'
 import ChangePasswordModal from './components/ChangePasswordModal'
 import LoginPage from './pages/LoginPage'
 import StudentDashboard from './pages/StudentDashboard'
@@ -65,8 +65,9 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col text-slate-100">
-      <Navbar
+    <div className="min-h-screen bg-warmdark-950 text-cream-100 flex flex-col font-sans selection:bg-terracotta-500 selection:text-white relative">
+      {/* 1. Floating Profile Avatar (Pojok Kanan Atas) */}
+      <ProfileFloating
         user={user}
         onLogout={handleLogout}
         onChangePassword={() => {
@@ -75,25 +76,26 @@ export default function App() {
         }}
       />
 
-      <div className="flex flex-1 overflow-hidden">
-        <Sidebar
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          userRole={user.role}
-        />
+      {/* 2. Floating Navigation (Sidebar Mengambang di Kiri + Floating Nav di Mobile) */}
+      <Navigation
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        userRole={user.role}
+      />
 
-        <main className="flex-1 overflow-y-auto p-6 md:p-8">
-          <div className="max-w-6xl mx-auto">
-            {activeTab === 'dashboard' && (
-              <StudentDashboard user={user} onNavigate={(tab) => setActiveTab(tab)} />
-            )}
-            {activeTab === 'projects' && <ProjectsView />}
-            {activeTab === 'databases' && <DatabasesView />}
-            {activeTab === 'admin' && user.role === 'admin' && <AdminView />}
-          </div>
-        </main>
-      </div>
+      {/* 3. Main Content Container */}
+      <main className="flex-1 md:ml-76 transition-all duration-200 p-4 sm:p-6 md:p-8 md:pr-24 pb-24 md:pb-12">
+        <div className="max-w-6xl mx-auto pt-14 md:pt-2">
+          {activeTab === 'dashboard' && (
+            <StudentDashboard user={user} onNavigate={(tab) => setActiveTab(tab)} />
+          )}
+          {activeTab === 'projects' && <ProjectsView />}
+          {activeTab === 'databases' && <DatabasesView />}
+          {activeTab === 'admin' && user.role === 'admin' && <AdminView />}
+        </div>
+      </main>
 
+      {/* 4. Password Change Modal */}
       <ChangePasswordModal
         isOpen={showPasswordModal}
         isMandatory={isMandatoryPasswordChange}

@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "alpinejs": "^3.17.5",
     "axios": "^1.7.9",
     "clsx": "^2.1.1",
     "lucide-react": "^0.469.0",
