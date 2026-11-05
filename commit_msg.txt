@@ -1,4 +1,4 @@
-fix(ui): remove sandbox text from File Manager header title
+fix(ui): update deploy page header to 'Konfigurasi Deploy'
 
-- Change header from 'File Manager Sandbox' to 'File Manager'
-- Keep subtitle clean and concise
+- Remove 'Project Aplikasi Web' text from header title
+- Keep title concise as 'Konfigurasi Deploy'

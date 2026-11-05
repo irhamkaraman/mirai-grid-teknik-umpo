@@ -118,7 +118,7 @@ export default function ProjectsView() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-serif font-bold text-[#26160F]">
-            "Project Aplikasi Web" Konfigurasi Deploy
+            Konfigurasi Deploy
           </h2>
           <p className="text-xs text-[#5C3B29] mt-1 font-sans">
             Deploy kode praktikum (PHP, Python, Node.js) ke container terisolasi.
