@@ -37,10 +37,10 @@ export default function FilesView({ onNavigate }) {
         <div>
           <h2 className="text-2xl font-serif font-bold text-[#26160F] flex items-center space-x-2">
             <Folder className="h-6 w-6 text-[#5A3521]" />
-            <span>File Manager Sandbox</span>
+            <span>File Manager</span>
           </h2>
           <p className="text-xs text-[#5C3B29] mt-1 font-sans">
-            Kelola direktori & source code praktikum di lingkungan sandbox terisolasi antar akun.
+            Kelola direktori & source code praktikum Anda secara terisolasi.
           </p>
         </div>
 

@@ -1,6 +1,4 @@
-feat(projects): add dedicated create project page with official language logos
+fix(ui): remove sandbox text from File Manager header title
 
-- Replace create project modal with full-page CreateProjectPage view (no modal)
-- Include high-quality official SVG logos for PHP, Python, and Node.js
-- Ensure balanced and proportional card dimensions
-- Link create flow directly to dedicated configuration detail page
+- Change header from 'File Manager Sandbox' to 'File Manager'
+- Keep subtitle clean and concise
