@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     DATA_DIR: str = "./data"
     UPLOADS_DIR: str = "./data/uploads"
     PROJECTS_DIR: str = "./data/projects"
+    HOST_PROJECTS_DIR: str = "/var/lib/docker/volumes/miraigrid_miraigrid_data/_data/projects"
     DATABASE_PATH: str = "./data/miraigrid.db"
 
     # Portainer Config
