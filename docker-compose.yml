@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  # Backend API (FastAPI)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: miraigrid_backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - miraigrid_data:/app/data
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - miraigrid_net
+      - database-center_db_network
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  # Frontend Web UI (Vite + Nginx)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: miraigrid_frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - miraigrid_net
+
+volumes:
+  miraigrid_data:
+
+networks:
+  miraigrid_net:
+    driver: bridge
+  database-center_db_network:
+    external: true
