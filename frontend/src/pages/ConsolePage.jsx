@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { Terminal as TerminalIcon, ArrowLeft, RefreshCw, X, Play, Sliders, CornerDownLeft, Shield } from 'lucide-react'
+import { Terminal as TerminalIcon, ArrowLeft, RefreshCw, Play, Square, Shield } from 'lucide-react'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import '@xterm/xterm/css/xterm.css'
@@ -12,28 +12,50 @@ export default function ConsolePage({ project, onBack }) {
   const termInstance = useRef(null)
   const fitAddonRef = useRef(null)
 
-  // Connection settings (Image 3 Portainer style)
+  // Connection settings
   const [command, setCommand] = useState('/bin/sh')
   const [useCustom, setUseCustom] = useState(false)
   const [customCommand, setCustomCommand] = useState('')
   const [user, setUser] = useState('root')
   const [connected, setConnected] = useState(false)
   const [connecting, setConnecting] = useState(false)
-  const [containerInfo, setContainerInfo] = useState('')
+
+  // Critical Refs to completely bypass React Stale Closure traps inside xterm.onData
+  const connectedRef = useRef(false)
+  const commandRef = useRef('/bin/sh')
+  const useCustomRef = useRef(false)
+  const customCommandRef = useRef('')
+  const userRef = useRef('root')
+
+  // Keep refs synchronized with state
+  useEffect(() => {
+    connectedRef.current = connected
+  }, [connected])
+
+  useEffect(() => {
+    commandRef.current = command
+  }, [command])
+
+  useEffect(() => {
+    useCustomRef.current = useCustom
+  }, [useCustom])
+
+  useEffect(() => {
+    customCommandRef.current = customCommand
+  }, [customCommand])
+
+  useEffect(() => {
+    userRef.current = user
+  }, [user])
 
   // Terminal state buffers
   const currentLineRef = useRef('')
   const historyRef = useRef([])
   const historyIndexRef = useRef(-1)
   const isExecutingRef = useRef(false)
-
-  // Current working directory state
   const cwdRef = useRef('/var/www/html')
 
-  const containerName = `app_${project.nim || 'student'}_${project.name}`
-
   useEffect(() => {
-    // Initialize xterm.js terminal
     if (!termInstance.current && terminalRef.current) {
       const term = new Terminal({
         cursorBlink: true,
@@ -42,13 +64,13 @@ export default function ConsolePage({ project, onBack }) {
         fontSize: 13,
         lineHeight: 1.3,
         theme: {
-          background: '#1A0E08', // Deep Chocolate
+          background: '#180E09', // Deep Dark Chocolate
           foreground: '#FAF5EC', // Pure Cream
           cursor: '#E8DCB8',     // Warm Latte
-          cursorAccent: '#1A0E08',
+          cursorAccent: '#180E09',
           selectionBackground: '#5A3521',
           selectionForeground: '#FFFFFF',
-          black: '#1A0E08',
+          black: '#180E09',
           red: '#E06C75',
           green: '#98C379',
           yellow: '#E5C07B',
@@ -70,7 +92,11 @@ export default function ConsolePage({ project, onBack }) {
       const fitAddon = new FitAddon()
       term.loadAddon(fitAddon)
       term.open(terminalRef.current)
-      fitAddon.fit()
+      setTimeout(() => {
+        try {
+          fitAddon.fit()
+        } catch (e) {}
+      }, 100)
 
       termInstance.current = term
       fitAddonRef.current = fitAddon
@@ -106,17 +132,23 @@ export default function ConsolePage({ project, onBack }) {
     term.writeln('\x1b[1;33m | |  | | | | | (_| | | |_| | |  | | (_| |\x1b[0m')
     term.writeln('\x1b[1;33m |_|  |_|_|_|  \\__,_|_|\\____|_|  |_|\\__,_|\x1b[0m')
     term.writeln('\x1b[2m  Lab Teknik Informatika UMPO — Container Console\x1b[0m\r\n')
+    term.writeln('\x1b[36mKlik tombol "Connect" di atas untuk menghubungkan sesi CLI ke container.\x1b[0m\r\n')
   }
 
   const printPrompt = (term) => {
-    const u = user || 'root'
+    const u = userRef.current || 'root'
     const shortCwd = cwdRef.current.length > 25 ? '...' + cwdRef.current.slice(-22) : cwdRef.current
     term.write(`\r\n\x1b[1;32m${u}@${project.name}\x1b[0m:\x1b[1;34m${shortCwd}\x1b[0m# `)
   }
 
-  // Handle Keystrokes & Shortcuts (Ctrl+C, Ctrl+L, Arrow keys, etc.)
+  // Handle Keystrokes & Shortcuts (Using Refs, NEVER blocked by closures!)
   const handleTerminalInput = (data, term) => {
-    if (!connected || isExecutingRef.current) return
+    if (!connectedRef.current) {
+      term.writeln('\r\n\x1b[1;33m[PERINGATAN] Terminal belum terhubung. Klik tombol "Connect" di atas terlebih dahulu.\x1b[0m')
+      return
+    }
+
+    if (isExecutingRef.current) return
 
     const charCode = data.charCodeAt(0)
 
@@ -183,7 +215,6 @@ export default function ConsolePage({ project, onBack }) {
       if (historyRef.current.length > 0 && historyIndexRef.current > 0) {
         historyIndexRef.current -= 1
         const prevCmd = historyRef.current[historyIndexRef.current]
-        // Clear current line on display
         while (currentLineRef.current.length > 0) {
           term.write('\b \b')
           currentLineRef.current = currentLineRef.current.slice(0, -1)
@@ -215,7 +246,21 @@ export default function ConsolePage({ project, onBack }) {
       return
     }
 
-    // Normal Printable Characters
+    // 8. Tab Key (Insert 2 spaces)
+    if (charCode === 9) {
+      currentLineRef.current += '  '
+      term.write('  ')
+      return
+    }
+
+    // 9. Pasted Multi-character Text
+    if (data.length > 1 && !data.startsWith('\x1b')) {
+      currentLineRef.current += data
+      term.write(data)
+      return
+    }
+
+    // 10. Normal Printable Characters
     if (charCode >= 32 && charCode <= 126) {
       currentLineRef.current += data
       term.write(data)
@@ -227,17 +272,18 @@ export default function ConsolePage({ project, onBack }) {
     e?.preventDefault()
     setConnecting(true)
     const term = termInstance.current
-    const execCmd = useCustom ? customCommand.trim() : command
+    const execCmd = useCustomRef.current ? customCommandRef.current.trim() : commandRef.current
 
     try {
-      // Test exec and get initial container state
       const res = await api.post(`/projects/${project.id}/console/exec`, {
         command: execCmd || '/bin/sh',
-        user: user || 'root',
+        user: userRef.current || 'root',
         stdin_input: 'whoami && pwd && uname -sr'
       })
 
+      connectedRef.current = true
       setConnected(true)
+
       const lines = (res.data.output || '').split('\n').map((l) => l.trim()).filter(Boolean)
       if (lines.length >= 2) {
         cwdRef.current = lines[1]
@@ -245,9 +291,10 @@ export default function ConsolePage({ project, onBack }) {
 
       term.writeln(`\x1b[1;32m✔ Connected to container: ${res.data.container}\x1b[0m`)
       term.writeln(`\x1b[36m  User: ${res.data.user} | Shell: ${res.data.command}\x1b[0m`)
-      term.writeln(`\x1b[2m  Shortcuts: [Ctrl+C] Cancel, [Ctrl+L] Clear Screen, [Up/Down] History\x1b[0m`)
+      term.writeln(`\x1b[2m  Shortcuts: [Ctrl+C] Cancel, [Ctrl+L] Clear Screen, [Up/Down] History, [Tab] Indent\x1b[0m`)
 
       printPrompt(term)
+      term.focus()
       toast.success('Console container berhasil terhubung!')
     } catch (err) {
       term.writeln(`\x1b[1;31m✖ Connection Error: ${err.response?.data?.detail || err.message}\x1b[0m`)
@@ -260,21 +307,19 @@ export default function ConsolePage({ project, onBack }) {
   // Execute Command
   const executeCommand = async (cmd, term) => {
     isExecutingRef.current = true
-    const execShell = useCustom ? customCommand.trim() : command
+    const execShell = useCustomRef.current ? customCommandRef.current.trim() : commandRef.current
 
-    // Prepend cd to maintain directory persistence
     const fullInput = `cd ${cwdRef.current} 2>/dev/null; ${cmd}; echo "__MIRAIGRID_PWD__$(pwd)"`
 
     try {
       const res = await api.post(`/projects/${project.id}/console/exec`, {
         command: execShell || '/bin/sh',
-        user: user || 'root',
+        user: userRef.current || 'root',
         stdin_input: fullInput
       })
 
       let rawOutput = res.data.output || ''
 
-      // Extract updated PWD
       if (rawOutput.includes('__MIRAIGRID_PWD__')) {
         const parts = rawOutput.split('__MIRAIGRID_PWD__')
         rawOutput = parts[0]
@@ -284,7 +329,6 @@ export default function ConsolePage({ project, onBack }) {
         }
       }
 
-      // Print output with CRLF
       if (rawOutput) {
         const formatted = rawOutput.replace(/\r?\n/g, '\r\n')
         term.write(formatted)
@@ -301,6 +345,7 @@ export default function ConsolePage({ project, onBack }) {
   }
 
   const handleDisconnect = () => {
+    connectedRef.current = false
     setConnected(false)
     if (termInstance.current) {
       termInstance.current.writeln('\r\n\x1b[1;33m--- Disconnected from container session ---\x1b[0m\r\n')
@@ -313,11 +358,12 @@ export default function ConsolePage({ project, onBack }) {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#DECDBD]">
         <div className="flex items-center space-x-3">
           <button
+            type="button"
             onClick={onBack}
-            className="p-2.5 rounded-2xl bg-[#DECDBD] hover:bg-[#D1BDAB] text-[#26160F] transition shadow-sm"
-            title="Kembali"
+            className="p-2.5 rounded-2xl bg-[#DECDBD] hover:bg-[#D1BDAB] text-[#26160F] transition shadow-sm cursor-pointer shrink-0"
+            title="Kembali ke Daftar Aplikasi"
           >
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeft className="h-5 w-5" />
           </button>
           <div>
             <h2 className="text-2xl font-serif font-bold text-[#26160F] flex items-center space-x-2">
@@ -402,7 +448,7 @@ export default function ConsolePage({ project, onBack }) {
               <button
                 type="submit"
                 disabled={connecting}
-                className="w-full py-2.5 rounded-xl text-xs font-semibold bg-[#FAF5EC] hover:bg-white text-[#2B1810] shadow-md transition disabled:opacity-50 flex items-center justify-center space-x-1.5"
+                className="w-full py-2.5 rounded-xl text-xs font-semibold bg-[#FAF5EC] hover:bg-white text-[#2B1810] shadow-md transition disabled:opacity-50 flex items-center justify-center space-x-1.5 cursor-pointer"
               >
                 {connecting ? <Spinner size="xs" className="border-[#2B1810]" /> : <Play className="h-3.5 w-3.5" />}
                 <span>Connect</span>
@@ -415,9 +461,10 @@ export default function ConsolePage({ project, onBack }) {
                     if (termInstance.current) {
                       termInstance.current.clear()
                       printPrompt(termInstance.current)
+                      termInstance.current.focus()
                     }
                   }}
-                  className="px-3 py-2.5 rounded-xl text-xs font-semibold bg-[#3A2115] hover:bg-[#482A1B] text-[#DFCDB5] transition"
+                  className="px-3 py-2.5 rounded-xl text-xs font-semibold bg-[#3A2115] hover:bg-[#482A1B] text-[#DFCDB5] transition cursor-pointer"
                   title="Clear (Ctrl+L)"
                 >
                   Clear
@@ -425,7 +472,7 @@ export default function ConsolePage({ project, onBack }) {
                 <button
                   type="button"
                   onClick={handleDisconnect}
-                  className="flex-1 py-2.5 rounded-xl text-xs font-semibold bg-rose-600 hover:bg-rose-500 text-white transition shadow-sm"
+                  className="flex-1 py-2.5 rounded-xl text-xs font-semibold bg-rose-600 hover:bg-rose-500 text-white transition shadow-sm cursor-pointer"
                 >
                   Disconnect
                 </button>
@@ -435,10 +482,13 @@ export default function ConsolePage({ project, onBack }) {
         </form>
       </div>
 
-      {/* 3. Terminal Canvas (Full-height xterm.js Emulator) */}
-      <div className="bg-[#1A0E08] border-2 border-[#4D2D1E] rounded-3xl p-4 shadow-2xl overflow-hidden min-h-[520px] flex flex-col">
-        <div className="flex items-center justify-between pb-2 mb-2 border-b border-[#3E2316]/60 text-xs font-mono text-[#DFCDB5]/60">
-          <span>TERMINAL • XTERM EMULATOR</span>
+      {/* 3. Terminal Canvas (Click anywhere to focus!) */}
+      <div
+        onClick={() => termInstance.current?.focus()}
+        className="bg-[#180E09] border-2 border-[#4D2D1E] rounded-3xl p-4 shadow-2xl overflow-hidden min-h-[520px] flex flex-col cursor-text"
+      >
+        <div className="flex items-center justify-between pb-2 mb-2 border-b border-[#3E2316]/60 text-xs font-mono text-[#DFCDB5]/60 select-none">
+          <span>TERMINAL • XTERM EMULATOR (KLIK UNTUK FOKUS KETIK)</span>
           <span>SHORTCUTS: CTRL+C (SIGINT) • CTRL+L (CLEAR) • UP/DOWN (HISTORY)</span>
         </div>
         <div ref={terminalRef} className="flex-1 w-full h-[460px] overflow-hidden" />

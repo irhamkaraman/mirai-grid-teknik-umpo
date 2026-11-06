@@ -1,6 +1,5 @@
-fix(files): resolve Save icon reference and implement full standalone layout
+fix(console): fix stale closure in terminal input and auto-focus xterm
 
-- Import missing Save icon in FileManager to fix 'Save is not defined' error
-- Render File Manager as a dedicated full-screen standalone layout without sidebar
-- Add back button 'Kembali ke MiraiGrid' to return to dashboard
-- Give File Manager 100% viewport width and height for true cPanel desktop experience
+- Synchronize connection state with refs to prevent stale closure blocking terminal input
+- Enable autofocus and click-to-focus on xterm canvas
+- Support pasting and multi-character terminal inputs seamlessly
