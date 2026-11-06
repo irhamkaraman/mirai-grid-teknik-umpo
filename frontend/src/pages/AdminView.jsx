@@ -11,6 +11,8 @@ export default function AdminView() {
   const [cohorts, setCohorts] = useState([])
   const [classes, setClasses] = useState([])
   const [users, setUsers] = useState([])
+  const [userPage, setUserPage] = useState(1)
+  const [userPageSize, setUserPageSize] = useState(10)
   const [auditLogs, setAuditLogs] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -91,6 +93,7 @@ export default function AdminView() {
   }
 
   const fetchUsers = async () => {
+    setUserPage(1)
     try {
       const res = await api.get('/admin/users', {
         params: {
@@ -393,7 +396,7 @@ export default function AdminView() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#3E2316]">
-                  {users.map((u) => (
+                  {paginatedUsers.map((u) => (
                     <tr key={u.id} className="hover:bg-[#361E13] transition">
                       <td className="p-4 font-mono font-semibold text-[#FAF5EC]">{u.username}</td>
                       <td className="p-4 font-medium">{u.name}</td>
@@ -446,6 +449,54 @@ export default function AdminView() {
                 </tbody>
               </table>
             </div>
+
+            {/* Pagination Controls */}
+            {users.length > 0 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 bg-[#1C0F0A] border-t border-[#3E2316] text-xs text-[#DFCDB5]">
+                <div className="flex items-center space-x-2">
+                  <span>Tampilkan</span>
+                  <select
+                    value={userPageSize}
+                    onChange={(e) => {
+                      setUserPageSize(Number(e.target.value))
+                      setUserPage(1)
+                    }}
+                    className="bg-[#2B1810] border border-[#4D2D1E] rounded-xl px-2.5 py-1 text-xs text-[#FAF5EC] focus:outline-none"
+                  >
+                    <option value={5}>5</option>
+                    <option value={10}>10</option>
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                  </select>
+                  <span>akun per halaman</span>
+                  <span className="text-[#A47E65] ml-2">
+                    (Total: {users.length} akun)
+                  </span>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <span className="text-[11px] font-mono mr-1">
+                    Halaman {userPage} dari {Math.ceil(users.length / userPageSize) || 1}
+                  </span>
+                  <button
+                    onClick={() => setUserPage((p) => Math.max(1, p - 1))}
+                    disabled={userPage <= 1}
+                    className="p-1.5 rounded-xl bg-[#2B1810] border border-[#4D2D1E] text-[#FAF5EC] disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#3D2317] transition"
+                    title="Halaman Sebelumnya"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => setUserPage((p) => Math.min(Math.ceil(users.length / userPageSize) || 1, p + 1))}
+                    disabled={userPage >= (Math.ceil(users.length / userPageSize) || 1)}
+                    className="p-1.5 rounded-xl bg-[#2B1810] border border-[#4D2D1E] text-[#FAF5EC] disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#3D2317] transition"
+                    title="Halaman Selanjutnya"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom'
 import { Database, Plus, Trash2, Copy, Check, Eye, EyeOff, Server, ExternalLink, AlertCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { api } from '../api/client'
-import { SkeletonCard, Spinner } from '../components/Skeletons'
+import { SkeletonTable, SkeletonCard, Spinner } from '../components/Skeletons'
 import ConfirmModal from '../components/ConfirmModal'
 import ModalPortal from '../components/ModalPortal'
 
@@ -179,110 +179,158 @@ export default function DatabasesView() {
         </div>
       </div>
 
-      {/* Internal Databases Grid */}
+      {/* Internal Databases Table (Model ala Halaman Deploy/ProjectsView) */}
       <div>
-        <h3 className="text-base font-serif font-bold text-[#26160F] mb-3.5 flex items-center space-x-2">
-          <Server className="h-4 w-4 text-[#5A3521]" />
-          <span>Database Server Lab Anda</span>
-        </h3>
+        <div className="flex items-center justify-between mb-3.5">
+          <h3 className="text-base font-serif font-bold text-[#26160F] flex items-center space-x-2">
+            <Server className="h-4 w-4 text-[#5A3521]" />
+            <span>Database Server Lab Anda</span>
+          </h3>
+          <span className="text-[11px] text-[#5C3B29] font-mono">
+            {databases.length} Database Terdaftar • Terisolasi Penuh
+          </span>
+        </div>
 
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <SkeletonCard />
-            <SkeletonCard />
-          </div>
+          <SkeletonTable rows={3} />
         ) : databases.length === 0 ? (
           <div className="text-center py-14 bg-[#2B1810] border border-[#4D2D1E] rounded-3xl p-6 text-[#FAF5EC] shadow-xl">
             <Database className="h-8 w-8 text-[#A47E65] mx-auto mb-2" />
             <p className="text-xs text-[#DFCDB5]">Belum ada database dibuat.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {databases.map((db) => {
-              const isPg = db.engine === 'postgres'
-              const showPass = visiblePasswords[db.id]
-              return (
-                <div
-                  key={db.id}
-                  className="bg-[#2B1810] border border-[#4D2D1E] rounded-3xl p-5 space-y-4 hover:border-[#6D4029] transition shadow-xl text-[#FAF5EC]"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2.5">
-                      <span
-                        className={`px-2.5 py-1 rounded-xl text-[10px] font-bold uppercase tracking-wider ${
-                          isPg ? 'bg-[#442718] text-[#E8DCB8] border border-[#5C3825]' : 'bg-[#402613] text-[#E8C58D] border border-[#593920]'
-                        }`}
-                      >
-                        {isPg ? 'PostgreSQL 16' : 'MariaDB 11'}
-                      </span>
-                      <h4 className="text-sm font-bold text-[#FAF5EC] font-mono">{db.db_name}</h4>
-                    </div>
+          <div className="bg-[#2B1810] border border-[#4D2D1E] rounded-3xl overflow-hidden shadow-2xl text-[#FAF5EC]">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-[#1C0F0A] text-[#DFCDB5] uppercase text-[10px] tracking-wider border-b border-[#3E2316]">
+                  <tr>
+                    <th className="p-4 font-semibold">Database & Engine</th>
+                    <th className="p-4 font-semibold">Kredensial User</th>
+                    <th className="p-4 font-semibold">Host & Port</th>
+                    <th className="p-4 font-semibold">Connection URI</th>
+                    <th className="p-4 font-semibold">Web GUI (Isolasi)</th>
+                    <th className="p-4 text-right font-semibold">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#3E2316]">
+                  {databases.map((db) => {
+                    const isPg = db.engine === 'postgres'
+                    const showPass = visiblePasswords[db.id]
+                    const adminerUrl = `http://76.76.76.189:8085/?${isPg ? 'pgsql=db_postgres' : 'server=db_mariadb'}&username=${encodeURIComponent(db.db_username)}&db=${encodeURIComponent(db.db_name)}`
 
-                    <button
-                      onClick={() => triggerDelete(db.id, db.db_name, 'internal')}
-                      className="p-1.5 text-rose-400 hover:bg-rose-500/10 rounded-xl transition"
-                      title="Hapus Database"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
+                    return (
+                      <tr key={db.id} className="hover:bg-[#361E13] transition group">
+                        {/* 1. Database & Engine */}
+                        <td className="p-4">
+                          <div className="flex items-center space-x-2">
+                            <span
+                              className={`px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase tracking-wider font-mono ${
+                                isPg ? 'bg-[#442718] text-[#E8DCB8] border border-[#5C3825]' : 'bg-[#402613] text-[#E8C58D] border border-[#593920]'
+                              }`}
+                            >
+                              {isPg ? 'PostgreSQL 16' : 'MariaDB 11'}
+                            </span>
+                          </div>
+                          <div className="font-bold text-sm text-[#FAF5EC] font-mono mt-1">
+                            {db.db_name}
+                          </div>
+                          <div className="text-[10px] text-emerald-400 font-mono mt-0.5 flex items-center space-x-1">
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
+                            <span>Dedicated Isolated Role</span>
+                          </div>
+                        </td>
 
-                  {/* Credentials Box */}
-                  <div className="bg-[#1C0F0A] p-4 rounded-2xl border border-[#3E2316] space-y-2 text-xs font-mono">
-                    <div className="flex justify-between items-center text-[#A47E65]">
-                      <span>Host:</span>
-                      <span className="text-[#FAF5EC] font-semibold">{db.host}:{db.port}</span>
-                    </div>
-                    <div className="flex justify-between items-center text-[#A47E65]">
-                      <span>User DB:</span>
-                      <span className="text-[#FAF5EC]">{db.db_username}</span>
-                    </div>
-                    <div className="flex justify-between items-center text-[#A47E65]">
-                      <span>Password:</span>
-                      <div className="flex items-center space-x-2">
-                        <span className="text-[#FAF5EC]">{showPass ? db.db_password : '••••••••••••••••'}</span>
-                        <button
-                          onClick={() => togglePasswordVisibility(db.id)}
-                          className="text-[#A47E65] hover:text-[#FAF5EC]"
-                        >
-                          {showPass ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
+                        {/* 2. User & Password */}
+                        <td className="p-4 font-mono text-xs">
+                          <div className="text-[#DFCDB5]/70 text-[10px]">User: <span className="text-[#FAF5EC] font-semibold">{db.db_username}</span></div>
+                          <div className="flex items-center space-x-1.5 mt-1">
+                            <span className="text-[#FAF5EC]">{showPass ? db.db_password : '••••••••••••'}</span>
+                            <button
+                              onClick={() => togglePasswordVisibility(db.id)}
+                              className="text-[#A47E65] hover:text-[#FAF5EC] p-0.5"
+                              title={showPass ? 'Sembunyikan' : 'Lihat password'}
+                            >
+                              {showPass ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                            </button>
+                            <button
+                              onClick={() => copyToClipboard(db.db_password, `pass-${db.id}`)}
+                              className="text-[#A47E65] hover:text-[#FAF5EC] p-0.5"
+                              title="Salin password"
+                            >
+                              {copiedId === `pass-${db.id}` ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
+                            </button>
+                          </div>
+                        </td>
 
-                  {/* Copy URI */}
-                  <div className="flex items-center justify-between pt-1">
-                    <button
-                      onClick={() => copyToClipboard(db.connection_uri, `uri-${db.id}`)}
-                      className="inline-flex items-center space-x-1.5 text-xs text-[#E8DCB8] hover:text-white transition"
-                    >
-                      {copiedId === `uri-${db.id}` ? (
-                        <>
-                          <Check className="h-3.5 w-3.5 text-emerald-400" />
-                          <span className="text-emerald-400 font-semibold">Tersalin!</span>
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="h-3.5 w-3.5" />
-                          <span>Salin Connection URI</span>
-                        </>
-                      )}
-                    </button>
+                        {/* 3. Host & Port */}
+                        <td className="p-4 font-mono text-xs text-[#DFCDB5]">
+                          <div>{db.host}</div>
+                          <div className="text-[#A47E65] text-[11px]">Port: {db.port}</div>
+                        </td>
 
-                    <a
-                      href="http://76.76.76.189:8978"
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-xs text-[#DFCDB5] hover:text-[#FAF5EC] flex items-center space-x-1"
-                    >
-                      <span>CloudBeaver</span>
-                      <ExternalLink className="h-3 w-3" />
-                    </a>
-                  </div>
-                </div>
-              )
-            })}
+                        {/* 4. Connection URI */}
+                        <td className="p-4">
+                          <button
+                            onClick={() => copyToClipboard(db.connection_uri, `uri-${db.id}`)}
+                            className="inline-flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl bg-[#1C0F0A] hover:bg-[#25140D] border border-[#3E2316] text-[11px] font-mono text-[#E8DCB8] transition"
+                            title="Salin URI koneksi"
+                          >
+                            {copiedId === `uri-${db.id}` ? (
+                              <>
+                                <Check className="h-3 w-3 text-emerald-400" />
+                                <span className="text-emerald-400 font-semibold">Tersalin!</span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="h-3 w-3 text-[#A47E65]" />
+                                <span>Salin URI</span>
+                              </>
+                            )}
+                          </button>
+                        </td>
+
+                        {/* 5. Web GUI (Isolasi CloudBeaver & Adminer) */}
+                        <td className="p-4">
+                          <div className="flex flex-col space-y-1.5">
+                            <a
+                              href="http://76.76.76.189:8978"
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center space-x-1.5 text-xs text-[#DFCDB5] hover:text-[#FAF5EC] transition font-medium"
+                              title="Buka CloudBeaver (Login dengan akun Anda)"
+                            >
+                              <span>CloudBeaver</span>
+                              <ExternalLink className="h-3 w-3 text-[#A47E65]" />
+                            </a>
+                            <a
+                              href={adminerUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center space-x-1 text-[11px] text-[#A47E65] hover:text-[#E8DCB8] transition"
+                              title="Buka Adminer auto-fill isolated database"
+                            >
+                              <span>Adminer (Auto-login)</span>
+                              <ExternalLink className="h-2.5 w-2.5" />
+                            </a>
+                          </div>
+                        </td>
+
+                        {/* 6. Aksi */}
+                        <td className="p-4 text-right">
+                          <button
+                            onClick={() => triggerDelete(db.id, db.db_name, 'internal')}
+                            className="p-1.5 text-rose-400 hover:bg-rose-500/10 rounded-xl transition"
+                            title="Hapus Database"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>

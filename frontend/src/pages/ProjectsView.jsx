@@ -104,7 +104,10 @@ export default function ProjectsView() {
           setActiveProjectDetail(null)
         }}
         onUpdated={() => fetchProjects(true)}
-        onOpenConsole={(proj) => setActiveConsoleProject(proj)}
+        onOpenConsole={(proj) => {
+          setActiveProjectDetail(null)
+          setActiveConsoleProject(proj)
+        }}
       />
     )
   }

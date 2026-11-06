@@ -51,9 +51,12 @@ class DatabaseProvisioner:
             if not db_exists:
                 await conn.execute(f'CREATE DATABASE "{db_name}" OWNER "{db_username}";')
 
-            # 3. Grant privileges strictly to this database
+            # 3. Grant privileges strictly to this database with high-level user isolation
+            await conn.execute(f'REVOKE CONNECT ON DATABASE "{db_name}" FROM PUBLIC;')
+            await conn.execute(f'GRANT CONNECT, TEMPORARY ON DATABASE "{db_name}" TO "{db_username}";')
             await conn.execute(f'GRANT ALL PRIVILEGES ON DATABASE "{db_name}" TO "{db_username}";')
             await conn.execute(f'REVOKE ALL ON DATABASE postgres FROM "{db_username}";')
+            await conn.execute(f'REVOKE CONNECT ON DATABASE postgres FROM "{db_username}";')
 
             return {
                 "success": True,
@@ -120,8 +123,12 @@ class DatabaseProvisioner:
                 # 2. Create user with resource limit (max 5 user connections)
                 await cursor.execute(f"CREATE USER IF NOT EXISTS '{db_username}'@'%' IDENTIFIED BY '{db_password}';")
                 await cursor.execute(f"ALTER USER '{db_username}'@'%' IDENTIFIED BY '{db_password}' WITH MAX_USER_CONNECTIONS 5;")
+                try:
+                    await cursor.execute(f"REVOKE ALL PRIVILEGES, GRANT OPTION FROM '{db_username}'@'%';")
+                except Exception:
+                    pass
 
-                # 3. Grant privileges strictly on student's database
+                # 3. Grant privileges strictly on student's database (strict isolation)
                 await cursor.execute(f"GRANT ALL PRIVILEGES ON `{db_name}`.* TO '{db_username}'@'%';")
                 await cursor.execute("FLUSH PRIVILEGES;")
 
