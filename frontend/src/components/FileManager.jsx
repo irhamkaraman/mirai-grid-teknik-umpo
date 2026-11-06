@@ -12,6 +12,18 @@ import ConfirmModal from './ConfirmModal'
 import ModalPortal from './ModalPortal'
 
 export default function FileManager({ project, onClose }) {
+  if (!project || !project.id) {
+    return (
+      <div className="text-center py-16 bg-[#2B1810] border border-[#4D2D1E] rounded-3xl p-8 shadow-xl text-[#FAF5EC]">
+        <Folder className="h-10 w-10 text-[#A47E65] mx-auto mb-3" />
+        <h4 className="text-base font-serif font-bold text-[#FAF5EC]">Project Belum Dipilih</h4>
+        <p className="text-xs text-[#DFCDB5] max-w-sm mx-auto mt-1 mb-4">
+          Silakan pilih project di atas untuk mulai mengelola file praktikum.
+        </p>
+      </div>
+    )
+  }
+
   const [currentPath, setCurrentPath] = useState('')
   const [pathHistory, setPathHistory] = useState([''])
   const [historyIndex, setHistoryIndex] = useState(0)
@@ -367,30 +379,41 @@ export default function FileManager({ project, onClose }) {
   }
 
   const formatBytes = (bytes) => {
-    if (!bytes || bytes === 0) return '0 KB'
-    const k = 1024
-    const sizes = ['B', 'KB', 'MB', 'GB']
-    const i = Math.floor(Math.log(bytes) / Math.log(k))
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
+    try {
+      const num = Number(bytes)
+      if (!num || num <= 0 || isNaN(num)) return '0 KB'
+      const k = 1024
+      const sizes = ['B', 'KB', 'MB', 'GB']
+      const i = Math.floor(Math.log(num) / Math.log(k))
+      return parseFloat((num / Math.pow(k, i)).toFixed(1)) + ' ' + (sizes[i] || 'KB')
+    } catch (e) {
+      return '0 KB'
+    }
   }
 
   const formatDate = (timestamp) => {
-    if (!timestamp) return '-'
-    const d = new Date(timestamp * 1000)
-    return d.toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true,
-    })
+    try {
+      if (!timestamp) return '-'
+      const d = new Date(Number(timestamp) * 1000)
+      if (isNaN(d.getTime())) return '-'
+      return d.toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+      })
+    } catch (e) {
+      return '-'
+    }
   }
 
   // Filter items by search
-  const filteredItems = items.filter((i) =>
-    searchQuery ? i.name.toLowerCase().includes(searchQuery.toLowerCase()) : true
-  )
+  const filteredItems = (items || []).filter((i) => {
+    if (!i || !i.name) return false
+    return searchQuery ? i.name.toLowerCase().includes(searchQuery.toLowerCase()) : true
+  })
 
   // Left Directory Tree Recursive Component
   const renderTree = (node, depth = 0) => {
@@ -398,7 +421,7 @@ export default function FileManager({ project, onClose }) {
     const isCurrent = node.path === currentPath
 
     return (
-      <div key={node.path || 'root'} className="select-none text-xs">
+      <div key={`${node.path || 'root'}-${depth}`} className="select-none text-xs">
         <div
           onClick={() => navigateTo(node.path)}
           className={`flex items-center space-x-1.5 py-1 px-2 rounded-lg cursor-pointer transition ${
@@ -412,7 +435,7 @@ export default function FileManager({ project, onClose }) {
           <span className="truncate">{node.name}</span>
         </div>
         {node.children && node.children.length > 0 && (
-          <div>{node.children.map((child) => renderTree(child, depth + 1))}</div>
+          <div>{node.children.map((child, idx) => renderTree(child, depth + 1))}</div>
         )}
       </div>
     )
@@ -586,7 +609,7 @@ export default function FileManager({ project, onClose }) {
           {/* Extract */}
           <button
             onClick={() => { setTargetDestination(currentPath); setModalType('extract'); }}
-            disabled={!selectedItem || !selectedItem.name.endsWith('.zip')}
+            disabled={!selectedItem || !selectedItem.name || !selectedItem.name.endsWith('.zip')}
             className="px-2.5 py-1.5 rounded-xl hover:bg-[#3A2115] text-[#DFCDB5] disabled:opacity-40 inline-flex items-center space-x-1 transition shrink-0"
           >
             <Archive className="h-3.5 w-3.5" />
@@ -725,13 +748,15 @@ export default function FileManager({ project, onClose }) {
                         }`}
                       >
                         {/* Name */}
-                        <td className="p-3.5 pl-4 flex items-center space-x-2.5">
-                          {item.is_dir ? (
-                            <Folder className="h-4 w-4 text-[#C49767] shrink-0" />
-                          ) : (
-                            <FileText className="h-4 w-4 text-[#A47E65] shrink-0" />
-                          )}
-                          <span className="font-mono text-xs">{item.name}</span>
+                        <td className="p-3.5 pl-4">
+                          <div className="flex items-center space-x-2.5">
+                            {item.is_dir ? (
+                              <Folder className="h-4 w-4 text-[#C49767] shrink-0" />
+                            ) : (
+                              <FileText className="h-4 w-4 text-[#A47E65] shrink-0" />
+                            )}
+                            <span className="font-mono text-xs">{item.name}</span>
+                          </div>
                         </td>
 
                         {/* Size */}

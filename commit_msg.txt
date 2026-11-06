@@ -1,11 +1,6 @@
-feat(filemanager): implement cPanel-style Jupiter File Manager and fix back button
+fix(files): prevent blank screen on File Manager with ErrorBoundary and fallback
 
-- Replace emoji with official SVG logo in ProjectDetailPage
-- Fix onBack button navigation flow in ProjectDetailPage
-- Implement full cPanel-style File Manager layout (Image 2):
-  - Primary toolbar: File, Folder, Copy, Move, Upload, Download, Delete, Rename, Edit, Permissions, View, Extract, Compress
-  - Navigation bar: Home, Up, Back, Forward, Reload, Select All, Unselect All, Path display
-  - Left directory tree structure with folder navigation
-  - 5-column main table (Name, Size, Last Modified, Type, Permissions)
-  - Full permissions modal (User/Group/World chmod matrix)
-  - Compress and Extract modals with secure backend handlers
+- Wrap FilesView in React ErrorBoundary component to prevent white screen crashes
+- Add automatic project fallback to ensure selectedProject is never undefined
+- Defend formatDate, formatBytes, and tree rendering against invalid/missing data
+- Fix table cell flex layout bug in file listing

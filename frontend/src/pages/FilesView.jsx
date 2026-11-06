@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import { api } from '../api/client'
 import { SkeletonCard, SkeletonTable } from '../components/Skeletons'
 import FileManager from '../components/FileManager'
+import ErrorBoundary from '../components/ErrorBoundary'
 
 export default function FilesView({ onNavigate }) {
   const [projects, setProjects] = useState([])
@@ -17,8 +18,8 @@ export default function FilesView({ onNavigate }) {
   const fetchProjects = async () => {
     try {
       const res = await api.get('/projects')
-      setProjects(res.data)
-      if (res.data.length > 0) {
+      setProjects(res.data || [])
+      if (res.data && res.data.length > 0) {
         setSelectedProjectId(res.data[0].id)
       }
     } catch (err) {
@@ -28,67 +29,74 @@ export default function FilesView({ onNavigate }) {
     }
   }
 
-  const selectedProject = projects.find((p) => p.id === selectedProjectId)
+  // Fallback to first project if selectedProjectId is null or not found
+  const selectedProject = projects.find((p) => p.id === selectedProjectId) || (projects.length > 0 ? projects[0] : null)
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-200">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-serif font-bold text-[#26160F] flex items-center space-x-2">
-            <Folder className="h-6 w-6 text-[#5A3521]" />
-            <span>File Manager</span>
-          </h2>
-          <p className="text-xs text-[#5C3B29] mt-1 font-sans">
-            Kelola direktori & source code praktikum Anda secara terisolasi.
-          </p>
+    <ErrorBoundary onReset={fetchProjects}>
+      <div className="space-y-6 animate-in fade-in duration-200">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-serif font-bold text-[#26160F] flex items-center space-x-2">
+              <Folder className="h-6 w-6 text-[#5A3521]" />
+              <span>File Manager</span>
+            </h2>
+            <p className="text-xs text-[#5C3B29] mt-1 font-sans">
+              Kelola direktori & source code praktikum Anda secara terisolasi.
+            </p>
+          </div>
+
+          {/* Project Selector */}
+          {projects.length > 0 && (
+            <div className="flex items-center space-x-2 bg-[#DECDBD] border border-[#BFAB96] px-3.5 py-1.5 rounded-2xl shadow-sm">
+              <span className="text-xs font-semibold text-[#26160F]">Pilih Project:</span>
+              <select
+                value={selectedProject?.id || ''}
+                onChange={(e) => setSelectedProjectId(parseInt(e.target.value))}
+                className="bg-[#2B1810] text-[#FAF5EC] border border-[#4D2D1E] rounded-xl px-3 py-1.5 text-xs font-semibold focus:outline-none focus:border-[#C49767]"
+              >
+                {projects.map((proj) => (
+                  <option key={proj.id} value={proj.id}>
+                    {proj.name} ({proj.template_type})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
-        {/* Project Selector */}
-        {projects.length > 0 && (
-          <div className="flex items-center space-x-2 bg-[#DECDBD] border border-[#BFAB96] px-3.5 py-1.5 rounded-2xl shadow-sm">
-            <span className="text-xs font-semibold text-[#26160F]">Pilih Project:</span>
-            <select
-              value={selectedProjectId || ''}
-              onChange={(e) => setSelectedProjectId(parseInt(e.target.value))}
-              className="bg-[#2B1810] text-[#FAF5EC] border border-[#4D2D1E] rounded-xl px-3 py-1.5 text-xs font-semibold focus:outline-none focus:border-[#C49767]"
+        {loading ? (
+          <SkeletonTable rows={5} />
+        ) : projects.length === 0 ? (
+          /* Empty State: Belum ada project */
+          <div className="text-center py-16 bg-[#2B1810] border border-[#4D2D1E] rounded-3xl p-8 shadow-2xl text-[#FAF5EC]">
+            <Layers className="h-10 w-10 text-[#A47E65] mx-auto mb-3" />
+            <h4 className="text-base font-serif font-bold text-[#FAF5EC]">Belum Ada Workspace Project</h4>
+            <p className="text-xs text-[#DFCDB5] max-w-sm mx-auto mt-1 mb-6">
+              Anda belum memiliki project aplikasi. Silakan buat project terlebih dahulu di menu Deploy untuk mulai mengelola file praktikum.
+            </p>
+            <button
+              onClick={() => onNavigate('projects')}
+              className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-2xl text-xs font-semibold bg-[#5A3521] hover:bg-[#6D4029] text-[#FAF5EC] shadow-lg transition"
             >
-              {projects.map((proj) => (
-                <option key={proj.id} value={proj.id}>
-                  {proj.name} ({proj.template_type})
-                </option>
-              ))}
-            </select>
+              <span>Buka Menu Deploy</span>
+              <ArrowRight className="h-4 w-4" />
+            </button>
+          </div>
+        ) : selectedProject ? (
+          /* Dedicated File Manager Environment */
+          <FileManager
+            key={selectedProject.id}
+            project={selectedProject}
+            onClose={() => onNavigate('projects')}
+          />
+        ) : (
+          <div className="text-center py-12 bg-[#2B1810] border border-[#4D2D1E] rounded-3xl p-6 text-[#FAF5EC]">
+            <p className="text-xs text-[#DFCDB5]">Pilih project pada menu dropdown di atas untuk melihat file.</p>
           </div>
         )}
       </div>
-
-      {loading ? (
-        <SkeletonTable rows={5} />
-      ) : projects.length === 0 ? (
-        /* Empty State: Belum ada project */
-        <div className="text-center py-16 bg-[#2B1810] border border-[#4D2D1E] rounded-3xl p-8 shadow-2xl text-[#FAF5EC]">
-          <Layers className="h-10 w-10 text-[#A47E65] mx-auto mb-3" />
-          <h4 className="text-base font-serif font-bold text-[#FAF5EC]">Belum Ada Workspace Project</h4>
-          <p className="text-xs text-[#DFCDB5] max-w-sm mx-auto mt-1 mb-6">
-            Anda belum memiliki project aplikasi. Silakan buat project terlebih dahulu di menu Deploy untuk mulai mengelola file praktikum.
-          </p>
-          <button
-            onClick={() => onNavigate('projects')}
-            className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-2xl text-xs font-semibold bg-[#5A3521] hover:bg-[#6D4029] text-[#FAF5EC] shadow-lg transition"
-          >
-            <span>Buka Menu Deploy</span>
-            <ArrowRight className="h-4 w-4" />
-          </button>
-        </div>
-      ) : selectedProject ? (
-        /* Dedicated File Manager Environment */
-        <FileManager
-          key={selectedProject.id}
-          project={selectedProject}
-          onClose={() => onNavigate('projects')}
-        />
-      ) : null}
-    </div>
+    </ErrorBoundary>
   )
 }
