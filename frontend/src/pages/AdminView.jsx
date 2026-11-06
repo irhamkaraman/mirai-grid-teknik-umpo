@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Shield, Users, UserPlus, KeyRound, Ban, Search, Clock, Trash2, Plus, Sparkles, UserCheck } from 'lucide-react'
+import { Shield, Users, UserPlus, KeyRound, Ban, Search, Clock, Trash2, Plus, Sparkles, UserCheck, ChevronLeft, ChevronRight } from 'lucide-react'
 import { toast } from 'sonner'
 import { api } from '../api/client'
 import { SkeletonCard, SkeletonTable, Spinner } from '../components/Skeletons'
@@ -260,6 +260,10 @@ export default function AdminView() {
     })
   }
 
+  // Pagination calculations for user list
+  const totalUserPages = Math.max(1, Math.ceil(users.length / userPageSize))
+  const paginatedUsers = users.slice((userPage - 1) * userPageSize, userPage * userPageSize)
+
   const handleToggleStatus = async (userId) => {
     try {
       const res = await api.post(`/admin/users/${userId}/toggle-status`)
@@ -476,7 +480,7 @@ export default function AdminView() {
 
                 <div className="flex items-center space-x-2">
                   <span className="text-[11px] font-mono mr-1">
-                    Halaman {userPage} dari {Math.ceil(users.length / userPageSize) || 1}
+                    Halaman {userPage} dari {totalUserPages}
                   </span>
                   <button
                     onClick={() => setUserPage((p) => Math.max(1, p - 1))}
@@ -488,7 +492,7 @@ export default function AdminView() {
                   </button>
                   <button
                     onClick={() => setUserPage((p) => Math.min(Math.ceil(users.length / userPageSize) || 1, p + 1))}
-                    disabled={userPage >= (Math.ceil(users.length / userPageSize) || 1)}
+                    disabled={userPage >= totalUserPages}
                     className="p-1.5 rounded-xl bg-[#2B1810] border border-[#4D2D1E] text-[#FAF5EC] disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#3D2317] transition"
                     title="Halaman Selanjutnya"
                   >

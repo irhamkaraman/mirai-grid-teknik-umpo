@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { toast } from 'sonner'
 import { Server, Lock, User, AlertCircle, ArrowRight } from 'lucide-react'
 import { api } from '../api/client'
 import { Spinner } from '../components/Skeletons'
@@ -26,7 +27,9 @@ export default function LoginPage({ onLoginSuccess }) {
       }))
       onLoginSuccess(data)
     } catch (err) {
-      setError(err.response?.data?.detail || 'Gagal masuk. Periksa NIM/Username dan Password Anda.')
+      const errMsg = err.response?.data?.detail || 'Gagal masuk. Periksa NIM/Username dan Password Anda.'
+      setError(errMsg)
+      toast.error(errMsg)
     } finally {
       setLoading(false)
     }

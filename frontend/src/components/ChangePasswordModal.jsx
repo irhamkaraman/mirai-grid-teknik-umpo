@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { toast } from 'sonner'
 import { KeyRound, AlertCircle } from 'lucide-react'
 import { api } from '../api/client'
 import { Spinner } from './Skeletons'
@@ -34,7 +35,9 @@ export default function ChangePasswordModal({ isOpen, onClose, isMandatory = fal
       onSuccess?.()
       onClose()
     } catch (err) {
-      setError(err.response?.data?.detail || 'Gagal mengubah password.')
+      const errMsg = err.response?.data?.detail || 'Gagal mengubah password. Pastikan password lama benar.'
+      setError(errMsg)
+      toast.error(errMsg)
     } finally {
       setLoading(false)
     }

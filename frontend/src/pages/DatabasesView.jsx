@@ -141,10 +141,10 @@ export default function DatabasesView() {
     }
   }
 
-  const copyToClipboard = (text, id) => {
+  const copyToClipboard = (text, id, label = 'Teks') => {
     navigator.clipboard.writeText(text)
     setCopiedId(id)
-    toast.success('URI koneksi berhasil disalin ke clipboard!')
+    toast.success(`${label} berhasil disalin ke clipboard!`)
     setTimeout(() => setCopiedId(null), 2000)
   }
 
@@ -253,7 +253,7 @@ export default function DatabasesView() {
                               {showPass ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
                             </button>
                             <button
-                              onClick={() => copyToClipboard(db.db_password, `pass-${db.id}`)}
+                              onClick={() => copyToClipboard(db.db_password, `pass-${db.id}`, 'Password database')}
                               className="text-[#A47E65] hover:text-[#FAF5EC] p-0.5"
                               title="Salin password"
                             >
@@ -271,7 +271,7 @@ export default function DatabasesView() {
                         {/* 4. Connection URI */}
                         <td className="p-4">
                           <button
-                            onClick={() => copyToClipboard(db.connection_uri, `uri-${db.id}`)}
+                            onClick={() => copyToClipboard(db.connection_uri, `uri-${db.id}`, 'URI koneksi database')}
                             className="inline-flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl bg-[#1C0F0A] hover:bg-[#25140D] border border-[#3E2316] text-[11px] font-mono text-[#E8DCB8] transition"
                             title="Salin URI koneksi"
                           >
@@ -306,8 +306,12 @@ export default function DatabasesView() {
                               href={adminerUrl}
                               target="_blank"
                               rel="noreferrer"
-                              className="inline-flex items-center space-x-1 text-[11px] text-[#A47E65] hover:text-[#E8DCB8] transition"
-                              title="Buka Adminer auto-fill isolated database"
+                              onClick={() => {
+                                navigator.clipboard.writeText(db.db_password)
+                                toast.success(`Password untuk ${db.db_name} disalin otomatis ke clipboard!`, { duration: 4000 })
+                              }}
+                              className="inline-flex items-center space-x-1 text-[11px] text-amber-300 hover:text-amber-200 transition font-medium"
+                              title="Buka Adminer Web GUI terisolasi (Password otomatis tersalin)"
                             >
                               <span>Adminer (Auto-login)</span>
                               <ExternalLink className="h-2.5 w-2.5" />
