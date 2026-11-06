@@ -1,35 +1,49 @@
 import React from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { LayoutDashboard, Layers, Database, ShieldAlert, Server, ChevronLeft, ChevronRight, Folder } from 'lucide-react'
 
-export default function Navigation({ activeTab, setActiveTab, userRole, isCollapsed, setIsCollapsed }) {
+export default function Navigation({ userRole, isCollapsed, setIsCollapsed }) {
+  const navigate = useNavigate()
+  const location = useLocation()
+
   const navItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'projects', label: 'Deploy', icon: Layers },
-    { id: 'files', label: 'File Manager', icon: Folder },
-    { id: 'databases', label: 'Databases', icon: Database },
+    { id: 'dashboard', label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+    { id: 'deploy', label: 'Deploy', path: '/deploy', icon: Layers },
+    { id: 'files', label: 'File Manager', path: '/files', icon: Folder },
+    { id: 'databases', label: 'Databases', path: '/databases', icon: Database },
   ]
 
   if (userRole === 'admin') {
-    navItems.push({ id: 'admin', label: 'Admin Lab', icon: ShieldAlert })
+    navItems.push({ id: 'admin', label: 'Admin Lab', path: '/admin', icon: ShieldAlert })
+  }
+
+  const isItemActive = (itemPath) => {
+    if (itemPath === '/dashboard') {
+      return location.pathname === '/' || location.pathname === '/dashboard'
+    }
+    return location.pathname === itemPath || location.pathname.startsWith(itemPath + '/')
   }
 
   return (
     <>
       {/* 1. FLOATING SIDEBAR (Desktop / Tablet) */}
       <aside
-        className={`fixed left-5 top-5 bottom-5 bg-[#23150E] border border-[#3E2619] rounded-3xl shadow-2xl p-4 z-30 hidden md:flex flex-col backdrop-blur-xl transition-all duration-300 ease-in-out ${
+        className={`fixed left-5 top-5 bottom-5 bg-[#2B1810] border border-[#4D2D1E] rounded-3xl shadow-2xl p-4 z-30 hidden md:flex flex-col backdrop-blur-xl transition-all duration-300 ease-in-out ${
           isCollapsed ? 'w-20 items-center' : 'w-64'
         }`}
       >
         {/* Brand Header */}
         <div className={`flex items-center mb-6 w-full ${isCollapsed ? 'justify-center' : 'justify-between px-1'}`}>
-          <div className="flex items-center space-x-3 overflow-hidden">
-            <div className="h-10 w-10 rounded-2xl bg-gradient-to-tr from-chocolate-700 via-chocolate-600 to-terracotta-500 flex items-center justify-center text-[#FBF9F5] shadow-md border border-chocolate-500/30 shrink-0">
+          <div
+            onClick={() => navigate('/dashboard')}
+            className="flex items-center space-x-3 overflow-hidden cursor-pointer"
+          >
+            <div className="h-10 w-10 rounded-2xl bg-gradient-to-tr from-chocolate-700 via-chocolate-600 to-terracotta-500 flex items-center justify-center text-[#FAF5EC] shadow-md border border-chocolate-500/30 shrink-0">
               <Server className="h-5 w-5" />
             </div>
             {!isCollapsed && (
               <div className="overflow-hidden">
-                <h1 className="text-xl font-serif font-bold text-[#FBF9F5] tracking-wide truncate">
+                <h1 className="text-xl font-serif font-bold text-[#FAF5EC] tracking-wide truncate">
                   MiraiGrid
                 </h1>
                 <p className="text-[10px] text-terracotta-400 font-medium tracking-wider uppercase truncate">
@@ -71,17 +85,17 @@ export default function Navigation({ activeTab, setActiveTab, userRole, isCollap
 
           {navItems.map((item) => {
             const Icon = item.icon
-            const isActive = activeTab === item.id
+            const isActive = isItemActive(item.path)
             return (
               <button
                 key={item.id}
-                onClick={() => setActiveTab(item.id)}
+                onClick={() => navigate(item.path)}
                 title={isCollapsed ? item.label : undefined}
                 className={`w-full flex items-center rounded-2xl text-xs font-semibold transition-all duration-200 group ${
                   isCollapsed ? 'justify-center p-3' : 'space-x-3 px-3.5 py-3'
                 } ${
                   isActive
-                    ? 'bg-gradient-to-r from-chocolate-700 to-chocolate-600 text-[#FAF8F5] border border-chocolate-500/50 shadow-md shadow-chocolate-950/40'
+                    ? 'bg-gradient-to-r from-chocolate-700 to-chocolate-600 text-[#FAF5EC] border border-chocolate-500/50 shadow-md shadow-chocolate-950/40'
                     : 'text-[#D0B8A2] hover:text-white hover:bg-[#301C12]'
                 }`}
               >
@@ -98,16 +112,16 @@ export default function Navigation({ activeTab, setActiveTab, userRole, isCollap
       </aside>
 
       {/* 2. FLOATING BOTTOM NAVIGATION (Mobile) */}
-      <nav className="fixed bottom-4 left-4 right-4 z-40 md:hidden bg-[#23150E]/95 backdrop-blur-xl border border-[#3E2619] rounded-2xl shadow-2xl px-2 py-2 flex items-center justify-around">
+      <nav className="fixed bottom-4 left-4 right-4 z-40 md:hidden bg-[#2B1810]/95 backdrop-blur-xl border border-[#4D2D1E] rounded-2xl shadow-2xl px-2 py-2 flex items-center justify-around">
         {navItems.map((item) => {
           const Icon = item.icon
-          const isActive = activeTab === item.id
+          const isActive = isItemActive(item.path)
           return (
             <button
               key={item.id}
-              onClick={() => setActiveTab(item.id)}
+              onClick={() => navigate(item.path)}
               className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all ${
-                isActive ? 'text-terracotta-400' : 'text-[#D0B8A2]/70 hover:text-[#FAF8F5]'
+                isActive ? 'text-terracotta-400' : 'text-[#D0B8A2]/70 hover:text-[#FAF5EC]'
               }`}
             >
               <Icon className="h-5 w-5 mb-0.5" />

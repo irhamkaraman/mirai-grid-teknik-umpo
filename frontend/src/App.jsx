@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { Toaster } from 'sonner'
 import Navigation from './components/Navigation'
 import ProfileAvatar from './components/ProfileFloating'
@@ -11,8 +12,8 @@ import FilesView from './pages/FilesView'
 import AdminView from './pages/AdminView'
 
 export default function App() {
+  const navigate = useNavigate()
   const [user, setUser] = useState(null)
-  const [activeTab, setActiveTab] = useState('dashboard')
   const [showPasswordModal, setShowPasswordModal] = useState(false)
   const [isMandatoryPasswordChange, setIsMandatoryPasswordChange] = useState(false)
   const [isCollapsed, setIsCollapsed] = useState(() => {
@@ -52,13 +53,14 @@ export default function App() {
       setIsMandatoryPasswordChange(true)
       setShowPasswordModal(true)
     }
+    navigate('/dashboard')
   }
 
   const handleLogout = () => {
     localStorage.removeItem('miraigrid_token')
     localStorage.removeItem('miraigrid_user')
     setUser(null)
-    setActiveTab('dashboard')
+    navigate('/login')
   }
 
   const handlePasswordChanged = () => {
@@ -74,14 +76,17 @@ export default function App() {
     return (
       <div className="bg-[#E6D7BE] min-h-screen">
         <Toaster richColors position="top-right" theme="dark" />
-        <LoginPage onLoginSuccess={handleLoginSuccess} />
+        <Routes>
+          <Route path="/login" element={<LoginPage onLoginSuccess={handleLoginSuccess} />} />
+          <Route path="*" element={<LoginPage onLoginSuccess={handleLoginSuccess} />} />
+        </Routes>
       </div>
     )
   }
 
   return (
     <div className="min-h-screen bg-[#E6D7BE] text-[#26160F] flex flex-col font-sans selection:bg-[#5A3521] selection:text-[#FAF5EC] relative">
-      {/* Toast Notification Container (Tema Coklat & Krim) */}
+      {/* Toast Notification Container */}
       <Toaster
         richColors
         position="top-right"
@@ -96,16 +101,14 @@ export default function App() {
         }}
       />
 
-      {/* Floating Navigation (Sidebar Coklat di Kiri + Nav Mobile) */}
+      {/* Floating Navigation Sidebar & Mobile Bar */}
       <Navigation
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
         userRole={user.role}
         isCollapsed={isCollapsed}
         setIsCollapsed={handleToggleCollapse}
       />
 
-      {/* Main Content: Margin menyesuaikan sidebar secara dinamis */}
+      {/* Main Content Area */}
       <main
         className={`flex-1 transition-all duration-300 ease-in-out p-4 sm:p-6 md:p-8 pb-24 md:pb-12 ${
           isCollapsed ? 'md:ml-[110px]' : 'md:ml-[290px]'
@@ -124,14 +127,25 @@ export default function App() {
             />
           </header>
 
-          {/* Views */}
-          {activeTab === 'dashboard' && (
-            <StudentDashboard user={user} onNavigate={(tab) => setActiveTab(tab)} />
-          )}
-          {activeTab === 'projects' && <ProjectsView />}
-          {activeTab === 'files' && <FilesView onNavigate={(tab) => setActiveTab(tab)} />}
-          {activeTab === 'databases' && <DatabasesView />}
-          {activeTab === 'admin' && user.role === 'admin' && <AdminView />}
+          {/* Declarative URL Routes (Persisten Saat F5 / Refresh) */}
+          <Routes>
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route
+              path="/dashboard"
+              element={<StudentDashboard user={user} onNavigate={(path) => navigate(path.startsWith('/') ? path : '/' + path)} />}
+            />
+            <Route path="/deploy" element={<ProjectsView />} />
+            <Route
+              path="/files"
+              element={<FilesView onNavigate={(path) => navigate(path.startsWith('/') ? path : '/' + path)} />}
+            />
+            <Route path="/databases" element={<DatabasesView />} />
+            <Route
+              path="/admin"
+              element={user.role === 'admin' ? <AdminView /> : <Navigate to="/dashboard" replace />}
+            />
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
         </div>
       </main>
 

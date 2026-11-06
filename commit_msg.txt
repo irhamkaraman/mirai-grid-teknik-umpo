@@ -1,6 +1,7 @@
-fix(files): prevent blank screen on File Manager with ErrorBoundary and fallback
+feat(routing): implement React Router DOM for persistent URL navigation
 
-- Wrap FilesView in React ErrorBoundary component to prevent white screen crashes
-- Add automatic project fallback to ensure selectedProject is never undefined
-- Defend formatDate, formatBytes, and tree rendering against invalid/missing data
-- Fix table cell flex layout bug in file listing
+- Configure BrowserRouter with routes: /dashboard, /deploy, /files, /databases, /admin
+- Prevent resetting to dashboard on page refresh (F5)
+- Replace emoji with official SVG logo in ProjectDetailPage
+- Fix onBack button in ProjectDetailPage to cleanly return to applications list
+- Add GET /projects/{id} endpoint in backend

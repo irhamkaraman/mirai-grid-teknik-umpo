@@ -1,14 +1,60 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, ExternalLink, Play, Square, RotateCw, Trash2,
   Save, Sliders, Terminal, FileCode, Check, RefreshCw, AlertCircle
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { api } from '../api/client'
-import { Spinner } from '../components/Skeletons'
+import { Spinner, SkeletonCard } from '../components/Skeletons'
 import ConfirmModal from '../components/ConfirmModal'
 
-export default function ProjectDetailPage({ project, onBack, onUpdated, onOpenConsole }) {
+export default function ProjectDetailPage({ project: propProject, onBack, onUpdated, onOpenConsole }) {
+  const { id: paramId } = useParams()
+  const navigate = useNavigate()
+  const [project, setProject] = useState(propProject || null)
+  const [loading, setLoading] = useState(!propProject)
+
+  useEffect(() => {
+    if (!propProject && paramId) {
+      fetchProject(paramId)
+    } else if (propProject) {
+      setProject(propProject)
+    }
+  }, [propProject, paramId])
+
+  const fetchProject = async (projId) => {
+    setLoading(true)
+    try {
+      const res = await api.get(`/projects/${projId}`)
+      setProject(res.data)
+    } catch (err) {
+      toast.error('Gagal memuat detail project.')
+      navigate('/deploy')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleBack = () => {
+    if (onBack) {
+      onBack()
+    } else {
+      navigate('/deploy')
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="space-y-6 animate-in fade-in duration-200">
+        <SkeletonCard />
+        <SkeletonCard />
+      </div>
+    )
+  }
+
+  if (!project) return null
+
   const isPhp = project.language === 'php' || project.template_type?.startsWith('php')
   const isPython = project.language === 'python' || project.template_type?.startsWith('python')
   const isNode = project.language === 'node' || project.template_type?.startsWith('node')
@@ -107,6 +153,7 @@ export default function ProjectDetailPage({ project, onBack, onUpdated, onOpenCo
       })
       toast.success('Konfigurasi berhasil disimpan dan container di-restart!', { id: toastId })
       onUpdated?.()
+      if (paramId) fetchProject(paramId)
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Gagal menyimpan konfigurasi.', { id: toastId })
     } finally {
@@ -122,6 +169,7 @@ export default function ProjectDetailPage({ project, onBack, onUpdated, onOpenCo
       await api.post(`/projects/${project.id}/control?action=${action}`)
       toast.success(`Container berhasil di-${action}!`, { id: toastId })
       onUpdated?.()
+      if (paramId) fetchProject(paramId)
     } catch (err) {
       toast.error(err.response?.data?.detail || `Gagal ${action} project.`, { id: toastId })
     } finally {
@@ -136,7 +184,7 @@ export default function ProjectDetailPage({ project, onBack, onUpdated, onOpenCo
       await api.delete(`/projects/${project.id}`)
       toast.success('Project berhasil dihapus.', { id: toastId })
       onUpdated?.()
-      onBack()
+      handleBack()
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Gagal menghapus project.', { id: toastId })
     }
@@ -195,11 +243,7 @@ export default function ProjectDetailPage({ project, onBack, onUpdated, onOpenCo
         <div className="flex items-center space-x-3">
           <button
             type="button"
-            onClick={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              onBack()
-            }}
+            onClick={handleBack}
             className="p-2.5 rounded-2xl bg-[#DECDBD] hover:bg-[#D1BDAB] text-[#26160F] transition shadow-sm cursor-pointer shrink-0"
             title="Kembali ke Daftar Aplikasi"
           >
@@ -224,7 +268,7 @@ export default function ProjectDetailPage({ project, onBack, onUpdated, onOpenCo
           </div>
         </div>
 
-        {/* Action Controls (Stop/Restart/Destroy/Save) */}
+        {/* Action Controls (Stop/Restart/Console/Destroy/Save) */}
         <div className="flex items-center space-x-2">
           {isRunning ? (
             <button
@@ -256,7 +300,13 @@ export default function ProjectDetailPage({ project, onBack, onUpdated, onOpenCo
           </button>
 
           <button
-            onClick={() => onOpenConsole?.(project)}
+            onClick={() => {
+              if (onOpenConsole) {
+                onOpenConsole(project)
+              } else {
+                navigate(`/deploy/${project.id}/console`)
+              }
+            }}
             className="px-4 py-2 rounded-2xl text-xs font-semibold bg-[#2B1810] hover:bg-[#3D2317] text-[#E8DCB8] border border-[#4D2D1E] shadow-md transition flex items-center space-x-1.5"
             title="Buka Halaman Console CLI"
           >
@@ -319,7 +369,6 @@ export default function ProjectDetailPage({ project, onBack, onUpdated, onOpenCo
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#3E2316]">
-                {/* display_errors */}
                 <tr className="hover:bg-[#2A170F]/50">
                   <td className="p-4 font-mono font-bold text-[#E8DCB8]">display_errors</td>
                   <td className="p-4 text-[#DFCDB5]/80 text-[11px]">
@@ -338,7 +387,6 @@ export default function ProjectDetailPage({ project, onBack, onUpdated, onOpenCo
                   </td>
                 </tr>
 
-                {/* error_log */}
                 <tr className="hover:bg-[#2A170F]/50">
                   <td className="p-4 font-mono font-bold text-[#E8DCB8]">error_log</td>
                   <td className="p-4 text-[#DFCDB5]/80 text-[11px]">Path to the PHP error log file (e.g. error_log).</td>
@@ -352,7 +400,6 @@ export default function ProjectDetailPage({ project, onBack, onUpdated, onOpenCo
                   </td>
                 </tr>
 
-                {/* log_errors */}
                 <tr className="hover:bg-[#2A170F]/50">
                   <td className="p-4 font-mono font-bold text-[#E8DCB8]">log_errors</td>
                   <td className="p-4 text-[#DFCDB5]/80 text-[11px]">Tells whether script error messages should be logged to the server error log or error_log.</td>
@@ -369,7 +416,6 @@ export default function ProjectDetailPage({ project, onBack, onUpdated, onOpenCo
                   </td>
                 </tr>
 
-                {/* max_execution_time */}
                 <tr className="hover:bg-[#2A170F]/50">
                   <td className="p-4 font-mono font-bold text-[#E8DCB8]">max_execution_time</td>
                   <td className="p-4 text-[#DFCDB5]/80 text-[11px]">Sets the maximum time in seconds a script is allowed to run before it is terminated by the parser. (Default: 30)</td>
@@ -383,7 +429,6 @@ export default function ProjectDetailPage({ project, onBack, onUpdated, onOpenCo
                   </td>
                 </tr>
 
-                {/* memory_limit */}
                 <tr className="hover:bg-[#2A170F]/50">
                   <td className="p-4 font-mono font-bold text-[#E8DCB8]">memory_limit</td>
                   <td className="p-4 text-[#DFCDB5]/80 text-[11px]">Sets the maximum amount of memory in bytes that a script is allowed to allocate (e.g. 256M, 512M).</td>
@@ -397,7 +442,6 @@ export default function ProjectDetailPage({ project, onBack, onUpdated, onOpenCo
                   </td>
                 </tr>
 
-                {/* post_max_size */}
                 <tr className="hover:bg-[#2A170F]/50">
                   <td className="p-4 font-mono font-bold text-[#E8DCB8]">post_max_size</td>
                   <td className="p-4 text-[#DFCDB5]/80 text-[11px]">Sets max size of post data allowed.</td>
@@ -411,7 +455,6 @@ export default function ProjectDetailPage({ project, onBack, onUpdated, onOpenCo
                   </td>
                 </tr>
 
-                {/* upload_max_filesize */}
                 <tr className="hover:bg-[#2A170F]/50">
                   <td className="p-4 font-mono font-bold text-[#E8DCB8]">upload_max_filesize</td>
                   <td className="p-4 text-[#DFCDB5]/80 text-[11px]">The maximum size of an uploaded file.</td>
@@ -425,7 +468,6 @@ export default function ProjectDetailPage({ project, onBack, onUpdated, onOpenCo
                   </td>
                 </tr>
 
-                {/* zlib.output_compression */}
                 <tr className="hover:bg-[#2A170F]/50">
                   <td className="p-4 font-mono font-bold text-[#E8DCB8]">zlib.output_compression</td>
                   <td className="p-4 text-[#DFCDB5]/80 text-[11px]">Whether to transparently compress pages with Gzip.</td>

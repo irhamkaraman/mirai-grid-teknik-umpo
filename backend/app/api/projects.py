@@ -271,6 +271,59 @@ async def list_my_projects(
         })
     return results
 
+@router.get("/{project_id}", response_model=ProjectResponse)
+async def get_project_by_id(
+    project_id: int,
+    current_user: dict = Depends(get_current_user),
+    db: aiosqlite.Connection = Depends(get_db)
+):
+    cursor = await db.execute("""
+        SELECT * FROM projects
+        WHERE id = ? AND (user_id = ? OR ? = 'admin')
+    """, (project_id, current_user["id"], current_user["role"]))
+    r = await cursor.fetchone()
+    if not r:
+        raise HTTPException(status_code=404, detail="Project tidak ditemukan.")
+
+    env_vars = json.loads(decrypt_secret(r["env_vars_enc"])) if r["env_vars_enc"] else {}
+    app_cfg = json.loads(r["config_json"]) if ("config_json" in r.keys() and r["config_json"]) else {}
+
+    tmpl = r["template_type"]
+    if tmpl.startswith("php"):
+        lang = "php"
+        v = tmpl.replace("php", "")
+        ver = f"{v[0]}.{v[1:]}" if len(v) >= 2 else "8.2"
+    elif tmpl.startswith("python"):
+        lang = "python"
+        v = tmpl.replace("python", "")
+        ver = f"{v[0]}.{v[1:]}" if len(v) >= 2 else "3.11"
+    elif tmpl.startswith("node"):
+        lang = "node"
+        ver = tmpl.replace("node", "") or "20"
+    else:
+        lang = "php"
+        ver = "8.2"
+
+    access_url = f"http://{settings.BASE_DOMAIN}:{r['allocated_port']}"
+    return {
+        "id": r["id"],
+        "name": r["name"],
+        "subdomain": r["subdomain"],
+        "template_type": r["template_type"],
+        "language": lang,
+        "version": ver,
+        "app_config": app_cfg,
+        "portainer_stack_id": r["portainer_stack_id"],
+        "allocated_port": r["allocated_port"],
+        "status": r["status"],
+        "env_vars": env_vars,
+        "source_type": r["source_type"],
+        "git_url": r["git_url"],
+        "access_url": access_url,
+        "last_deployed_at": r["last_deployed_at"] or "Baru dibuat",
+        "created_at": r["created_at"]
+    }
+
 @router.post("/create", response_model=ProjectResponse)
 async def create_project(
     body: ProjectCreate,
