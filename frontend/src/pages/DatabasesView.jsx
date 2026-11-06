@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
 import { Database, Plus, Trash2, Copy, Check, Eye, EyeOff, Server, ExternalLink, AlertCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { api } from '../api/client'
@@ -37,6 +38,13 @@ export default function DatabasesView() {
     fetchDatabases()
     fetchExternalDbs()
   }, [])
+
+  const location = useLocation()
+  useEffect(() => {
+    if (location.search.includes('create=true')) {
+      setShowCreateModal(true)
+    }
+  }, [location.search])
 
   const fetchDatabases = async () => {
     try {

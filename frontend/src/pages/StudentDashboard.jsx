@@ -43,15 +43,15 @@ export default function StudentDashboard({ user, onNavigate }) {
 
           <div className="flex flex-wrap gap-3 mt-6">
             <button
-              onClick={() => onNavigate('projects')}
-              className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-2xl text-xs font-semibold bg-[#5A3521] hover:bg-[#6D4029] text-[#FAF5EC] border border-[#7D492F] shadow-lg transition-all duration-150"
+              onClick={() => onNavigate('/deploy?create=true')}
+              className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-2xl text-xs font-semibold bg-[#5A3521] hover:bg-[#6D4029] text-[#FAF5EC] border border-[#7D492F] shadow-lg transition-all duration-150 cursor-pointer"
             >
               <Plus className="h-4 w-4 text-[#E8DCB8]" />
               <span>Deploy Project Baru</span>
             </button>
             <button
-              onClick={() => onNavigate('databases')}
-              className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-2xl text-xs font-semibold bg-[#3A2115] hover:bg-[#482A1B] text-[#E8DCB8] border border-[#543221] transition-all duration-150"
+              onClick={() => onNavigate('/databases?create=true')}
+              className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-2xl text-xs font-semibold bg-[#3A2115] hover:bg-[#482A1B] text-[#E8DCB8] border border-[#543221] transition-all duration-150 cursor-pointer"
             >
               <Database className="h-4 w-4 text-[#DFCDB5]" />
               <span>Buat Database Saya</span>

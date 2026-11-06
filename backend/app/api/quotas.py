@@ -17,12 +17,13 @@ async def get_my_quota(
     c_proj = await (await db.execute("SELECT COUNT(*) FROM projects WHERE user_id = ?", (current_user["id"],))).fetchone()
     c_dbs = await (await db.execute("SELECT COUNT(*) FROM student_databases WHERE user_id = ?", (current_user["id"],))).fetchone()
 
+    isAdmin = current_user.get("role") == "admin"
     return {
-        "max_projects": quota["max_projects"] if quota else 2,
-        "max_databases": quota["max_databases"] if quota else 2,
-        "max_memory_mb": quota["max_memory_mb"] if quota else 256,
-        "max_cpu_cores": quota["max_cpu_cores"] if quota else 0.5,
-        "max_disk_mb": quota["max_disk_mb"] if quota else 500,
+        "max_projects": 99 if isAdmin else (quota["max_projects"] if quota else 2),
+        "max_databases": 99 if isAdmin else (quota["max_databases"] if quota else 2),
+        "max_memory_mb": 1024 if isAdmin else (quota["max_memory_mb"] if quota else 256),
+        "max_cpu_cores": 2.0 if isAdmin else (quota["max_cpu_cores"] if quota else 0.5),
+        "max_disk_mb": 2000 if isAdmin else (quota["max_disk_mb"] if quota else 500),
         "used_projects": c_proj[0],
         "used_databases": c_dbs[0]
     }

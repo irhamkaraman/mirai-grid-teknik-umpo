@@ -1,5 +1,5 @@
-fix(console): fix stale closure in terminal input and auto-focus xterm
+fix(dashboard): link dashboard action buttons to deploy & database creation flows
 
-- Synchronize connection state with refs to prevent stale closure blocking terminal input
-- Enable autofocus and click-to-focus on xterm canvas
-- Support pasting and multi-character terminal inputs seamlessly
+- Fix dashboard '+ Deploy Project Baru' button to route to /deploy?create=true and open create page
+- Fix dashboard 'Buat Database Saya' button to route to /databases?create=true and open create modal
+- Adjust admin quota representation in backend to prevent 3/2 slot display

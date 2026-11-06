@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
 import { Plus, Play, Square, RotateCw, Trash2, Edit2, ExternalLink, Layers, AlertCircle, Terminal } from 'lucide-react'
 import { toast } from 'sonner'
 import { api } from '../api/client'
@@ -22,6 +23,13 @@ export default function ProjectsView() {
   // Confirmation modal
   const [confirmDelete, setConfirmDelete] = useState({ open: false, id: null, name: '' })
   const [controlLoadingId, setControlLoadingId] = useState(null)
+  const location = useLocation()
+
+  useEffect(() => {
+    if (location.search.includes('create=true')) {
+      setIsCreatingProject(true)
+    }
+  }, [location.search])
 
   useEffect(() => {
     fetchProjects()
