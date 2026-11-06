@@ -3,7 +3,7 @@ import {
   Folder, FileText, ArrowLeft, Plus, Upload, Download, Trash2, Edit3,
   Copy, Move, Key, Eye, Archive, FileArchive, RefreshCw, X, ChevronRight,
   ChevronDown, Search, ArrowUp, CheckSquare, Square, CornerUpLeft, Settings,
-  Check, FileCode, Sliders, AlertCircle
+  Check, FileCode, Sliders, AlertCircle, Save
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { api } from '../api/client'

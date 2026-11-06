@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react'
-import { Folder, Layers, Plus, ExternalLink, ArrowRight } from 'lucide-react'
+import { Folder, Layers, Plus, ExternalLink, ArrowRight, ArrowLeft } from 'lucide-react'
 import { toast } from 'sonner'
 import { api } from '../api/client'
 import { SkeletonCard, SkeletonTable } from '../components/Skeletons'
 import FileManager from '../components/FileManager'
 import ErrorBoundary from '../components/ErrorBoundary'
 
-export default function FilesView({ onNavigate }) {
+export default function FilesView({ onNavigate, isStandalone = false }) {
   const [projects, setProjects] = useState([])
   const [loading, setLoading] = useState(true)
   const [selectedProjectId, setSelectedProjectId] = useState(null)
@@ -34,17 +34,28 @@ export default function FilesView({ onNavigate }) {
 
   return (
     <ErrorBoundary onReset={fetchProjects}>
-      <div className="space-y-6 animate-in fade-in duration-200">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h2 className="text-2xl font-serif font-bold text-[#26160F] flex items-center space-x-2">
-              <Folder className="h-6 w-6 text-[#5A3521]" />
-              <span>File Manager</span>
-            </h2>
-            <p className="text-xs text-[#5C3B29] mt-1 font-sans">
-              Kelola direktori & source code praktikum Anda secara terisolasi.
-            </p>
+      <div className="space-y-5 animate-in fade-in duration-200">
+        {/* Header (Standalone layout header with Back to MiraiGrid button) */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-1">
+          <div className="flex items-center space-x-3">
+            {isStandalone && (
+              <button
+                onClick={() => onNavigate('/dashboard')}
+                className="p-2.5 rounded-2xl bg-[#DECDBD] hover:bg-[#D1BDAB] text-[#26160F] transition shadow-sm cursor-pointer shrink-0"
+                title="Kembali ke Dashboard Utama MiraiGrid"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </button>
+            )}
+            <div>
+              <h2 className="text-2xl font-serif font-bold text-[#26160F] flex items-center space-x-2">
+                <Folder className="h-6 w-6 text-[#5A3521]" />
+                <span>File Manager</span>
+              </h2>
+              <p className="text-xs text-[#5C3B29] mt-0.5 font-sans">
+                {isStandalone ? 'Lingkungan kerja mandiri (Standalone) • Terisolasi dalam sandbox antarakun.' : 'Kelola direktori & source code praktikum Anda secara terisolasi.'}
+              </p>
+            </div>
           </div>
 
           {/* Project Selector */}
@@ -77,7 +88,7 @@ export default function FilesView({ onNavigate }) {
               Anda belum memiliki project aplikasi. Silakan buat project terlebih dahulu di menu Deploy untuk mulai mengelola file praktikum.
             </p>
             <button
-              onClick={() => onNavigate('projects')}
+              onClick={() => onNavigate('/deploy')}
               className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-2xl text-xs font-semibold bg-[#5A3521] hover:bg-[#6D4029] text-[#FAF5EC] shadow-lg transition"
             >
               <span>Buka Menu Deploy</span>
@@ -89,7 +100,7 @@ export default function FilesView({ onNavigate }) {
           <FileManager
             key={selectedProject.id}
             project={selectedProject}
-            onClose={() => onNavigate('projects')}
+            onClose={() => onNavigate('/dashboard')}
           />
         ) : (
           <div className="text-center py-12 bg-[#2B1810] border border-[#4D2D1E] rounded-3xl p-6 text-[#FAF5EC]">

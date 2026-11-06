@@ -1,7 +1,6 @@
-feat(routing): implement React Router DOM for persistent URL navigation
+fix(files): resolve Save icon reference and implement full standalone layout
 
-- Configure BrowserRouter with routes: /dashboard, /deploy, /files, /databases, /admin
-- Prevent resetting to dashboard on page refresh (F5)
-- Replace emoji with official SVG logo in ProjectDetailPage
-- Fix onBack button in ProjectDetailPage to cleanly return to applications list
-- Add GET /projects/{id} endpoint in backend
+- Import missing Save icon in FileManager to fix 'Save is not defined' error
+- Render File Manager as a dedicated full-screen standalone layout without sidebar
+- Add back button 'Kembali ke MiraiGrid' to return to dashboard
+- Give File Manager 100% viewport width and height for true cPanel desktop experience
