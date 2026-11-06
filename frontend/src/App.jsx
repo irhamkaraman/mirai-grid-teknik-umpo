@@ -10,6 +10,7 @@ import ProjectsView from './pages/ProjectsView'
 import DatabasesView from './pages/DatabasesView'
 import FilesView from './pages/FilesView'
 import AdminView from './pages/AdminView'
+import ErrorBoundary from './components/ErrorBoundary'
 
 export default function App() {
   const navigate = useNavigate()
@@ -164,7 +165,13 @@ export default function App() {
             <Route path="/databases" element={<DatabasesView />} />
             <Route
               path="/admin"
-              element={user.role === 'admin' ? <AdminView /> : <Navigate to="/dashboard" replace />}
+              element={user.role === 'admin' ? (
+                <ErrorBoundary>
+                  <AdminView />
+                </ErrorBoundary>
+              ) : (
+                <Navigate to="/dashboard" replace />
+              )}
             />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>

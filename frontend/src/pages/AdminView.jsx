@@ -400,7 +400,21 @@ export default function AdminView() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#3E2316]">
-                  {paginatedUsers.map((u) => (
+                  {paginatedUsers.length === 0 ? (
+                    <tr>
+                      <td colSpan="6" className="p-8 text-center text-[#DFCDB5]">
+                        {loading ? (
+                          <span className="flex items-center justify-center space-x-2">
+                            <Spinner size="xs" />
+                            <span>Memuat daftar akun mahasiswa...</span>
+                          </span>
+                        ) : (
+                          <span>Tidak ada akun mahasiswa yang terdaftar atau cocok dengan pencarian.</span>
+                        )}
+                      </td>
+                    </tr>
+                  ) : (
+                    paginatedUsers.map((u) => (
                     <tr key={u.id} className="hover:bg-[#361E13] transition">
                       <td className="p-4 font-mono font-semibold text-[#FAF5EC]">{u.username}</td>
                       <td className="p-4 font-medium">{u.name}</td>
@@ -449,7 +463,7 @@ export default function AdminView() {
                         )}
                       </td>
                     </tr>
-                  ))}
+                  )))}
                 </tbody>
               </table>
             </div>
