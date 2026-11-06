@@ -111,7 +111,8 @@ class PortainerClient:
         self,
         container_name: str,
         cmd: List[str],
-        user: str = "root"
+        user: str = "root",
+        working_dir: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Executes a command inside container via Portainer Docker Proxy API
@@ -128,6 +129,8 @@ class PortainerClient:
                 "Cmd": cmd,
                 "User": user if user else "root"
             }
+            if working_dir:
+                create_payload["WorkingDir"] = working_dir
             create_res = await client.post(create_url, json=create_payload, headers=headers)
             if create_res.status_code not in [200, 201]:
                 return {"success": False, "error": f"Failed to create exec: {create_res.text}"}

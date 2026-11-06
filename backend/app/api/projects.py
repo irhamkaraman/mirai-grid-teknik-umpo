@@ -2,6 +2,8 @@ import os
 import json
 import shutil
 import pathlib
+import posixpath
+import re
 from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Request, Query
 from fastapi.responses import FileResponse
@@ -56,7 +58,55 @@ class ConsoleExecRequest(BaseModel):
     command: str = "/bin/sh"
     user: str = "root"
     stdin_input: Optional[str] = None
+    cwd: Optional[str] = None
 
+def get_project_container_root(project: Any) -> str:
+    try:
+        lang = (project["language"] or "").lower()
+    except Exception:
+        lang = "php"
+    if lang == "php":
+        return "/var/www/html"
+    elif lang in ["python", "node"]:
+        try:
+            cfg = json.loads(project["app_config"]) if project["app_config"] else {}
+        except Exception:
+            cfg = {}
+        app_root = cfg.get("app_root", "").strip().strip("/")
+        return f"/app/{app_root}" if app_root else "/app"
+    return "/var/www/html"
+
+def check_console_command_safety(command_str: str, current_cwd: str, project_root: str) -> tuple[bool, str]:
+    norm_root = posixpath.normpath(project_root)
+    norm_cwd = posixpath.normpath(current_cwd or project_root)
+
+    # 1. Check relative path escapes
+    for token in command_str.split():
+        token_clean = token.strip("';&|`\"")
+        if token_clean.startswith("..") or "/.." in token_clean:
+            if command_str.strip() in ["cd ..", "cd ../", "cd ."]:
+                continue
+            candidate = posixpath.normpath(posixpath.join(norm_cwd, token_clean))
+            if not candidate.startswith(norm_root):
+                return False, f"Akses ditolak: Navigasi/referensi di luar direktori project ({norm_root}) tidak diizinkan."
+
+    # 2. Forbidden root system paths
+    forbidden_pattern = re.compile(
+        r"""(?:^|[\s;|&`'"])/(?:etc|root|boot|proc|sys|dev|mnt|opt|srv|media|home|var(?!/www/html))(?=[/\s;|&'"]|$)""",
+        re.IGNORECASE
+    )
+    if forbidden_pattern.search(command_str):
+        return False, f"Akses ditolak: Tidak diizinkan mengakses path sistem di luar folder project ({norm_root})."
+
+    # 3. Forbidden root access like 'ls /' or 'find /'
+    root_access_pattern = re.compile(
+        r"""(?:^|[\s;|&`'"])(?:ls|dir|find|tree|cat|more|less|tail|head|cp|mv|rm|chmod|chown)\s+/(?=[/\s;|&'"]|$)""",
+        re.IGNORECASE
+    )
+    if root_access_pattern.search(command_str):
+        return False, f"Akses ditolak: Tidak diizinkan mengakses direktori root (/) sistem."
+
+    return True, norm_cwd
 class ProjectConfigUpdate(BaseModel):
     app_config: Dict[str, Any]
     env_vars: Optional[Dict[str, str]] = None
@@ -603,10 +653,12 @@ async def run_pip_install(
         raise HTTPException(status_code=400, detail="Container tidak tersedia.")
 
     container_name = f"app_{current_user['username']}_{project['name']}"
+    project_root = get_project_container_root(project)
     res = await portainer.exec_container_command(
         container_name=container_name,
         cmd=["sh", "-c", "pip install -r requirements.txt"],
-        user="root"
+        user="root",
+        working_dir=project_root
     )
     return res
 
@@ -622,10 +674,12 @@ async def run_npm_install(
         raise HTTPException(status_code=400, detail="Container tidak tersedia.")
 
     container_name = f"app_{current_user['username']}_{project['name']}"
+    project_root = get_project_container_root(project)
     res = await portainer.exec_container_command(
         container_name=container_name,
         cmd=["sh", "-c", "npm install"],
-        user="root"
+        user="root",
+        working_dir=project_root
     )
     return res
 
@@ -1049,7 +1103,7 @@ async def delete_file_or_dir(
         raise HTTPException(status_code=400, detail=str(e))
 
 # ==========================================
-# CONTAINER CONSOLE
+# CONTAINER CONSOLE (SANDBOXED DIRECTORY JAIL)
 # ==========================================
 @router.post("/{project_id}/console/exec")
 async def execute_console_command(
@@ -1064,17 +1118,65 @@ async def execute_console_command(
         raise HTTPException(status_code=400, detail="Project belum di-deploy atau container tidak tersedia.")
 
     container_name = f"app_{current_user['username']}_{project['name']}"
+    project_root = get_project_container_root(project)
 
-    command_str = body.command.strip()
-    if body.stdin_input:
-        full_cmd = [command_str, "-c", body.stdin_input]
+    # Determine and sanitize cwd
+    req_cwd = (body.cwd or "").strip()
+    norm_root = posixpath.normpath(project_root)
+    if not req_cwd:
+        safe_cwd = norm_root
     else:
-        full_cmd = [command_str]
+        norm_req = posixpath.normpath(req_cwd)
+        safe_cwd = norm_req if norm_req.startswith(norm_root) else norm_root
+
+    raw_input = (body.stdin_input or "").strip()
+
+    # Safety validation for suspicious traversal or outside root access
+    if raw_input:
+        is_safe, err_msg = check_console_command_safety(raw_input, safe_cwd, project_root)
+        if not is_safe:
+            return {
+                "success": True,
+                "container": container_name,
+                "command": body.command,
+                "user": body.user or "root",
+                "output": f"\x1b[1;31m[AKSES DITOLAK] {err_msg}\x1b[0m\r\n__MIRAIGRID_PWD__{safe_cwd}\r\n"
+            }
+
+    # Shell Jail Wrapper Script
+    # Intercepts 'cd', prevents navigating outside project_root, clamps to project_root
+    jail_script = f"""
+BASE_DIR="{project_root}"
+cd() {{
+    _t="${{1:-$BASE_DIR}}"
+    if [ "$_t" = "/" ] || [ "$_t" = "~" ]; then
+        command cd "$BASE_DIR"
+        return
+    fi
+    command cd "$_t" 2>/dev/null || {{ echo "cd: $_t: No such file or directory" >&2; return 1; }}
+    _p="$(pwd -P 2>/dev/null || pwd)"
+    case "$_p" in
+        "$BASE_DIR"*) ;;
+        *)
+            command cd "$BASE_DIR"
+            echo "Akses ditolak: Navigasi di luar direktori project ($BASE_DIR) dibatasi." >&2
+            return 1
+            ;;
+    esac
+}}
+command cd "{safe_cwd}" 2>/dev/null || command cd "$BASE_DIR"
+{raw_input}
+echo "__MIRAIGRID_PWD__$(pwd)"
+"""
+
+    shell_cmd = body.command.strip() if body.command else "/bin/sh"
+    full_cmd = [shell_cmd, "-c", jail_script]
 
     res = await portainer.exec_container_command(
         container_name=container_name,
         cmd=full_cmd,
-        user=body.user or "root"
+        user=body.user or "root",
+        working_dir=safe_cwd
     )
 
     if not res.get("success"):
@@ -1083,7 +1185,7 @@ async def execute_console_command(
     return {
         "success": True,
         "container": container_name,
-        "command": command_str,
+        "command": shell_cmd,
         "user": body.user or "root",
         "output": res.get("output", "")
     }

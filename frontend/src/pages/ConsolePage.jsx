@@ -12,6 +12,11 @@ export default function ConsolePage({ project, onBack }) {
   const termInstance = useRef(null)
   const fitAddonRef = useRef(null)
 
+  const defaultProjectRoot = project?.language === 'php' ? '/var/www/html' : '/app'
+  const projectRoot = project?.app_config?.app_root
+    ? `${defaultProjectRoot}/${String(project.app_config.app_root).replace(/^\/+|\/+$/g, '')}`
+    : defaultProjectRoot
+
   // Connection settings
   const [command, setCommand] = useState('/bin/sh')
   const [useCustom, setUseCustom] = useState(false)
@@ -53,7 +58,11 @@ export default function ConsolePage({ project, onBack }) {
   const historyRef = useRef([])
   const historyIndexRef = useRef(-1)
   const isExecutingRef = useRef(false)
-  const cwdRef = useRef('/var/www/html')
+  const cwdRef = useRef(projectRoot)
+
+  useEffect(() => {
+    cwdRef.current = projectRoot
+  }, [projectRoot])
 
   useEffect(() => {
     if (!termInstance.current && terminalRef.current) {
@@ -278,15 +287,18 @@ export default function ConsolePage({ project, onBack }) {
       const res = await api.post(`/projects/${project.id}/console/exec`, {
         command: execCmd || '/bin/sh',
         user: userRef.current || 'root',
-        stdin_input: 'whoami && pwd && uname -sr'
+        stdin_input: 'whoami && pwd && uname -sr',
+        cwd: projectRoot
       })
 
       connectedRef.current = true
       setConnected(true)
 
       const lines = (res.data.output || '').split('\n').map((l) => l.trim()).filter(Boolean)
-      if (lines.length >= 2) {
+      if (lines.length >= 2 && lines[1].startsWith(projectRoot)) {
         cwdRef.current = lines[1]
+      } else {
+        cwdRef.current = projectRoot
       }
 
       term.writeln(`\x1b[1;32m✔ Connected to container: ${res.data.container}\x1b[0m`)
@@ -309,13 +321,12 @@ export default function ConsolePage({ project, onBack }) {
     isExecutingRef.current = true
     const execShell = useCustomRef.current ? customCommandRef.current.trim() : commandRef.current
 
-    const fullInput = `cd ${cwdRef.current} 2>/dev/null; ${cmd}; echo "__MIRAIGRID_PWD__$(pwd)"`
-
     try {
       const res = await api.post(`/projects/${project.id}/console/exec`, {
         command: execShell || '/bin/sh',
         user: userRef.current || 'root',
-        stdin_input: fullInput
+        stdin_input: cmd,
+        cwd: cwdRef.current || projectRoot
       })
 
       let rawOutput = res.data.output || ''
@@ -324,8 +335,10 @@ export default function ConsolePage({ project, onBack }) {
         const parts = rawOutput.split('__MIRAIGRID_PWD__')
         rawOutput = parts[0]
         const newPwd = parts[1].split('\n')[0].trim()
-        if (newPwd) {
+        if (newPwd && newPwd.startsWith(projectRoot)) {
           cwdRef.current = newPwd
+        } else {
+          cwdRef.current = projectRoot
         }
       }
 
@@ -378,6 +391,10 @@ export default function ConsolePage({ project, onBack }) {
 
         {/* Status Badge */}
         <div className="flex items-center space-x-2">
+          <span className="px-3 py-1.5 rounded-xl text-xs font-mono font-semibold flex items-center space-x-1.5 bg-amber-500/10 text-amber-800 border border-amber-500/30">
+            <Shield className="h-3.5 w-3.5 text-amber-600" />
+            <span>SANDBOX: {projectRoot}</span>
+          </span>
           <span
             className={`px-3 py-1.5 rounded-xl text-xs font-mono font-semibold flex items-center space-x-1.5 ${
               connected
