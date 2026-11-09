@@ -159,7 +159,7 @@ export default function DatabasesView() {
         <div>
           <h2 className="text-2xl font-serif font-bold text-[#26160F]">Database Mandiri Praktikum</h2>
           <p className="text-xs text-[#5C3B29] mt-1 font-sans">
-            Buat dan kelola database terisolasi Anda di PostgreSQL 16 atau MariaDB 11.
+            Buat dan kelola database terisolasi Anda di PostgreSQL 16 (phpPgAdmin) atau MySQL / MariaDB 11 (phpMyAdmin).
           </p>
         </div>
         <div className="flex items-center space-x-2">
@@ -216,7 +216,8 @@ export default function DatabasesView() {
                   {databases.map((db) => {
                     const isPg = db.engine === 'postgres'
                     const showPass = visiblePasswords[db.id]
-                    const adminerUrl = `http://76.76.76.189:8085/?${isPg ? 'pgsql=db_postgres' : 'server=db_mariadb'}&username=${encodeURIComponent(db.db_username)}&db=${encodeURIComponent(db.db_name)}`
+                    const ppaUrl = 'http://76.76.76.189:8088/'
+                    const pmaUrl = `http://76.76.76.189:8080/?pma_username=${encodeURIComponent(db.db_username)}`
 
                     return (
                       <tr key={db.id} className="hover:bg-[#361E13] transition group">
@@ -228,7 +229,7 @@ export default function DatabasesView() {
                                 isPg ? 'bg-[#442718] text-[#E8DCB8] border border-[#5C3825]' : 'bg-[#402613] text-[#E8C58D] border border-[#593920]'
                               }`}
                             >
-                              {isPg ? 'PostgreSQL 16' : 'MariaDB 11'}
+                              {isPg ? 'PostgreSQL 16' : 'MySQL / MariaDB 11'}
                             </span>
                           </div>
                           <div className="font-bold text-sm text-[#FAF5EC] font-mono mt-1">
@@ -289,34 +290,41 @@ export default function DatabasesView() {
                           </button>
                         </td>
 
-                        {/* 5. Web GUI (Isolasi CloudBeaver & Adminer) */}
+                        {/* 5. Web GUI (Isolasi Dedicated phpPgAdmin & phpMyAdmin) */}
                         <td className="p-4">
-                          <div className="flex flex-col space-y-1.5">
+                          {isPg ? (
                             <a
-                              href="http://76.76.76.189:8978"
-                              target="_blank"
-                              rel="noreferrer"
-                              className="inline-flex items-center space-x-1.5 text-xs text-[#DFCDB5] hover:text-[#FAF5EC] transition font-medium"
-                              title="Buka CloudBeaver (Login dengan akun Anda)"
-                            >
-                              <span>CloudBeaver</span>
-                              <ExternalLink className="h-3 w-3 text-[#A47E65]" />
-                            </a>
-                            <a
-                              href={adminerUrl}
+                              href={ppaUrl}
                               target="_blank"
                               rel="noreferrer"
                               onClick={() => {
                                 navigator.clipboard.writeText(db.db_password)
-                                toast.success(`Password untuk ${db.db_name} disalin otomatis ke clipboard!`, { duration: 4000 })
+                                toast.success(`Password disalin ke clipboard! Masuk dengan user '${db.db_username}' di phpPgAdmin.`, { duration: 5000 })
                               }}
-                              className="inline-flex items-center space-x-1 text-[11px] text-amber-300 hover:text-amber-200 transition font-medium"
-                              title="Buka Adminer Web GUI terisolasi (Password otomatis tersalin)"
+                              className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-[#3A2216] hover:bg-[#4D2E1F] border border-[#5E3926] text-xs text-[#E8DCB8] hover:text-white transition font-medium shadow-sm"
+                              title="Buka phpPgAdmin (Password otomatis disalin)"
                             >
-                              <span>Adminer (Auto-login)</span>
-                              <ExternalLink className="h-2.5 w-2.5" />
+                              <Database className="h-3.5 w-3.5 text-[#C49767]" />
+                              <span>phpPgAdmin</span>
+                              <ExternalLink className="h-3 w-3 text-[#A47E65]" />
                             </a>
-                          </div>
+                          ) : (
+                            <a
+                              href={pmaUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              onClick={() => {
+                                navigator.clipboard.writeText(db.db_password)
+                                toast.success(`Password disalin ke clipboard! Username '${db.db_username}' terisi di phpMyAdmin.`, { duration: 5000 })
+                              }}
+                              className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-[#3D2516] hover:bg-[#52331F] border border-[#633C24] text-xs text-[#E8C58D] hover:text-white transition font-medium shadow-sm"
+                              title="Buka phpMyAdmin (Password otomatis disalin)"
+                            >
+                              <Server className="h-3.5 w-3.5 text-[#E8C58D]" />
+                              <span>phpMyAdmin</span>
+                              <ExternalLink className="h-3 w-3 text-[#A47E65]" />
+                            </a>
+                          )}
                         </td>
 
                         {/* 6. Aksi */}
@@ -385,24 +393,26 @@ export default function DatabasesView() {
                   <button
                     type="button"
                     onClick={() => setEngine('postgres')}
-                    className={`py-2.5 px-3 rounded-2xl text-xs font-bold border transition ${
+                    className={`p-3 rounded-2xl text-left border transition ${
                       engine === 'postgres'
                         ? 'bg-[#5A3521] border-[#7D492F] text-[#FAF5EC] shadow-md'
-                        : 'bg-[#1C0F0A] border-[#3E2316] text-[#A47E65]'
+                        : 'bg-[#1C0F0A] border-[#3E2316] text-[#A47E65] hover:text-[#DFCDB5]'
                     }`}
                   >
-                    PostgreSQL 16
+                    <div className="font-bold text-xs">PostgreSQL 16</div>
+                    <div className="text-[10px] text-[#DFCDB5]/70 mt-0.5">Web GUI: phpPgAdmin</div>
                   </button>
                   <button
                     type="button"
                     onClick={() => setEngine('mariadb')}
-                    className={`py-2.5 px-3 rounded-2xl text-xs font-bold border transition ${
+                    className={`p-3 rounded-2xl text-left border transition ${
                       engine === 'mariadb'
                         ? 'bg-[#5A3521] border-[#7D492F] text-[#FAF5EC] shadow-md'
-                        : 'bg-[#1C0F0A] border-[#3E2316] text-[#A47E65]'
+                        : 'bg-[#1C0F0A] border-[#3E2316] text-[#A47E65] hover:text-[#DFCDB5]'
                     }`}
                   >
-                    MariaDB 11
+                    <div className="font-bold text-xs">MySQL / MariaDB 11</div>
+                    <div className="text-[10px] text-[#DFCDB5]/70 mt-0.5">Web GUI: phpMyAdmin</div>
                   </button>
                 </div>
               </div>
