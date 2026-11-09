@@ -18,7 +18,7 @@ export default function FileManager({ project, onClose }) {
         <Folder className="h-10 w-10 text-[#A47E65] mx-auto mb-3" />
         <h4 className="text-base font-serif font-bold text-[#FAF5EC]">Project Belum Dipilih</h4>
         <p className="text-xs text-[#DFCDB5] max-w-sm mx-auto mt-1 mb-4">
-          Silakan pilih project di atas untuk mulai mengelola file praktikum.
+          Silakan buat project terlebih dahulu di menu Deploy untuk mulai mengelola file praktikum.
         </p>
       </div>
     )
@@ -426,7 +426,7 @@ export default function FileManager({ project, onClose }) {
           onClick={() => navigateTo(node.path)}
           className={`flex items-center space-x-1.5 py-1 px-2 rounded-lg cursor-pointer transition ${
             isCurrent
-              ? 'bg-[#3A2115] text-[#E8DCB8] font-semibold border-l-2 border-[#C49767]'
+              ? 'bg-[#3A2115] text-[#E8DCB8] font-semibold'
               : 'text-[#DFCDB5]/80 hover:bg-[#341F14] hover:text-[#FAF5EC]'
           }`}
           style={{ paddingLeft: `${Math.max(8, depth * 16)}px` }}
@@ -454,18 +454,13 @@ export default function FileManager({ project, onClose }) {
             >
               <ArrowLeft className="h-4 w-4" />
             </button>
-            <div className="flex items-center space-x-2">
-              <div className="h-8 w-8 rounded-xl bg-[#5A3521] flex items-center justify-center font-bold text-[#FAF5EC] text-xs font-mono">
-                cP
-              </div>
-              <div>
-                <h3 className="text-base font-serif font-bold text-[#FAF5EC]">
-                  File Manager — {project.name}
-                </h3>
-                <p className="text-[10px] text-[#DFCDB5]/70 font-mono">
-                  Sandbox: /home/student/{project.nim || 'lab'}/{project.name}
-                </p>
-              </div>
+            <div>
+              <h3 className="text-base font-serif font-bold text-[#FAF5EC]">
+                File Manager — {project.name}
+              </h3>
+              <p className="text-[10px] text-[#DFCDB5]/70 font-mono">
+                Direktori: /home/student/{project.nim || 'lab'}/{project.name}
+              </p>
             </div>
           </div>
 

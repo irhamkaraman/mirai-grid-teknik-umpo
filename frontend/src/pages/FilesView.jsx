@@ -53,28 +53,12 @@ export default function FilesView({ onNavigate, isStandalone = false }) {
                 <span>File Manager</span>
               </h2>
               <p className="text-xs text-[#5C3B29] mt-0.5 font-sans">
-                {isStandalone ? 'Lingkungan kerja mandiri (Standalone) • Terisolasi dalam sandbox antarakun.' : 'Kelola direktori & source code praktikum Anda secara terisolasi.'}
+                {isStandalone ? 'Ruang kerja berkas mandiri • Akses aman dan terisolasi untuk direktori proyek Anda.' : 'Kelola direktori & source code praktikum Anda secara terisolasi.'}
               </p>
             </div>
           </div>
 
-          {/* Project Selector */}
-          {projects.length > 0 && (
-            <div className="flex items-center space-x-2 bg-[#DECDBD] border border-[#BFAB96] px-3.5 py-1.5 rounded-2xl shadow-sm">
-              <span className="text-xs font-semibold text-[#26160F]">Pilih Project:</span>
-              <select
-                value={selectedProject?.id || ''}
-                onChange={(e) => setSelectedProjectId(parseInt(e.target.value))}
-                className="bg-[#2B1810] text-[#FAF5EC] border border-[#4D2D1E] rounded-xl px-3 py-1.5 text-xs font-semibold focus:outline-none focus:border-[#C49767]"
-              >
-                {projects.map((proj) => (
-                  <option key={proj.id} value={proj.id}>
-                    {proj.name} ({proj.template_type})
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
+
         </div>
 
         {loading ? (
