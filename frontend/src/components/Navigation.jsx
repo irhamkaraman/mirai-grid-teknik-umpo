@@ -17,6 +17,14 @@ export default function Navigation({ userRole, isCollapsed, setIsCollapsed }) {
     navItems.push({ id: 'admin', label: 'Admin Lab', path: '/admin', icon: ShieldAlert })
   }
 
+  const handleNavClick = (item) => {
+    if (item.id === 'files') {
+      window.open('/files', '_blank', 'noopener,noreferrer')
+      return
+    }
+    navigate(item.path)
+  }
+
   const isItemActive = (itemPath) => {
     if (itemPath === '/dashboard') {
       return location.pathname === '/' || location.pathname === '/dashboard'
@@ -89,7 +97,7 @@ export default function Navigation({ userRole, isCollapsed, setIsCollapsed }) {
             return (
               <button
                 key={item.id}
-                onClick={() => navigate(item.path)}
+                onClick={() => handleNavClick(item)}
                 title={isCollapsed ? item.label : undefined}
                 className={`w-full flex items-center rounded-2xl text-xs font-semibold transition-all duration-200 group ${
                   isCollapsed ? 'justify-center p-3' : 'space-x-3 px-3.5 py-3'
@@ -119,7 +127,7 @@ export default function Navigation({ userRole, isCollapsed, setIsCollapsed }) {
           return (
             <button
               key={item.id}
-              onClick={() => navigate(item.path)}
+              onClick={() => handleNavClick(item)}
               className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all ${
                 isActive ? 'text-terracotta-400' : 'text-[#D0B8A2]/70 hover:text-[#FAF5EC]'
               }`}

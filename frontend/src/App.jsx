@@ -90,7 +90,7 @@ export default function App() {
   const isStandaloneFilesView = location.pathname.startsWith('/files')
   if (isStandaloneFilesView) {
     return (
-      <div className="min-h-screen bg-[#E6D7BE] text-[#26160F] p-4 sm:p-7 font-sans relative selection:bg-[#5A3521] selection:text-[#FAF5EC]">
+      <div className="h-screen w-screen bg-[#1C0F0A] text-[#FAF5EC] font-sans overflow-hidden select-none m-0 p-0">
         <Toaster
           richColors
           position="top-right"
@@ -99,18 +99,15 @@ export default function App() {
               background: '#2B1810',
               border: '1px solid #5A3521',
               color: '#FAF5EC',
-              borderRadius: '18px',
+              borderRadius: '12px',
               fontFamily: 'Plus Jakarta Sans, sans-serif',
             },
           }}
         />
-        <div className="w-full max-w-[1400px] mx-auto">
-          <FilesView onNavigate={(path) => navigate(path.startsWith('/') ? path : '/' + path)} isStandalone={true} />
-        </div>
+        <FilesView onNavigate={(path) => navigate(path.startsWith('/') ? path : '/' + path)} isStandalone={true} />
       </div>
     )
   }
-
   // 2. MAIN LAYOUT WITH FLOATING SIDEBAR (Untuk Dashboard, Deploy, Databases, Admin)
   return (
     <div className="min-h-screen bg-[#E6D7BE] text-[#26160F] flex flex-col font-sans selection:bg-[#5A3521] selection:text-[#FAF5EC] relative">

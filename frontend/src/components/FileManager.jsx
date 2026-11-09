@@ -3,7 +3,8 @@ import {
   Folder, FileText, ArrowLeft, Plus, Upload, Download, Trash2, Edit3,
   Copy, Move, Key, Eye, Archive, FileArchive, RefreshCw, X, ChevronRight,
   ChevronDown, Search, ArrowUp, CheckSquare, Square, CornerUpLeft, Settings,
-  Check, FileCode, Sliders, AlertCircle, Save
+  Check, FileCode, Sliders, AlertCircle, Save, HardDrive, Terminal,
+  ExternalLink, FileSpreadsheet, Image as ImageIcon
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { api } from '../api/client'
@@ -11,34 +12,23 @@ import { Spinner, SkeletonTable } from './Skeletons'
 import ConfirmModal from './ConfirmModal'
 import ModalPortal from './ModalPortal'
 
-export default function FileManager({ project, onClose }) {
-  if (!project || !project.id) {
-    return (
-      <div className="text-center py-16 bg-[#2B1810] border border-[#4D2D1E] rounded-3xl p-8 shadow-xl text-[#FAF5EC]">
-        <Folder className="h-10 w-10 text-[#A47E65] mx-auto mb-3" />
-        <h4 className="text-base font-serif font-bold text-[#FAF5EC]">Project Belum Dipilih</h4>
-        <p className="text-xs text-[#DFCDB5] max-w-sm mx-auto mt-1 mb-4">
-          Silakan buat project terlebih dahulu di menu Deploy untuk mulai mengelola file praktikum.
-        </p>
-      </div>
-    )
-  }
+export default function FileManager({ project: initialProject, projects: propProjects, onClose }) {
+  const [projects, setProjects] = useState(propProjects || (initialProject ? [initialProject] : []))
+  const [activeProject, setActiveProject] = useState(initialProject || (propProjects && propProjects.length > 0 ? propProjects[0] : null))
+  const [projectTrees, setProjectTrees] = useState({})
+  const [expandedProjects, setExpandedProjects] = useState({})
+  const [expandedDirs, setExpandedDirs] = useState({})
 
   const [currentPath, setCurrentPath] = useState('')
-  const [pathHistory, setPathHistory] = useState([''])
-  const [historyIndex, setHistoryIndex] = useState(0)
+  const [pathHistory, setPathHistory] = useState([])
+  const [historyIndex, setHistoryIndex] = useState(-1)
   const [items, setItems] = useState([])
-  const [dirTree, setDirTree] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
-
-  // Selected item state (Single or Multiple)
   const [selectedPaths, setSelectedPaths] = useState([])
 
   // Active Modals
-  const [modalType, setModalType] = useState(null) // 'new_file', 'new_folder', 'rename', 'copy', 'move', 'permissions', 'compress', 'extract', 'view', 'edit', 'upload'
-
-  // Form states for modals
+  const [modalType, setModalType] = useState(null)
   const [newItemName, setNewItemName] = useState('')
   const [targetDestination, setTargetDestination] = useState('')
   const [permUser, setPermUser] = useState({ r: true, w: true, x: true })
@@ -59,16 +49,63 @@ export default function FileManager({ project, onClose }) {
   // Confirm delete modal
   const [confirmDelete, setConfirmDelete] = useState({ open: false, paths: [] })
 
+  // 1. Initial Load: Projects & Trees
   useEffect(() => {
-    fetchDirectory(currentPath)
-    fetchTree()
-  }, [currentPath])
+    if (!propProjects || propProjects.length === 0) {
+      loadAllProjects()
+    } else {
+      setProjects(propProjects)
+      if (!activeProject && propProjects.length > 0) {
+        setActiveProject(propProjects[0])
+      }
+      fetchAllTrees(propProjects)
+    }
+  }, [propProjects])
 
-  const fetchDirectory = async (subpath) => {
+  const loadAllProjects = async () => {
+    try {
+      const res = await api.get('/projects')
+      const pList = res.data || []
+      setProjects(pList)
+      if (pList.length > 0) {
+        const chosen = initialProject ? (pList.find(p => p.id === initialProject.id) || pList[0]) : pList[0]
+        setActiveProject(chosen)
+        fetchAllTrees(pList)
+      }
+    } catch (err) {
+      toast.error('Gagal memuat daftar project deployment.')
+    }
+  }
+
+  const fetchAllTrees = async (pList = projects) => {
+    const trees = {}
+    const exp = { ...expandedProjects }
+    for (const p of pList) {
+      try {
+        const res = await api.get(`/projects/${p.id}/files/tree`)
+        trees[p.id] = res.data.tree || null
+        if (exp[p.id] === undefined) {
+          exp[p.id] = true // auto expand root projects
+        }
+      } catch (err) {}
+    }
+    setProjectTrees(trees)
+    setExpandedProjects(exp)
+  }
+
+  // 2. Fetch Directory when activeProject or currentPath changes
+  useEffect(() => {
+    if (activeProject && activeProject.id) {
+      fetchDirectory(activeProject.id, currentPath)
+    }
+  }, [activeProject?.id, currentPath])
+
+  const fetchDirectory = async (projectId, subpath) => {
+    if (!projectId) return
     setLoading(true)
     setSelectedPaths([])
     try {
-      const res = await api.get(`/projects/${project.id}/files?path=${encodeURIComponent(subpath || '')}`)
+      const res = await api.get(`/projects/${projectId}/files?path=${encodeURIComponent(subpath || '')}`)
       setItems(res.data.items || [])
       setCurrentPath(res.data.current_path || '')
     } catch (err) {
@@ -78,20 +115,18 @@ export default function FileManager({ project, onClose }) {
     }
   }
 
-  const fetchTree = async () => {
-    try {
-      const res = await api.get(`/projects/${project.id}/files/tree`)
-      setDirTree(res.data.tree || null)
-    } catch (err) {}
-  }
-
-  // Navigation helpers
-  const navigateTo = (newPath) => {
+  // History Navigation Helpers
+  const navigateTo = (newPath, targetProject = activeProject) => {
+    if (!targetProject) return
+    const entry = { projectId: targetProject.id, path: newPath }
     const nextIndex = historyIndex + 1
     const newHistory = pathHistory.slice(0, nextIndex)
-    newHistory.push(newPath)
+    newHistory.push(entry)
     setPathHistory(newHistory)
     setHistoryIndex(nextIndex)
+    if (activeProject?.id !== targetProject.id) {
+      setActiveProject(targetProject)
+    }
     setCurrentPath(newPath)
   }
 
@@ -99,7 +134,10 @@ export default function FileManager({ project, onClose }) {
     if (historyIndex > 0) {
       const prevIndex = historyIndex - 1
       setHistoryIndex(prevIndex)
-      setCurrentPath(pathHistory[prevIndex])
+      const target = pathHistory[prevIndex]
+      const p = projects.find(item => item.id === target.projectId) || activeProject
+      setActiveProject(p)
+      setCurrentPath(target.path)
     }
   }
 
@@ -107,7 +145,10 @@ export default function FileManager({ project, onClose }) {
     if (historyIndex < pathHistory.length - 1) {
       const nextIndex = historyIndex + 1
       setHistoryIndex(nextIndex)
-      setCurrentPath(pathHistory[nextIndex])
+      const target = pathHistory[nextIndex]
+      const p = projects.find(item => item.id === target.projectId) || activeProject
+      setActiveProject(p)
+      setCurrentPath(target.path)
     }
   }
 
@@ -115,13 +156,31 @@ export default function FileManager({ project, onClose }) {
     if (!currentPath) return
     const parts = currentPath.split('/')
     parts.pop()
-    navigateTo(parts.join('/'))
+    navigateTo(parts.join('/'), activeProject)
   }
 
   const handleGoHome = () => {
     if (currentPath !== '') {
-      navigateTo('')
+      navigateTo('', activeProject)
     }
+  }
+
+  const handleSelectProject = (p) => {
+    if (activeProject?.id === p.id && currentPath === '') return
+    navigateTo('', p)
+    setExpandedProjects(prev => ({ ...prev, [p.id]: true }))
+  }
+
+  const handleSelectSubfolder = (p, path) => {
+    navigateTo(path, p)
+  }
+
+  const toggleExpandProject = (pId) => {
+    setExpandedProjects(prev => ({ ...prev, [pId]: !prev[pId] }))
+  }
+
+  const toggleExpandDir = (key) => {
+    setExpandedDirs(prev => ({ ...prev, [key]: !prev[key] }))
   }
 
   // Selection toggle
@@ -147,13 +206,14 @@ export default function FileManager({ project, onClose }) {
 
   const selectedItem = items.find((i) => selectedPaths.includes(i.path))
 
-  // Open / View / Edit File
+  // File Operations
   const handleOpenFile = async (item, mode = 'edit') => {
+    if (!item || item.is_dir || !activeProject) return
     setActiveFile(item)
     setContentLoading(true)
     setModalType(mode)
     try {
-      const res = await api.get(`/projects/${project.id}/files/content?path=${encodeURIComponent(item.path)}`)
+      const res = await api.get(`/projects/${activeProject.id}/files/content?path=${encodeURIComponent(item.path)}`)
       setFileContent(res.data.content || '')
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Gagal membaca konten file.')
@@ -164,163 +224,157 @@ export default function FileManager({ project, onClose }) {
   }
 
   const handleSaveFile = async () => {
-    if (!activeFile) return
+    if (!activeFile || !activeProject) return
     setSavingFile(true)
     const toastId = toast.loading('Menyimpan perubahan file...')
     try {
-      await api.post(`/projects/${project.id}/files/save`, {
+      await api.post(`/projects/${activeProject.id}/files/save`, {
         path: activeFile.path,
         content: fileContent,
       })
       toast.success('File berhasil disimpan!', { id: toastId })
     } catch (err) {
-      toast.error('Gagal menyimpan file.', { id: toastId })
+      toast.error(err.response?.data?.detail || 'Gagal menyimpan file.', { id: toastId })
     } finally {
       setSavingFile(false)
     }
   }
 
-  // Download File
   const handleDownload = () => {
-    if (!selectedItem || selectedItem.is_dir) return
-    window.open(`/api/projects/${project.id}/files/download?path=${encodeURIComponent(selectedItem.path)}`, '_blank')
+    if (!selectedItem || selectedItem.is_dir || !activeProject) return
+    window.open(`/api/projects/${activeProject.id}/files/download?path=${encodeURIComponent(selectedItem.path)}`, '_blank')
   }
 
-  // Permissions Calculation
+  // Permissions helpers
   const openPermissionsModal = () => {
     if (!selectedItem) return
-    const oct = selectedItem.permissions.replace(/^0/, '') || '755'
-    const u = parseInt(oct[0], 10) || 7
-    const g = parseInt(oct[1], 10) || 5
-    const w = parseInt(oct[2], 10) || 5
+    const permStr = String(selectedItem.permissions || '0755').padStart(4, '0')
+    const u = parseInt(permStr[1] || '7', 10)
+    const g = parseInt(permStr[2] || '5', 10)
+    const w = parseInt(permStr[3] || '5', 10)
 
     setPermUser({ r: (u & 4) !== 0, w: (u & 2) !== 0, x: (u & 1) !== 0 })
     setPermGroup({ r: (g & 4) !== 0, w: (g & 2) !== 0, x: (g & 1) !== 0 })
     setPermWorld({ r: (w & 4) !== 0, w: (w & 2) !== 0, x: (w & 1) !== 0 })
-    setPermOctal(selectedItem.permissions)
+    setPermOctal(permStr)
     setModalType('permissions')
   }
 
-  const calculateOctal = (u, g, w) => {
-    const uNum = (u.r ? 4 : 0) + (u.w ? 2 : 0) + (u.x ? 1 : 0)
-    const gNum = (g.r ? 4 : 0) + (g.w ? 2 : 0) + (g.x ? 1 : 0)
-    const wNum = (w.r ? 4 : 0) + (w.w ? 2 : 0) + (w.x ? 1 : 0)
-    return `0${uNum}${gNum}${wNum}`
-  }
+  const handlePermChange = (role, action) => {
+    const updateObj = (prev) => ({ ...prev, [action]: !prev[action] })
+    let newU = permUser
+    let newG = permGroup
+    let newW = permWorld
 
-  const handlePermChange = (role, perm) => {
-    let nextU = permUser
-    let nextG = permGroup
-    let nextW = permWorld
+    if (role === 'u') newU = updateObj(permUser)
+    if (role === 'g') newG = updateObj(permGroup)
+    if (role === 'w') newW = updateObj(permWorld)
 
-    if (role === 'u') nextU = { ...permUser, [perm]: !permUser[perm] }
-    if (role === 'g') nextG = { ...permGroup, [perm]: !permGroup[perm] }
-    if (role === 'w') nextW = { ...permWorld, [perm]: !permWorld[perm] }
+    setPermUser(newU)
+    setPermGroup(newG)
+    setPermWorld(newW)
 
-    setPermUser(nextU)
-    setPermGroup(nextG)
-    setPermWorld(nextW)
-    setPermOctal(calculateOctal(nextU, nextG, nextW))
+    const calcOctal = (o) => (o.r ? 4 : 0) + (o.w ? 2 : 0) + (o.x ? 1 : 0)
+    const code = `0${calcOctal(newU)}${calcOctal(newG)}${calcOctal(newW)}`
+    setPermOctal(code)
   }
 
   const handleSavePermissions = async () => {
-    const toastId = toast.loading('Mengubah permission...')
+    if (!selectedItem || !activeProject) return
+    const toastId = toast.loading('Mengubah hak akses file...')
     try {
-      await api.post(`/projects/${project.id}/files/permissions`, {
+      await api.post(`/projects/${activeProject.id}/files/permissions`, {
         path: selectedItem.path,
         permissions: permOctal,
       })
-      toast.success(`Permission diubah menjadi ${permOctal}`, { id: toastId })
+      toast.success('Permissions berhasil diubah!', { id: toastId })
       setModalType(null)
-      fetchDirectory(currentPath)
+      fetchDirectory(activeProject.id, currentPath)
     } catch (err) {
-      toast.error('Gagal mengubah permission.', { id: toastId })
+      toast.error(err.response?.data?.detail || 'Gagal mengubah permissions.', { id: toastId })
     }
   }
 
-  // Rename
   const handleRename = async (e) => {
     e.preventDefault()
-    if (!selectedItem || !newItemName) return
-    const toastId = toast.loading(`Mengubah nama menjadi ${newItemName}...`)
+    if (!selectedItem || !newItemName.trim() || !activeProject) return
+    const toastId = toast.loading('Mengubah nama item...')
     try {
-      await api.post(`/projects/${project.id}/files/rename`, {
+      await api.post(`/projects/${activeProject.id}/files/rename`, {
         old_path: selectedItem.path,
         new_name: newItemName.trim(),
       })
-      toast.success('Nama berhasil diubah!', { id: toastId })
+      toast.success('Item berhasil di-rename!', { id: toastId })
       setModalType(null)
-      fetchDirectory(currentPath)
-      fetchTree()
+      fetchDirectory(activeProject.id, currentPath)
+      fetchAllTrees()
     } catch (err) {
-      toast.error(err.response?.data?.detail || 'Gagal mengubah nama.', { id: toastId })
+      toast.error(err.response?.data?.detail || 'Gagal mengubah nama item.', { id: toastId })
     }
   }
 
-  // Copy / Move
   const handleCopyMove = async (isMove) => {
+    if (!selectedItem || !activeProject) return
     const action = isMove ? 'move' : 'copy'
     const toastId = toast.loading(`${isMove ? 'Memindahkan' : 'Menyalin'} item...`)
     try {
-      await api.post(`/projects/${project.id}/files/${action}`, {
+      await api.post(`/projects/${activeProject.id}/files/${action}`, {
         source_path: selectedItem.path,
         dest_dir: targetDestination.trim(),
       })
-      toast.success(`Berhasil ${isMove ? 'dipindahkan' : 'disalin'}!`, { id: toastId })
+      toast.success(`Item berhasil di-${action}!`, { id: toastId })
       setModalType(null)
-      fetchDirectory(currentPath)
-      fetchTree()
+      fetchDirectory(activeProject.id, currentPath)
+      fetchAllTrees()
     } catch (err) {
-      toast.error(err.response?.data?.detail || 'Operasi gagal.', { id: toastId })
+      toast.error(err.response?.data?.detail || `Gagal melakukan ${action}.`, { id: toastId })
     }
   }
 
-  // Compress to ZIP
   const handleCompress = async (e) => {
     e.preventDefault()
-    if (!targetDestination) return
-    const zipName = targetDestination.endsWith('.zip') ? targetDestination : `${targetDestination}.zip`
-    const destZip = currentPath ? `${currentPath}/${zipName}` : zipName
-    const toastId = toast.loading(`Mengompresi ke ${zipName}...`)
+    if (selectedPaths.length === 0 || !activeProject) return
+    const toastId = toast.loading('Mengompresi item ke arsip ZIP...')
+    const destZip = targetDestination.endsWith('.zip') ? targetDestination : `${targetDestination}.zip`
     try {
-      await api.post(`/projects/${project.id}/files/compress`, {
+      await api.post(`/projects/${activeProject.id}/files/compress`, {
         paths: selectedPaths,
         destination_zip: destZip,
       })
-      toast.success('File berhasil dikompresi!', { id: toastId })
+      toast.success('Arsip ZIP berhasil dibuat!', { id: toastId })
       setModalType(null)
-      fetchDirectory(currentPath)
+      fetchDirectory(activeProject.id, currentPath)
+      fetchAllTrees()
     } catch (err) {
-      toast.error(err.response?.data?.detail || 'Gagal mengompresi.', { id: toastId })
+      toast.error(err.response?.data?.detail || 'Gagal mengompresi item.', { id: toastId })
     }
   }
 
-  // Extract ZIP
   const handleExtract = async (e) => {
     e.preventDefault()
-    if (!selectedItem) return
-    const toastId = toast.loading('Mengekstrak file ZIP...')
+    if (!selectedItem || !activeProject) return
+    const toastId = toast.loading('Mengekstrak arsip ZIP...')
     try {
-      await api.post(`/projects/${project.id}/files/extract`, {
+      await api.post(`/projects/${activeProject.id}/files/extract`, {
         zip_path: selectedItem.path,
         extract_to: targetDestination || currentPath,
       })
-      toast.success('Arsip berhasil diekstrak!', { id: toastId })
+      toast.success('Ekstraksi selesai!', { id: toastId })
       setModalType(null)
-      fetchDirectory(currentPath)
-      fetchTree()
+      fetchDirectory(activeProject.id, currentPath)
+      fetchAllTrees()
     } catch (err) {
-      toast.error(err.response?.data?.detail || 'Gagal mengekstrak.', { id: toastId })
+      toast.error(err.response?.data?.detail || 'Gagal mengekstrak ZIP.', { id: toastId })
     }
   }
 
-  // Create New File / Folder
   const handleCreateNewItem = async (e) => {
     e.preventDefault()
+    if (!newItemName.trim() || !activeProject) return
     const isDir = modalType === 'new_folder'
     const toastId = toast.loading(`Membuat ${isDir ? 'folder' : 'file'} baru...`)
     try {
-      await api.post(`/projects/${project.id}/files/new`, {
+      await api.post(`/projects/${activeProject.id}/files/new`, {
         path: currentPath,
         name: newItemName.trim(),
         is_dir: isDir,
@@ -328,53 +382,51 @@ export default function FileManager({ project, onClose }) {
       toast.success(`${isDir ? 'Folder' : 'File'} berhasil dibuat!`, { id: toastId })
       setModalType(null)
       setNewItemName('')
-      fetchDirectory(currentPath)
-      fetchTree()
+      fetchDirectory(activeProject.id, currentPath)
+      fetchAllTrees()
     } catch (err) {
-      toast.error(err.response?.data?.detail || 'Gagal membuat item.', { id: toastId })
+      toast.error(err.response?.data?.detail || 'Gagal membuat item baru.', { id: toastId })
     }
   }
 
-  // Upload Files
   const handleUploadFiles = async (e) => {
     e.preventDefault()
-    if (!uploadFiles || uploadFiles.length === 0) return
+    if (uploadFiles.length === 0 || !activeProject) return
     setUploading(true)
     const toastId = toast.loading(`Meng-upload ${uploadFiles.length} file...`)
-
     try {
       for (let i = 0; i < uploadFiles.length; i++) {
         const formData = new FormData()
         formData.append('path', currentPath)
         formData.append('file', uploadFiles[i])
-        await api.post(`/projects/${project.id}/files/upload`, formData, {
+        await api.post(`/projects/${activeProject.id}/files/upload`, formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
         })
       }
       toast.success('Upload selesai!', { id: toastId })
       setModalType(null)
       setUploadFiles([])
-      fetchDirectory(currentPath)
-      fetchTree()
+      fetchDirectory(activeProject.id, currentPath)
+      fetchAllTrees()
     } catch (err) {
-      toast.error(err.response?.data?.detail || 'Gagal upload file.', { id: toastId })
+      toast.error(err.response?.data?.detail || 'Gagal meng-upload file.', { id: toastId })
     } finally {
       setUploading(false)
     }
   }
 
-  // Delete Items
   const executeDelete = async () => {
-    const toastId = toast.loading('Menghapus file yang dipilih...')
+    if (!activeProject) return
+    const toastId = toast.loading('Menghapus item...')
     try {
       for (const p of confirmDelete.paths) {
-        await api.delete(`/projects/${project.id}/files?path=${encodeURIComponent(p)}`)
+        await api.delete(`/projects/${activeProject.id}/files?path=${encodeURIComponent(p)}`)
       }
       toast.success('Item berhasil dihapus.', { id: toastId })
-      fetchDirectory(currentPath)
-      fetchTree()
+      fetchDirectory(activeProject.id, currentPath)
+      fetchAllTrees()
     } catch (err) {
-      toast.error('Gagal menghapus.', { id: toastId })
+      toast.error(err.response?.data?.detail || 'Gagal menghapus item.', { id: toastId })
     }
   }
 
@@ -415,313 +467,397 @@ export default function FileManager({ project, onClose }) {
     return searchQuery ? i.name.toLowerCase().includes(searchQuery.toLowerCase()) : true
   })
 
-  // Left Directory Tree Recursive Component
-  const renderTree = (node, depth = 0) => {
+  const foldersCount = items.filter(i => i.is_dir).length
+  const filesCount = items.filter(i => !i.is_dir).length
+
+  // Recursive Tree Node Renderer for subdirectories
+  const renderTreeNode = (node, projectObj, depth = 1) => {
     if (!node) return null
-    const isCurrent = node.path === currentPath
+    const isCurrent = activeProject?.id === projectObj.id && currentPath === node.path
+    const dirKey = `${projectObj.id}:${node.path}`
+    const isExpanded = expandedDirs[dirKey]
+    const hasChildren = node.children && node.children.length > 0
 
     return (
-      <div key={`${node.path || 'root'}-${depth}`} className="select-none text-xs">
+      <div key={`${dirKey}-${depth}`} className="select-none text-xs">
         <div
-          onClick={() => navigateTo(node.path)}
-          className={`flex items-center space-x-1.5 py-1 px-2 rounded-lg cursor-pointer transition ${
+          onClick={() => handleSelectSubfolder(projectObj, node.path)}
+          className={`flex items-center space-x-1.5 py-1 px-2 rounded cursor-pointer transition ${
             isCurrent
-              ? 'bg-[#3A2115] text-[#E8DCB8] font-semibold'
-              : 'text-[#DFCDB5]/80 hover:bg-[#341F14] hover:text-[#FAF5EC]'
+              ? 'bg-[#3E2316] text-[#FAF5EC] font-semibold'
+              : 'text-[#DFCDB5]/85 hover:bg-[#2B1810] hover:text-[#FAF5EC]'
           }`}
-          style={{ paddingLeft: `${Math.max(8, depth * 16)}px` }}
+          style={{ paddingLeft: `${Math.max(8, depth * 14)}px` }}
         >
+          {hasChildren ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                toggleExpandDir(dirKey)
+              }}
+              className="p-0.5 text-[#A47E65] hover:text-[#FAF5EC]"
+            >
+              {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+            </button>
+          ) : (
+            <span className="w-3" />
+          )}
           <Folder className={`h-3.5 w-3.5 shrink-0 ${isCurrent ? 'text-[#E8DCB8]' : 'text-[#A47E65]'}`} />
-          <span className="truncate">{node.name}</span>
+          <span className="truncate font-mono">{node.name}</span>
         </div>
-        {node.children && node.children.length > 0 && (
-          <div>{node.children.map((child, idx) => renderTree(child, depth + 1))}</div>
+        {hasChildren && isExpanded && (
+          <div className="space-y-0.5">
+            {node.children.map((child) => renderTreeNode(child, projectObj, depth + 1))}
+          </div>
         )}
       </div>
     )
   }
 
   return (
-    <div className="space-y-4 animate-in fade-in duration-200">
-      {/* 1. cPanel Top Navigation Header (Image 2) */}
-      <div className="bg-[#2B1810] border border-[#4D2D1E] rounded-3xl p-4 shadow-xl text-[#FAF5EC]">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-          <div className="flex items-center space-x-3">
+    <div className="h-screen w-full flex flex-col bg-[#1C0F0A] text-[#FAF5EC] overflow-hidden select-none m-0 p-0 font-sans">
+      {/* 1. CLASSIC TITLE BAR */}
+      <div className="h-10 bg-[#24140C] border-b border-[#3E2316] px-3 flex items-center justify-between text-xs shrink-0">
+        <div className="flex items-center space-x-2.5 overflow-hidden">
+          <Folder className="h-4 w-4 text-[#C49767] shrink-0" />
+          <span className="font-semibold text-[#FAF5EC] tracking-wide">File Explorer</span>
+          <span className="text-[#553826]">|</span>
+          <span className="text-[#DFCDB5]/80 font-mono text-[11px] truncate">
+            /home/student/{activeProject ? activeProject.name : 'lab'}{currentPath ? `/${currentPath}` : ''}
+          </span>
+        </div>
+
+        <div className="flex items-center space-x-2 shrink-0">
+          <div className="relative">
+            <Search className="h-3.5 w-3.5 text-[#A47E65] absolute left-2.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Search file name..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="bg-[#140A07] border border-[#3E2316] rounded-lg pl-8 pr-3 py-1 text-xs text-[#FAF5EC] placeholder-[#553826] focus:outline-none focus:border-[#C49767] w-40 sm:w-60 font-sans"
+            />
+          </div>
+
+          <button
+            onClick={() => {
+              if (activeProject) {
+                fetchDirectory(activeProject.id, currentPath)
+                fetchAllTrees()
+              }
+            }}
+            className="p-1.5 rounded-lg bg-[#3A2115] hover:bg-[#482A1B] text-[#DFCDB5] hover:text-[#FAF5EC] transition"
+            title="Refresh All"
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+          </button>
+
+          {onClose && (
             <button
               onClick={onClose}
-              className="p-2.5 rounded-2xl bg-[#3A2115] hover:bg-[#482A1B] text-[#E8DCB8] transition shadow-sm"
-              title="Kembali ke Daftar Aplikasi"
+              className="px-2.5 py-1 rounded-lg bg-[#3A2115] hover:bg-[#482A1B] text-[#DFCDB5] hover:text-[#FAF5EC] text-xs transition"
+              title="Close File Explorer"
             >
-              <ArrowLeft className="h-4 w-4" />
+              Close
             </button>
-            <div>
-              <h3 className="text-base font-serif font-bold text-[#FAF5EC]">
-                File Manager — {project.name}
-              </h3>
-              <p className="text-[10px] text-[#DFCDB5]/70 font-mono">
-                Direktori: /home/student/{project.nim || 'lab'}/{project.name}
-              </p>
-            </div>
-          </div>
-
-          {/* Search Bar & Setting */}
-          <div className="flex items-center space-x-2">
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Search file name..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="bg-[#1C0F0A] border border-[#3E2316] rounded-xl pl-8 pr-3 py-1.5 text-xs text-[#FAF5EC] placeholder-[#553826] focus:outline-none focus:border-[#C49767] w-48 sm:w-64 font-sans"
-              />
-              <Search className="h-3.5 w-3.5 text-[#A47E65] absolute left-2.5 top-1/2 -translate-y-1/2" />
-            </div>
-            <button
-              onClick={() => fetchDirectory(currentPath)}
-              className="p-2 rounded-xl bg-[#3A2115] hover:bg-[#482A1B] text-[#DFCDB5] transition"
-              title="Reload"
-            >
-              <RefreshCw className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-
-        {/* 2. cPanel Primary Action Toolbar (Image 2) */}
-        <div className="flex items-center space-x-1 overflow-x-auto py-2.5 mt-3 border-t border-[#3E2316] text-xs">
-          {/* + File */}
-          <button
-            onClick={() => { setNewItemName(''); setModalType('new_file'); }}
-            className="px-2.5 py-1.5 rounded-xl hover:bg-[#3A2115] text-[#E8DCB8] inline-flex items-center space-x-1 transition shrink-0"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            <span>File</span>
-          </button>
-
-          {/* + Folder */}
-          <button
-            onClick={() => { setNewItemName(''); setModalType('new_folder'); }}
-            className="px-2.5 py-1.5 rounded-xl hover:bg-[#3A2115] text-[#E8DCB8] inline-flex items-center space-x-1 transition shrink-0"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            <span>Folder</span>
-          </button>
-
-          <span className="h-4 w-px bg-[#3E2316] mx-1"></span>
-
-          {/* Copy */}
-          <button
-            onClick={() => { setTargetDestination(currentPath); setModalType('copy'); }}
-            disabled={!selectedItem}
-            className="px-2.5 py-1.5 rounded-xl hover:bg-[#3A2115] text-[#DFCDB5] disabled:opacity-40 inline-flex items-center space-x-1 transition shrink-0"
-          >
-            <Copy className="h-3.5 w-3.5" />
-            <span>Copy</span>
-          </button>
-
-          {/* Move */}
-          <button
-            onClick={() => { setTargetDestination(currentPath); setModalType('move'); }}
-            disabled={!selectedItem}
-            className="px-2.5 py-1.5 rounded-xl hover:bg-[#3A2115] text-[#DFCDB5] disabled:opacity-40 inline-flex items-center space-x-1 transition shrink-0"
-          >
-            <Move className="h-3.5 w-3.5" />
-            <span>Move</span>
-          </button>
-
-          {/* Upload */}
-          <button
-            onClick={() => setModalType('upload')}
-            className="px-2.5 py-1.5 rounded-xl bg-[#5A3521] hover:bg-[#6D4029] text-[#FAF5EC] inline-flex items-center space-x-1 transition shadow-sm shrink-0"
-          >
-            <Upload className="h-3.5 w-3.5 text-[#E8DCB8]" />
-            <span>Upload</span>
-          </button>
-
-          {/* Download */}
-          <button
-            onClick={handleDownload}
-            disabled={!selectedItem || selectedItem.is_dir}
-            className="px-2.5 py-1.5 rounded-xl hover:bg-[#3A2115] text-[#DFCDB5] disabled:opacity-40 inline-flex items-center space-x-1 transition shrink-0"
-          >
-            <Download className="h-3.5 w-3.5" />
-            <span>Download</span>
-          </button>
-
-          {/* Delete */}
-          <button
-            onClick={() => setConfirmDelete({ open: true, paths: selectedPaths })}
-            disabled={selectedPaths.length === 0}
-            className="px-2.5 py-1.5 rounded-xl hover:bg-rose-500/20 text-rose-400 disabled:opacity-40 inline-flex items-center space-x-1 transition shrink-0"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-            <span>Delete</span>
-          </button>
-
-          <span className="h-4 w-px bg-[#3E2316] mx-1"></span>
-
-          {/* Rename */}
-          <button
-            onClick={() => { setNewItemName(selectedItem?.name || ''); setModalType('rename'); }}
-            disabled={!selectedItem}
-            className="px-2.5 py-1.5 rounded-xl hover:bg-[#3A2115] text-[#DFCDB5] disabled:opacity-40 inline-flex items-center space-x-1 transition shrink-0"
-          >
-            <Edit3 className="h-3.5 w-3.5" />
-            <span>Rename</span>
-          </button>
-
-          {/* Edit */}
-          <button
-            onClick={() => handleOpenFile(selectedItem, 'edit')}
-            disabled={!selectedItem || selectedItem.is_dir}
-            className="px-2.5 py-1.5 rounded-xl hover:bg-[#3A2115] text-[#DFCDB5] disabled:opacity-40 inline-flex items-center space-x-1 transition shrink-0"
-          >
-            <FileCode className="h-3.5 w-3.5" />
-            <span>Edit</span>
-          </button>
-
-          {/* Permissions */}
-          <button
-            onClick={openPermissionsModal}
-            disabled={!selectedItem}
-            className="px-2.5 py-1.5 rounded-xl hover:bg-[#3A2115] text-[#DFCDB5] disabled:opacity-40 inline-flex items-center space-x-1 transition shrink-0"
-          >
-            <Key className="h-3.5 w-3.5" />
-            <span>Permissions</span>
-          </button>
-
-          {/* View */}
-          <button
-            onClick={() => handleOpenFile(selectedItem, 'view')}
-            disabled={!selectedItem || selectedItem.is_dir}
-            className="px-2.5 py-1.5 rounded-xl hover:bg-[#3A2115] text-[#DFCDB5] disabled:opacity-40 inline-flex items-center space-x-1 transition shrink-0"
-          >
-            <Eye className="h-3.5 w-3.5" />
-            <span>View</span>
-          </button>
-
-          <span className="h-4 w-px bg-[#3E2316] mx-1"></span>
-
-          {/* Extract */}
-          <button
-            onClick={() => { setTargetDestination(currentPath); setModalType('extract'); }}
-            disabled={!selectedItem || !selectedItem.name || !selectedItem.name.endsWith('.zip')}
-            className="px-2.5 py-1.5 rounded-xl hover:bg-[#3A2115] text-[#DFCDB5] disabled:opacity-40 inline-flex items-center space-x-1 transition shrink-0"
-          >
-            <Archive className="h-3.5 w-3.5" />
-            <span>Extract</span>
-          </button>
-
-          {/* Compress */}
-          <button
-            onClick={() => { setTargetDestination('archive.zip'); setModalType('compress'); }}
-            disabled={selectedPaths.length === 0}
-            className="px-2.5 py-1.5 rounded-xl hover:bg-[#3A2115] text-[#DFCDB5] disabled:opacity-40 inline-flex items-center space-x-1 transition shrink-0"
-          >
-            <FileArchive className="h-3.5 w-3.5" />
-            <span>Compress</span>
-          </button>
-        </div>
-
-        {/* 3. cPanel Location Sub-bar (Image 2) */}
-        <div className="flex flex-wrap items-center justify-between gap-2 pt-2.5 border-t border-[#3E2316] text-[11px] font-mono">
-          <div className="flex items-center space-x-1.5">
-            <button
-              onClick={handleGoHome}
-              className="px-2 py-1 rounded-lg bg-[#3A2115] hover:bg-[#482A1B] text-[#DFCDB5] transition"
-              title="Home"
-            >
-              Home
-            </button>
-            <button
-              onClick={handleUpOneLevel}
-              disabled={!currentPath}
-              className="px-2 py-1 rounded-lg bg-[#3A2115] hover:bg-[#482A1B] text-[#DFCDB5] disabled:opacity-40 transition"
-              title="Up One Level"
-            >
-              ↑ Up One Level
-            </button>
-            <button
-              onClick={handleGoBack}
-              disabled={historyIndex <= 0}
-              className="px-2 py-1 rounded-lg bg-[#3A2115] hover:bg-[#482A1B] text-[#DFCDB5] disabled:opacity-40 transition"
-            >
-              ← Back
-            </button>
-            <button
-              onClick={handleGoForward}
-              disabled={historyIndex >= pathHistory.length - 1}
-              className="px-2 py-1 rounded-lg bg-[#3A2115] hover:bg-[#482A1B] text-[#DFCDB5] disabled:opacity-40 transition"
-            >
-              → Forward
-            </button>
-            <button
-              onClick={() => fetchDirectory(currentPath)}
-              className="px-2 py-1 rounded-lg bg-[#3A2115] hover:bg-[#482A1B] text-[#DFCDB5] transition"
-            >
-              Reload
-            </button>
-            <button
-              onClick={handleSelectAll}
-              className="px-2 py-1 rounded-lg bg-[#3A2115] hover:bg-[#482A1B] text-[#DFCDB5] transition"
-            >
-              Select All
-            </button>
-            <button
-              onClick={handleUnselectAll}
-              className="px-2 py-1 rounded-lg bg-[#3A2115] hover:bg-[#482A1B] text-[#DFCDB5] transition"
-            >
-              Unselect All
-            </button>
-          </div>
-
-          <div className="flex items-center space-x-1 bg-[#1C0F0A] border border-[#3E2316] px-3 py-1 rounded-xl text-[#E8DCB8]">
-            <span className="text-[#A47E65]">/home/{project.nim || 'student'}/{project.name}</span>
-            <span>/{currentPath}</span>
-          </div>
+          )}
         </div>
       </div>
 
-      {/* 4. cPanel Workspace: Left Directory Tree + Right File Table (Image 2) */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        {/* Left Directory Tree View */}
-        <div className="hidden md:block col-span-1 bg-[#2B1810] border border-[#4D2D1E] rounded-3xl p-4 shadow-xl text-[#FAF5EC] max-h-[600px] overflow-y-auto">
-          <div className="flex items-center justify-between pb-2 mb-2 border-b border-[#3E2316] text-xs font-semibold text-[#DFCDB5]">
+      {/* 2. CLASSIC ACTION RIBBON TOOLBAR */}
+      <div className="h-10 bg-[#2B1810] border-b border-[#3E2316] px-3 flex items-center space-x-1 overflow-x-auto text-xs shrink-0">
+        {/* + File */}
+        <button
+          onClick={() => { setNewItemName(''); setModalType('new_file') }}
+          disabled={!activeProject}
+          className="px-2.5 py-1 rounded-lg hover:bg-[#3A2115] text-[#E8DCB8] disabled:opacity-40 inline-flex items-center space-x-1.5 transition shrink-0"
+        >
+          <Plus className="h-3.5 w-3.5 text-[#C49767]" />
+          <span>File</span>
+        </button>
+
+        {/* + Folder */}
+        <button
+          onClick={() => { setNewItemName(''); setModalType('new_folder') }}
+          disabled={!activeProject}
+          className="px-2.5 py-1 rounded-lg hover:bg-[#3A2115] text-[#E8DCB8] disabled:opacity-40 inline-flex items-center space-x-1.5 transition shrink-0"
+        >
+          <Plus className="h-3.5 w-3.5 text-[#C49767]" />
+          <span>Folder</span>
+        </button>
+
+        <span className="h-4 w-px bg-[#3E2316] mx-1 shrink-0" />
+
+        {/* Upload */}
+        <button
+          onClick={() => setModalType('upload')}
+          disabled={!activeProject}
+          className="px-3 py-1 rounded-lg bg-[#5A3521] hover:bg-[#6D4029] text-[#FAF5EC] disabled:opacity-40 inline-flex items-center space-x-1.5 transition shadow-sm shrink-0"
+        >
+          <Upload className="h-3.5 w-3.5 text-[#E8DCB8]" />
+          <span>Upload</span>
+        </button>
+
+        {/* Download */}
+        <button
+          onClick={handleDownload}
+          disabled={!selectedItem || selectedItem.is_dir}
+          className="px-2.5 py-1 rounded-lg hover:bg-[#3A2115] text-[#DFCDB5] disabled:opacity-30 inline-flex items-center space-x-1.5 transition shrink-0"
+        >
+          <Download className="h-3.5 w-3.5" />
+          <span>Download</span>
+        </button>
+
+        {/* Delete */}
+        <button
+          onClick={() => setConfirmDelete({ open: true, paths: selectedPaths })}
+          disabled={selectedPaths.length === 0}
+          className="px-2.5 py-1 rounded-lg hover:bg-rose-500/20 text-rose-400 disabled:opacity-30 inline-flex items-center space-x-1.5 transition shrink-0"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+          <span>Delete</span>
+        </button>
+
+        <span className="h-4 w-px bg-[#3E2316] mx-1 shrink-0" />
+
+        {/* Rename */}
+        <button
+          onClick={() => { setNewItemName(selectedItem?.name || ''); setModalType('rename') }}
+          disabled={!selectedItem}
+          className="px-2.5 py-1 rounded-lg hover:bg-[#3A2115] text-[#DFCDB5] disabled:opacity-30 inline-flex items-center space-x-1.5 transition shrink-0"
+        >
+          <Edit3 className="h-3.5 w-3.5" />
+          <span>Rename</span>
+        </button>
+
+        {/* Edit */}
+        <button
+          onClick={() => handleOpenFile(selectedItem, 'edit')}
+          disabled={!selectedItem || selectedItem.is_dir}
+          className="px-2.5 py-1 rounded-lg hover:bg-[#3A2115] text-[#DFCDB5] disabled:opacity-30 inline-flex items-center space-x-1.5 transition shrink-0"
+        >
+          <FileCode className="h-3.5 w-3.5" />
+          <span>Edit</span>
+        </button>
+
+        {/* View */}
+        <button
+          onClick={() => handleOpenFile(selectedItem, 'view')}
+          disabled={!selectedItem || selectedItem.is_dir}
+          className="px-2.5 py-1 rounded-lg hover:bg-[#3A2115] text-[#DFCDB5] disabled:opacity-30 inline-flex items-center space-x-1.5 transition shrink-0"
+        >
+          <Eye className="h-3.5 w-3.5" />
+          <span>View</span>
+        </button>
+
+        {/* Copy */}
+        <button
+          onClick={() => { setTargetDestination(currentPath); setModalType('copy') }}
+          disabled={!selectedItem}
+          className="px-2.5 py-1 rounded-lg hover:bg-[#3A2115] text-[#DFCDB5] disabled:opacity-30 inline-flex items-center space-x-1.5 transition shrink-0"
+        >
+          <Copy className="h-3.5 w-3.5" />
+          <span>Copy</span>
+        </button>
+
+        {/* Move */}
+        <button
+          onClick={() => { setTargetDestination(currentPath); setModalType('move') }}
+          disabled={!selectedItem}
+          className="px-2.5 py-1 rounded-lg hover:bg-[#3A2115] text-[#DFCDB5] disabled:opacity-30 inline-flex items-center space-x-1.5 transition shrink-0"
+        >
+          <Move className="h-3.5 w-3.5" />
+          <span>Move</span>
+        </button>
+
+        <span className="h-4 w-px bg-[#3E2316] mx-1 shrink-0" />
+
+        {/* Permissions */}
+        <button
+          onClick={openPermissionsModal}
+          disabled={!selectedItem}
+          className="px-2.5 py-1 rounded-lg hover:bg-[#3A2115] text-[#DFCDB5] disabled:opacity-30 inline-flex items-center space-x-1.5 transition shrink-0"
+        >
+          <Key className="h-3.5 w-3.5" />
+          <span>Permissions</span>
+        </button>
+
+        {/* Extract */}
+        <button
+          onClick={() => { setTargetDestination(currentPath); setModalType('extract') }}
+          disabled={!selectedItem || !selectedItem.name || !selectedItem.name.endsWith('.zip')}
+          className="px-2.5 py-1 rounded-lg hover:bg-[#3A2115] text-[#DFCDB5] disabled:opacity-30 inline-flex items-center space-x-1.5 transition shrink-0"
+        >
+          <Archive className="h-3.5 w-3.5" />
+          <span>Extract</span>
+        </button>
+
+        {/* Compress */}
+        <button
+          onClick={() => { setTargetDestination('archive.zip'); setModalType('compress') }}
+          disabled={selectedPaths.length === 0}
+          className="px-2.5 py-1 rounded-lg hover:bg-[#3A2115] text-[#DFCDB5] disabled:opacity-30 inline-flex items-center space-x-1.5 transition shrink-0"
+        >
+          <FileArchive className="h-3.5 w-3.5" />
+          <span>Compress</span>
+        </button>
+      </div>
+
+      {/* 3. CLASSIC ADDRESS & NAVIGATION BAR */}
+      <div className="h-9 bg-[#20110A] border-b border-[#3E2316] px-3 flex items-center justify-between text-xs shrink-0 font-mono">
+        <div className="flex items-center space-x-1 shrink-0">
+          <button
+            onClick={handleGoHome}
+            className="p-1 rounded bg-[#3A2115] hover:bg-[#482A1B] text-[#DFCDB5] hover:text-[#FAF5EC] transition"
+            title="Home"
+          >
+            Home
+          </button>
+          <button
+            onClick={handleUpOneLevel}
+            disabled={!currentPath}
+            className="p-1 rounded bg-[#3A2115] hover:bg-[#482A1B] text-[#DFCDB5] hover:text-[#FAF5EC] disabled:opacity-30 transition"
+            title="Up One Level"
+          >
+            ↑ Up
+          </button>
+          <button
+            onClick={handleGoBack}
+            disabled={historyIndex <= 0}
+            className="p-1 rounded bg-[#3A2115] hover:bg-[#482A1B] text-[#DFCDB5] hover:text-[#FAF5EC] disabled:opacity-30 transition"
+            title="Back"
+          >
+            ←
+          </button>
+          <button
+            onClick={handleGoForward}
+            disabled={historyIndex >= pathHistory.length - 1}
+            className="p-1 rounded bg-[#3A2115] hover:bg-[#482A1B] text-[#DFCDB5] hover:text-[#FAF5EC] disabled:opacity-30 transition"
+            title="Forward"
+          >
+            →
+          </button>
+        </div>
+
+        {/* Address Input Bar */}
+        <div className="flex-1 mx-2.5 bg-[#140A07] border border-[#3E2316] rounded px-3 py-1 text-xs text-[#E8DCB8] flex items-center space-x-1.5 overflow-hidden">
+          <span className="text-[#A47E65] shrink-0">/home/student/</span>
+          <span className="text-[#FAF5EC] font-semibold shrink-0">{activeProject ? activeProject.name : ''}</span>
+          <span className="text-[#DFCDB5] truncate">{currentPath ? `/${currentPath}` : ''}</span>
+        </div>
+
+        <div className="flex items-center space-x-1.5 shrink-0 text-[11px]">
+          <button
+            onClick={handleSelectAll}
+            className="px-2 py-0.5 rounded bg-[#3A2115] hover:bg-[#482A1B] text-[#DFCDB5] hover:text-[#FAF5EC] transition"
+          >
+            Select All
+          </button>
+          <button
+            onClick={handleUnselectAll}
+            className="px-2 py-0.5 rounded bg-[#3A2115] hover:bg-[#482A1B] text-[#DFCDB5] hover:text-[#FAF5EC] transition"
+          >
+            Unselect All
+          </button>
+        </div>
+      </div>
+
+      {/* 4. MAIN SPLIT PANE: ZERO GAP (Edge-to-Edge) */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* LEFT PANE: FOLDER TREE */}
+        <div className="w-64 sm:w-72 bg-[#24140C] border-r border-[#3E2316] flex flex-col shrink-0 overflow-hidden">
+          <div className="h-8 bg-[#1C0F0A] border-b border-[#3E2316] px-3 flex items-center justify-between text-[11px] font-semibold text-[#DFCDB5] uppercase tracking-wider shrink-0">
             <span>Folder Tree</span>
-            <button onClick={fetchTree} className="text-[#A47E65] hover:text-[#FAF5EC]">
+            <button
+              onClick={() => fetchAllTrees()}
+              className="text-[#A47E65] hover:text-[#FAF5EC]"
+              title="Refresh Folder Tree"
+            >
               <RefreshCw className="h-3 w-3" />
             </button>
           </div>
-          {dirTree ? (
-            renderTree(dirTree)
-          ) : (
-            <div className="text-xs text-[#A47E65] p-2">Memuat tree direktori...</div>
-          )}
+
+          <div className="flex-1 overflow-y-auto p-2 text-xs space-y-1 font-mono">
+            {projects.length === 0 ? (
+              <div className="text-[#A47E65] p-2 text-center text-xs">Belum ada project</div>
+            ) : (
+              projects.map((p) => {
+                const isProjectActive = activeProject?.id === p.id && currentPath === ''
+                const isExpanded = expandedProjects[p.id]
+                const tree = projectTrees[p.id]
+
+                return (
+                  <div key={p.id} className="select-none text-xs">
+                    {/* Project Folder Row */}
+                    <div
+                      onClick={() => handleSelectProject(p)}
+                      className={`flex items-center justify-between py-1.5 px-2 rounded cursor-pointer transition ${
+                        isProjectActive
+                          ? 'bg-[#3E2316] text-[#FAF5EC] font-semibold'
+                          : 'text-[#DFCDB5]/85 hover:bg-[#2B1810] hover:text-[#FAF5EC]'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-1.5 overflow-hidden">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            toggleExpandProject(p.id)
+                          }}
+                          className="p-0.5 text-[#A47E65] hover:text-[#FAF5EC]"
+                        >
+                          {isExpanded ? (
+                            <ChevronDown className="h-3.5 w-3.5 text-[#C49767]" />
+                          ) : (
+                            <ChevronRight className="h-3.5 w-3.5 text-[#A47E65]" />
+                          )}
+                        </button>
+                        <Folder className={`h-4 w-4 shrink-0 ${isProjectActive ? 'text-[#E8DCB8]' : 'text-[#C49767]'}`} />
+                        <span className="truncate">{`admin_${p.name}`}</span>
+                      </div>
+                      <span className="text-[10px] text-[#A47E65] font-sans shrink-0 ml-1">
+                        {p.template_type || p.language || ''}
+                      </span>
+                    </div>
+
+                    {/* Subdirectories inside this project */}
+                    {isExpanded && tree && tree.children && tree.children.length > 0 && (
+                      <div className="pl-3 border-l border-[#3E2316]/60 ml-3.5 my-0.5 space-y-0.5">
+                        {tree.children.map((child) => renderTreeNode(child, p, 1))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })
+            )}
+          </div>
         </div>
 
-        {/* Right Main File Table (Matching Columns of Image 2) */}
-        <div className="col-span-1 md:col-span-3 bg-[#2B1810] border border-[#4D2D1E] rounded-3xl overflow-hidden shadow-2xl text-[#FAF5EC] flex flex-col justify-between">
-          <div className="overflow-x-auto min-h-[400px]">
+        {/* RIGHT PANE: FILE DETAILS TABLE */}
+        <div className="flex-1 bg-[#1C0F0A] flex flex-col overflow-hidden">
+          <div className="flex-1 overflow-auto">
             {loading ? (
               <div className="p-6">
-                <SkeletonTable rows={6} />
+                <SkeletonTable rows={8} />
               </div>
             ) : filteredItems.length === 0 ? (
-              <div className="text-center py-20 p-6">
-                <Folder className="h-10 w-10 text-[#5A3521] mx-auto mb-2" />
+              <div className="text-center py-24 p-6">
+                <Folder className="h-10 w-10 text-[#3E2316] mx-auto mb-2" />
                 <p className="text-xs text-[#DFCDB5]">Folder ini kosong.</p>
               </div>
             ) : (
-              <table className="w-full text-left text-xs">
-                <thead className="bg-[#1C0F0A] text-[#DFCDB5] uppercase text-[10px] tracking-wider border-b border-[#3E2316]">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead className="sticky top-0 bg-[#20110A] text-[#DFCDB5] uppercase text-[10px] tracking-wider border-b border-[#3E2316] z-10 font-semibold select-none">
                   <tr>
-                    <th className="p-3.5 pl-4">Name</th>
-                    <th className="p-3.5">Size</th>
-                    <th className="p-3.5">Last Modified</th>
-                    <th className="p-3.5">Type</th>
-                    <th className="p-3.5 pr-4 text-right">Permissions</th>
+                    <th className="p-2.5 pl-4">Name</th>
+                    <th className="p-2.5 w-28">Size</th>
+                    <th className="p-2.5 w-44">Last Modified</th>
+                    <th className="p-2.5 w-36">Type</th>
+                    <th className="p-2.5 pr-4 w-28 text-right">Permissions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#3E2316]">
+                <tbody className="divide-y divide-[#2A160D]">
                   {filteredItems.map((item) => {
                     const isSelected = selectedPaths.includes(item.path)
 
@@ -731,47 +867,55 @@ export default function FileManager({ project, onClose }) {
                         onClick={(e) => toggleSelect(item.path, e)}
                         onDoubleClick={() => {
                           if (item.is_dir) {
-                            navigateTo(item.path)
+                            navigateTo(item.path, activeProject)
                           } else {
                             handleOpenFile(item, 'edit')
                           }
                         }}
                         className={`cursor-pointer transition select-none ${
                           isSelected
-                            ? 'bg-[#442718] text-[#FAF5EC] font-semibold'
-                            : 'hover:bg-[#341F14] text-[#FAF5EC]'
+                            ? 'bg-[#3E2316] text-[#FAF5EC] font-semibold'
+                            : 'hover:bg-[#28150D] text-[#FAF5EC]'
                         }`}
                       >
                         {/* Name */}
-                        <td className="p-3.5 pl-4">
+                        <td className="p-2 pl-4">
                           <div className="flex items-center space-x-2.5">
                             {item.is_dir ? (
                               <Folder className="h-4 w-4 text-[#C49767] shrink-0" />
+                            ) : item.name.endsWith('.py') ? (
+                              <FileCode className="h-4 w-4 text-emerald-400 shrink-0" />
+                            ) : item.name.endsWith('.php') ? (
+                              <FileCode className="h-4 w-4 text-sky-400 shrink-0" />
+                            ) : item.name.endsWith('.js') || item.name.endsWith('.jsx') ? (
+                              <FileCode className="h-4 w-4 text-amber-400 shrink-0" />
+                            ) : item.name.endsWith('.zip') || item.name.endsWith('.tar') ? (
+                              <Archive className="h-4 w-4 text-rose-400 shrink-0" />
                             ) : (
                               <FileText className="h-4 w-4 text-[#A47E65] shrink-0" />
                             )}
-                            <span className="font-mono text-xs">{item.name}</span>
+                            <span className="font-mono text-xs truncate">{item.name}</span>
                           </div>
                         </td>
 
                         {/* Size */}
-                        <td className="p-3.5 font-mono text-[11px] text-[#DFCDB5]/80">
+                        <td className="p-2 font-mono text-[11px] text-[#DFCDB5]/80">
                           {item.is_dir ? '4 KB' : formatBytes(item.size)}
                         </td>
 
                         {/* Last Modified */}
-                        <td className="p-3.5 text-[#DFCDB5]/80 font-mono text-[11px]">
-                          {formatDate(item.modified)}
+                        <td className="p-2 font-mono text-[11px] text-[#DFCDB5]/80">
+                          {formatDate(item.last_modified)}
                         </td>
 
                         {/* Type */}
-                        <td className="p-3.5 text-[#DFCDB5]/70 font-mono text-[11px]">
-                          {item.type}
+                        <td className="p-2 font-mono text-[11px] text-[#DFCDB5]/80 truncate">
+                          {item.is_dir ? 'folder' : item.mime_type || 'text/plain'}
                         </td>
 
-                        {/* Permissions (Octal e.g. 0755, 0644) */}
-                        <td className="p-3.5 pr-4 text-right font-mono text-[11px] text-[#E8DCB8]">
-                          {item.permissions}
+                        {/* Permissions */}
+                        <td className="p-2 pr-4 font-mono text-[11px] text-[#DFCDB5]/80 text-right">
+                          {item.permissions || '0755'}
                         </td>
                       </tr>
                     )
@@ -780,47 +924,56 @@ export default function FileManager({ project, onClose }) {
               </table>
             )}
           </div>
-
-          {/* Table Footer info */}
-          <div className="p-3.5 bg-[#1C0F0A] border-t border-[#3E2316] text-[11px] font-mono text-[#DFCDB5]/70 flex items-center justify-between">
-            <span>Total: {filteredItems.length} items ({filteredItems.filter((i) => i.is_dir).length} folders, {filteredItems.filter((i) => !i.is_dir).length} files)</span>
-            <span>{selectedPaths.length} item dipilih</span>
-          </div>
         </div>
       </div>
 
-      {/* 5. EDIT CODE MODAL */}
+      {/* 5. CLASSIC STATUS BAR */}
+      <div className="h-7 bg-[#24140C] border-t border-[#3E2316] px-3 flex items-center justify-between text-[11px] font-mono text-[#DFCDB5]/70 shrink-0">
+        <div>
+          Total: {items.length} items ({foldersCount} folders, {filesCount} files)
+        </div>
+        <div>
+          {selectedPaths.length > 0 ? `${selectedPaths.length} item dipilih` : ''}
+        </div>
+        <div>
+          Root: /home/student/{activeProject ? activeProject.name : ''}
+        </div>
+      </div>
+
+      {/* ===================== MODALS ===================== */}
+
+      {/* 1. CODE EDITOR MODAL */}
       <ModalPortal isOpen={modalType === 'edit' && Boolean(activeFile)}>
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-150">
-          <div className="w-full max-w-4xl bg-[#2B1810] border border-[#4D2D1E] rounded-3xl shadow-2xl p-6 flex flex-col max-h-[85vh] text-[#FAF5EC]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-in fade-in duration-150">
+          <div className="w-full max-w-5xl bg-[#24140C] border border-[#4D2D1E] rounded-2xl shadow-2xl p-5 flex flex-col max-h-[90vh] text-[#FAF5EC]">
             <div className="flex items-center justify-between pb-3 border-b border-[#3E2316] mb-3">
               <div>
                 <h4 className="text-base font-serif font-bold text-[#FAF5EC] flex items-center space-x-2">
-                  <FileCode className="h-4 w-4 text-[#E8DCB8]" />
+                  <FileCode className="h-4 w-4 text-[#C49767]" />
                   <span>Editor: {activeFile?.name}</span>
                 </h4>
-                <p className="text-[11px] text-[#DFCDB5] font-mono">/{activeFile?.path}</p>
+                <p className="text-[11px] text-[#DFCDB5]/80 font-mono">/{activeFile?.path}</p>
               </div>
 
               <div className="flex items-center space-x-2">
                 <button
                   onClick={handleSaveFile}
                   disabled={savingFile}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold bg-[#5A3521] hover:bg-[#6D4029] text-[#FAF5EC] flex items-center space-x-1.5 transition disabled:opacity-50"
+                  className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-[#5A3521] hover:bg-[#6D4029] text-[#FAF5EC] flex items-center space-x-1.5 transition disabled:opacity-50 shadow"
                 >
                   {savingFile ? <Spinner size="xs" /> : <Save className="h-3.5 w-3.5 text-[#E8DCB8]" />}
                   <span>Save (Ctrl+S)</span>
                 </button>
                 <button
                   onClick={() => setModalType(null)}
-                  className="p-2 rounded-xl text-[#DFCDB5] hover:text-white hover:bg-[#3E2316] transition"
+                  className="p-1.5 rounded-lg text-[#DFCDB5] hover:text-white hover:bg-[#3E2316] transition"
                 >
                   <X className="h-4 w-4" />
                 </button>
               </div>
             </div>
 
-            <div className="flex-1 overflow-hidden rounded-2xl border border-[#3E2316]">
+            <div className="flex-1 overflow-hidden rounded-xl border border-[#3E2316]">
               {contentLoading ? (
                 <div className="p-8 text-center text-xs text-[#DFCDB5]">Memuat isi file...</div>
               ) : (
@@ -833,7 +986,7 @@ export default function FileManager({ project, onClose }) {
                       handleSaveFile()
                     }
                   }}
-                  className="w-full h-96 p-4 font-mono text-xs bg-[#1C0F0A] text-[#FAF5EC] focus:outline-none resize-none leading-relaxed"
+                  className="w-full h-96 p-4 font-mono text-xs bg-[#140A07] text-[#FAF5EC] focus:outline-none resize-none leading-relaxed"
                   spellCheck={false}
                 />
               )}
@@ -842,34 +995,33 @@ export default function FileManager({ project, onClose }) {
         </div>
       </ModalPortal>
 
-      {/* 6. VIEW FILE MODAL */}
+      {/* 2. VIEW FILE MODAL */}
       <ModalPortal isOpen={modalType === 'view' && Boolean(activeFile)}>
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-150">
-          <div className="w-full max-w-3xl bg-[#2B1810] border border-[#4D2D1E] rounded-3xl shadow-2xl p-6 flex flex-col max-h-[80vh] text-[#FAF5EC]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-in fade-in duration-150">
+          <div className="w-full max-w-3xl bg-[#24140C] border border-[#4D2D1E] rounded-2xl shadow-2xl p-5 flex flex-col max-h-[80vh] text-[#FAF5EC]">
             <div className="flex items-center justify-between pb-3 border-b border-[#3E2316] mb-3">
               <h4 className="text-base font-serif font-bold text-[#FAF5EC]">View: {activeFile?.name}</h4>
-              <button onClick={() => setModalType(null)} className="p-2 text-[#DFCDB5] hover:text-white">
+              <button onClick={() => setModalType(null)} className="p-1.5 text-[#DFCDB5] hover:text-white">
                 <X className="h-4 w-4" />
               </button>
             </div>
-            <pre className="p-4 rounded-2xl bg-[#1C0F0A] border border-[#3E2316] font-mono text-xs text-[#DFCDB5] overflow-auto flex-1 whitespace-pre-wrap">
+            <pre className="p-4 rounded-xl bg-[#140A07] border border-[#3E2316] font-mono text-xs text-[#DFCDB5] overflow-auto flex-1 whitespace-pre-wrap">
               {fileContent}
             </pre>
           </div>
         </div>
       </ModalPortal>
 
-      {/* 7. PERMISSIONS MODAL (cPanel Style Octal Matrix) */}
+      {/* 3. PERMISSIONS MODAL */}
       <ModalPortal isOpen={modalType === 'permissions' && Boolean(selectedItem)}>
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-150">
-          <div className="w-full max-w-md bg-[#2B1810] border border-[#4D2D1E] rounded-3xl shadow-2xl p-6 text-[#FAF5EC] space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-in fade-in duration-150">
+          <div className="w-full max-w-md bg-[#24140C] border border-[#4D2D1E] rounded-2xl shadow-2xl p-5 text-[#FAF5EC] space-y-4">
             <h4 className="text-base font-serif font-bold text-[#FAF5EC]">
               Change Permissions: {selectedItem?.name}
             </h4>
             <p className="text-xs text-[#DFCDB5]">Atur hak akses UNIX (chmod) untuk item ini.</p>
 
-            {/* Matrix Table */}
-            <div className="bg-[#1C0F0A] border border-[#3E2316] rounded-2xl p-4 text-xs font-mono">
+            <div className="bg-[#140A07] border border-[#3E2316] rounded-xl p-3 text-xs font-mono">
               <div className="grid grid-cols-4 gap-2 pb-2 border-b border-[#3E2316] text-[#A47E65] font-semibold text-center">
                 <span>Role</span>
                 <span>Read (4)</span>
@@ -878,47 +1030,47 @@ export default function FileManager({ project, onClose }) {
               </div>
 
               {/* User */}
-              <div className="grid grid-cols-4 gap-2 py-2 items-center text-center">
+              <div className="grid grid-cols-4 gap-2 py-1.5 items-center text-center">
                 <span className="text-left font-bold text-[#E8DCB8]">User</span>
-                <input type="checkbox" checked={permUser.r} onChange={() => handlePermChange('u', 'r')} className="h-4 w-4 accent-[#C49767] mx-auto" />
-                <input type="checkbox" checked={permUser.w} onChange={() => handlePermChange('u', 'w')} className="h-4 w-4 accent-[#C49767] mx-auto" />
-                <input type="checkbox" checked={permUser.x} onChange={() => handlePermChange('u', 'x')} className="h-4 w-4 accent-[#C49767] mx-auto" />
+                <input type="checkbox" checked={permUser.r} onChange={() => handlePermChange('u', 'r')} className="h-4 w-4 accent-[#C49767] mx-auto cursor-pointer" />
+                <input type="checkbox" checked={permUser.w} onChange={() => handlePermChange('u', 'w')} className="h-4 w-4 accent-[#C49767] mx-auto cursor-pointer" />
+                <input type="checkbox" checked={permUser.x} onChange={() => handlePermChange('u', 'x')} className="h-4 w-4 accent-[#C49767] mx-auto cursor-pointer" />
               </div>
 
               {/* Group */}
-              <div className="grid grid-cols-4 gap-2 py-2 items-center text-center">
+              <div className="grid grid-cols-4 gap-2 py-1.5 items-center text-center">
                 <span className="text-left font-bold text-[#E8DCB8]">Group</span>
-                <input type="checkbox" checked={permGroup.r} onChange={() => handlePermChange('g', 'r')} className="h-4 w-4 accent-[#C49767] mx-auto" />
-                <input type="checkbox" checked={permGroup.w} onChange={() => handlePermChange('g', 'w')} className="h-4 w-4 accent-[#C49767] mx-auto" />
-                <input type="checkbox" checked={permGroup.x} onChange={() => handlePermChange('g', 'x')} className="h-4 w-4 accent-[#C49767] mx-auto" />
+                <input type="checkbox" checked={permGroup.r} onChange={() => handlePermChange('g', 'r')} className="h-4 w-4 accent-[#C49767] mx-auto cursor-pointer" />
+                <input type="checkbox" checked={permGroup.w} onChange={() => handlePermChange('g', 'w')} className="h-4 w-4 accent-[#C49767] mx-auto cursor-pointer" />
+                <input type="checkbox" checked={permGroup.x} onChange={() => handlePermChange('g', 'x')} className="h-4 w-4 accent-[#C49767] mx-auto cursor-pointer" />
               </div>
 
               {/* World */}
-              <div className="grid grid-cols-4 gap-2 py-2 items-center text-center">
+              <div className="grid grid-cols-4 gap-2 py-1.5 items-center text-center">
                 <span className="text-left font-bold text-[#E8DCB8]">World</span>
-                <input type="checkbox" checked={permWorld.r} onChange={() => handlePermChange('w', 'r')} className="h-4 w-4 accent-[#C49767] mx-auto" />
-                <input type="checkbox" checked={permWorld.w} onChange={() => handlePermChange('w', 'w')} className="h-4 w-4 accent-[#C49767] mx-auto" />
-                <input type="checkbox" checked={permWorld.x} onChange={() => handlePermChange('w', 'x')} className="h-4 w-4 accent-[#C49767] mx-auto" />
+                <input type="checkbox" checked={permWorld.r} onChange={() => handlePermChange('w', 'r')} className="h-4 w-4 accent-[#C49767] mx-auto cursor-pointer" />
+                <input type="checkbox" checked={permWorld.w} onChange={() => handlePermChange('w', 'w')} className="h-4 w-4 accent-[#C49767] mx-auto cursor-pointer" />
+                <input type="checkbox" checked={permWorld.x} onChange={() => handlePermChange('w', 'x')} className="h-4 w-4 accent-[#C49767] mx-auto cursor-pointer" />
               </div>
             </div>
 
             <div className="flex items-center justify-between text-xs font-mono">
               <span className="text-[#DFCDB5]">Permission Code:</span>
-              <span className="px-3 py-1 rounded-lg bg-[#1C0F0A] border border-[#3E2316] font-bold text-amber-300">{permOctal}</span>
+              <span className="px-3 py-1 rounded bg-[#140A07] border border-[#3E2316] font-bold text-amber-300">{permOctal}</span>
             </div>
 
             <div className="flex justify-end space-x-2 pt-2">
               <button
                 type="button"
                 onClick={() => setModalType(null)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-[#DFCDB5] hover:text-[#FAF5EC] hover:bg-[#3A2115] transition"
+                className="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-[#DFCDB5] hover:text-[#FAF5EC] hover:bg-[#3A2115] transition"
               >
                 Batal
               </button>
               <button
                 type="button"
                 onClick={handleSavePermissions}
-                className="px-5 py-2 rounded-xl text-xs font-semibold bg-[#5A3521] hover:bg-[#6D4029] text-[#FAF5EC] transition"
+                className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-[#5A3521] hover:bg-[#6D4029] text-[#FAF5EC] transition"
               >
                 Change Permissions
               </button>
@@ -927,10 +1079,10 @@ export default function FileManager({ project, onClose }) {
         </div>
       </ModalPortal>
 
-      {/* 8. RENAME MODAL */}
+      {/* 4. RENAME MODAL */}
       <ModalPortal isOpen={modalType === 'rename' && Boolean(selectedItem)}>
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-150">
-          <div className="w-full max-w-sm bg-[#2B1810] border border-[#4D2D1E] rounded-3xl shadow-2xl p-6 text-[#FAF5EC]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-in fade-in duration-150">
+          <div className="w-full max-w-sm bg-[#24140C] border border-[#4D2D1E] rounded-2xl shadow-2xl p-5 text-[#FAF5EC]">
             <h4 className="text-base font-serif font-bold text-[#FAF5EC] mb-1">Rename Item</h4>
             <p className="text-xs text-[#DFCDB5] mb-4">Nama baru untuk {selectedItem?.name}:</p>
             <form onSubmit={handleRename} className="space-y-4">
@@ -939,22 +1091,22 @@ export default function FileManager({ project, onClose }) {
                 required
                 value={newItemName}
                 onChange={(e) => setNewItemName(e.target.value)}
-                className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3.5 py-2 text-xs text-[#FAF5EC] font-mono focus:outline-none focus:border-[#C49767]"
+                className="w-full bg-[#140A07] border border-[#3E2316] rounded-lg px-3 py-1.5 text-xs text-[#FAF5EC] font-mono focus:outline-none focus:border-[#C49767]"
                 autoFocus
               />
               <div className="flex justify-end space-x-2">
                 <button
                   type="button"
                   onClick={() => setModalType(null)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-[#DFCDB5] hover:bg-[#3A2115]"
+                  className="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-[#DFCDB5] hover:bg-[#3A2115]"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl text-xs font-semibold bg-[#5A3521] hover:bg-[#6D4029] text-[#FAF5EC]"
+                  className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-[#5A3521] hover:bg-[#6D4029] text-[#FAF5EC]"
                 >
-                  Rename File
+                  Rename
                 </button>
               </div>
             </form>
@@ -962,10 +1114,10 @@ export default function FileManager({ project, onClose }) {
         </div>
       </ModalPortal>
 
-      {/* 9. COPY / MOVE MODAL */}
+      {/* 5. COPY / MOVE MODAL */}
       <ModalPortal isOpen={(modalType === 'copy' || modalType === 'move') && Boolean(selectedItem)}>
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-150">
-          <div className="w-full max-w-md bg-[#2B1810] border border-[#4D2D1E] rounded-3xl shadow-2xl p-6 text-[#FAF5EC]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-in fade-in duration-150">
+          <div className="w-full max-w-md bg-[#24140C] border border-[#4D2D1E] rounded-2xl shadow-2xl p-5 text-[#FAF5EC]">
             <h4 className="text-base font-serif font-bold text-[#FAF5EC] mb-1">
               {modalType === 'move' ? 'Move File' : 'Copy File'}
             </h4>
@@ -975,25 +1127,25 @@ export default function FileManager({ project, onClose }) {
             <div className="space-y-4">
               <input
                 type="text"
-                placeholder="e.g. app atau kosongkan untuk root"
+                placeholder="e.g. app atau kosongkan untuk root project"
                 value={targetDestination}
                 onChange={(e) => setTargetDestination(e.target.value)}
-                className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3.5 py-2 text-xs text-[#FAF5EC] font-mono focus:outline-none focus:border-[#C49767]"
+                className="w-full bg-[#140A07] border border-[#3E2316] rounded-lg px-3 py-1.5 text-xs text-[#FAF5EC] font-mono focus:outline-none focus:border-[#C49767]"
               />
               <div className="flex justify-end space-x-2">
                 <button
                   type="button"
                   onClick={() => setModalType(null)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-[#DFCDB5] hover:bg-[#3A2115]"
+                  className="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-[#DFCDB5] hover:bg-[#3A2115]"
                 >
                   Batal
                 </button>
                 <button
                   type="button"
                   onClick={() => handleCopyMove(modalType === 'move')}
-                  className="px-5 py-2 rounded-xl text-xs font-semibold bg-[#5A3521] hover:bg-[#6D4029] text-[#FAF5EC]"
+                  className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-[#5A3521] hover:bg-[#6D4029] text-[#FAF5EC]"
                 >
-                  {modalType === 'move' ? 'Move File' : 'Copy File'}
+                  {modalType === 'move' ? 'Move' : 'Copy'}
                 </button>
               </div>
             </div>
@@ -1001,10 +1153,10 @@ export default function FileManager({ project, onClose }) {
         </div>
       </ModalPortal>
 
-      {/* 10. COMPRESS MODAL */}
+      {/* 6. COMPRESS MODAL */}
       <ModalPortal isOpen={modalType === 'compress'}>
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-150">
-          <div className="w-full max-w-sm bg-[#2B1810] border border-[#4D2D1E] rounded-3xl shadow-2xl p-6 text-[#FAF5EC]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-in fade-in duration-150">
+          <div className="w-full max-w-sm bg-[#24140C] border border-[#4D2D1E] rounded-2xl shadow-2xl p-5 text-[#FAF5EC]">
             <h4 className="text-base font-serif font-bold text-[#FAF5EC] mb-1">Compress Items</h4>
             <p className="text-xs text-[#DFCDB5] mb-4">Nama arsip ZIP yang akan dibuat:</p>
             <form onSubmit={handleCompress} className="space-y-4">
@@ -1014,21 +1166,21 @@ export default function FileManager({ project, onClose }) {
                 value={targetDestination}
                 onChange={(e) => setTargetDestination(e.target.value)}
                 placeholder="archive.zip"
-                className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3.5 py-2 text-xs text-[#FAF5EC] font-mono focus:outline-none focus:border-[#C49767]"
+                className="w-full bg-[#140A07] border border-[#3E2316] rounded-lg px-3 py-1.5 text-xs text-[#FAF5EC] font-mono focus:outline-none focus:border-[#C49767]"
               />
               <div className="flex justify-end space-x-2">
                 <button
                   type="button"
                   onClick={() => setModalType(null)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-[#DFCDB5] hover:bg-[#3A2115]"
+                  className="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-[#DFCDB5] hover:bg-[#3A2115]"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl text-xs font-semibold bg-[#5A3521] hover:bg-[#6D4029] text-[#FAF5EC]"
+                  className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-[#5A3521] hover:bg-[#6D4029] text-[#FAF5EC]"
                 >
-                  Compress File(s)
+                  Compress
                 </button>
               </div>
             </form>
@@ -1036,10 +1188,10 @@ export default function FileManager({ project, onClose }) {
         </div>
       </ModalPortal>
 
-      {/* 11. EXTRACT MODAL */}
+      {/* 7. EXTRACT MODAL */}
       <ModalPortal isOpen={modalType === 'extract' && Boolean(selectedItem)}>
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-150">
-          <div className="w-full max-w-md bg-[#2B1810] border border-[#4D2D1E] rounded-3xl shadow-2xl p-6 text-[#FAF5EC]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-in fade-in duration-150">
+          <div className="w-full max-w-md bg-[#24140C] border border-[#4D2D1E] rounded-2xl shadow-2xl p-5 text-[#FAF5EC]">
             <h4 className="text-base font-serif font-bold text-[#FAF5EC] mb-1">Extract Archive</h4>
             <p className="text-xs text-[#DFCDB5] mb-4">
               Ekstrak '{selectedItem?.name}' ke path direktori:
@@ -1050,21 +1202,21 @@ export default function FileManager({ project, onClose }) {
                 placeholder="e.g. app atau kosongkan untuk folder saat ini"
                 value={targetDestination}
                 onChange={(e) => setTargetDestination(e.target.value)}
-                className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3.5 py-2 text-xs text-[#FAF5EC] font-mono focus:outline-none focus:border-[#C49767]"
+                className="w-full bg-[#140A07] border border-[#3E2316] rounded-lg px-3 py-1.5 text-xs text-[#FAF5EC] font-mono focus:outline-none focus:border-[#C49767]"
               />
               <div className="flex justify-end space-x-2">
                 <button
                   type="button"
                   onClick={() => setModalType(null)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-[#DFCDB5] hover:bg-[#3A2115]"
+                  className="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-[#DFCDB5] hover:bg-[#3A2115]"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl text-xs font-semibold bg-[#5A3521] hover:bg-[#6D4029] text-[#FAF5EC]"
+                  className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-[#5A3521] hover:bg-[#6D4029] text-[#FAF5EC]"
                 >
-                  Extract File(s)
+                  Extract
                 </button>
               </div>
             </form>
@@ -1072,10 +1224,10 @@ export default function FileManager({ project, onClose }) {
         </div>
       </ModalPortal>
 
-      {/* 12. NEW FILE / FOLDER MODAL */}
+      {/* 8. NEW FILE / FOLDER MODAL */}
       <ModalPortal isOpen={modalType === 'new_file' || modalType === 'new_folder'}>
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-150">
-          <div className="w-full max-w-sm bg-[#2B1810] border border-[#4D2D1E] rounded-3xl shadow-2xl p-6 text-[#FAF5EC]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-in fade-in duration-150">
+          <div className="w-full max-w-sm bg-[#24140C] border border-[#4D2D1E] rounded-2xl shadow-2xl p-5 text-[#FAF5EC]">
             <h4 className="text-base font-serif font-bold text-[#FAF5EC] mb-1">
               {modalType === 'new_folder' ? 'Create New Folder' : 'Create New File'}
             </h4>
@@ -1087,20 +1239,20 @@ export default function FileManager({ project, onClose }) {
                 placeholder={modalType === 'new_folder' ? 'folder-name' : 'index.php'}
                 value={newItemName}
                 onChange={(e) => setNewItemName(e.target.value)}
-                className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3.5 py-2 text-xs text-[#FAF5EC] font-mono focus:outline-none focus:border-[#C49767]"
+                className="w-full bg-[#140A07] border border-[#3E2316] rounded-lg px-3 py-1.5 text-xs text-[#FAF5EC] font-mono focus:outline-none focus:border-[#C49767]"
                 autoFocus
               />
               <div className="flex justify-end space-x-2">
                 <button
                   type="button"
                   onClick={() => setModalType(null)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-[#DFCDB5] hover:bg-[#3A2115]"
+                  className="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-[#DFCDB5] hover:bg-[#3A2115]"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl text-xs font-semibold bg-[#5A3521] hover:bg-[#6D4029] text-[#FAF5EC]"
+                  className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-[#5A3521] hover:bg-[#6D4029] text-[#FAF5EC]"
                 >
                   Create
                 </button>
@@ -1110,16 +1262,16 @@ export default function FileManager({ project, onClose }) {
         </div>
       </ModalPortal>
 
-      {/* 13. UPLOAD MODAL */}
+      {/* 9. UPLOAD MODAL */}
       <ModalPortal isOpen={modalType === 'upload'}>
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-150">
-          <div className="w-full max-w-md bg-[#2B1810] border border-[#4D2D1E] rounded-3xl shadow-2xl p-6 text-[#FAF5EC]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-in fade-in duration-150">
+          <div className="w-full max-w-md bg-[#24140C] border border-[#4D2D1E] rounded-2xl shadow-2xl p-5 text-[#FAF5EC]">
             <h4 className="text-base font-serif font-bold text-[#FAF5EC] mb-1">Upload Files</h4>
             <p className="text-xs text-[#DFCDB5] mb-4">
               Upload file atau arsip .ZIP ke folder /{currentPath || ''}.
             </p>
             <form onSubmit={handleUploadFiles} className="space-y-4">
-              <div className="border-2 border-dashed border-[#4D2D1E] hover:border-[#C49767] rounded-3xl p-6 text-center transition bg-[#1C0F0A]/70">
+              <div className="border-2 border-dashed border-[#4D2D1E] hover:border-[#C49767] rounded-xl p-6 text-center transition bg-[#140A07]">
                 <Upload className="h-8 w-8 text-[#A47E65] mx-auto mb-2" />
                 <input
                   type="file"
@@ -1127,10 +1279,10 @@ export default function FileManager({ project, onClose }) {
                   required
                   onChange={(e) => setUploadFiles(Array.from(e.target.files))}
                   className="hidden"
-                  id="cpanel-upload-input"
+                  id="classic-upload-input"
                 />
                 <label
-                  htmlFor="cpanel-upload-input"
+                  htmlFor="classic-upload-input"
                   className="cursor-pointer text-xs font-semibold text-[#E8DCB8] hover:underline block"
                 >
                   {uploadFiles.length > 0
@@ -1143,16 +1295,16 @@ export default function FileManager({ project, onClose }) {
                 <button
                   type="button"
                   onClick={() => setModalType(null)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-[#DFCDB5] hover:bg-[#3A2115]"
+                  className="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-[#DFCDB5] hover:bg-[#3A2115]"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
                   disabled={uploading || uploadFiles.length === 0}
-                  className="px-5 py-2 rounded-xl text-xs font-semibold bg-[#5A3521] hover:bg-[#6D4029] text-[#FAF5EC] disabled:opacity-50"
+                  className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-[#5A3521] hover:bg-[#6D4029] text-[#FAF5EC] disabled:opacity-50"
                 >
-                  {uploading ? 'Meng-upload...' : 'Upload Now'}
+                  {uploading ? 'Uploading...' : 'Upload Now'}
                 </button>
               </div>
             </form>
@@ -1165,7 +1317,7 @@ export default function FileManager({ project, onClose }) {
         isOpen={confirmDelete.open}
         title="Delete File(s)?"
         message={`Apakah Anda yakin ingin menghapus ${confirmDelete.paths.length} item yang dipilih secara permanen?`}
-        confirmText="Trash / Delete"
+        confirmText="Delete"
         onConfirm={executeDelete}
         onClose={() => setConfirmDelete({ open: false, paths: [] })}
       />
