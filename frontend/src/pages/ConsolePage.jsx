@@ -12,7 +12,9 @@ export default function ConsolePage({ project, onBack }) {
   const termInstance = useRef(null)
   const fitAddonRef = useRef(null)
 
-  const defaultProjectRoot = project?.language === 'php' ? '/var/www/html' : '/app'
+  const isPhpProject = project?.language === 'php' || (project?.template_type && project.template_type.startsWith('php'))
+  const isStaticProject = project?.language === 'static' || (project?.template_type && project.template_type.startsWith('static'))
+  const defaultProjectRoot = isPhpProject ? '/var/www/html' : isStaticProject ? '/usr/share/nginx/html' : '/app'
   const projectRoot = project?.app_config?.app_root
     ? `${defaultProjectRoot}/${String(project.app_config.app_root).replace(/^\/+|\/+$/g, '')}`
     : defaultProjectRoot

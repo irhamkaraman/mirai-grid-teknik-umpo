@@ -61,20 +61,52 @@ class ConsoleExecRequest(BaseModel):
     cwd: Optional[str] = None
 
 def get_project_container_root(project: Any) -> str:
+    template_type = ""
     try:
-        lang = (project["language"] or "").lower()
+        if isinstance(project, dict):
+            template_type = str(project.get("template_type") or project.get("language") or "").lower()
+        else:
+            try:
+                template_type = str(project["template_type"] or "").lower()
+            except Exception:
+                try:
+                    template_type = str(project["language"] or "").lower()
+                except Exception:
+                    template_type = str(getattr(project, "template_type", getattr(project, "language", "")) or "").lower()
     except Exception:
-        lang = "php"
-    if lang == "php":
-        return "/var/www/html"
-    elif lang in ["python", "node"]:
+        template_type = "php"
+
+    cfg_val = None
+    for key in ["config_json", "app_config"]:
         try:
-            cfg = json.loads(project["app_config"]) if project["app_config"] else {}
+            if isinstance(project, dict):
+                cfg_val = project.get(key)
+            else:
+                cfg_val = project[key]
+            if cfg_val:
+                break
+        except Exception:
+            continue
+
+    cfg = {}
+    if cfg_val:
+        try:
+            cfg = json.loads(cfg_val) if isinstance(cfg_val, str) else (cfg_val if isinstance(cfg_val, dict) else {})
         except Exception:
             cfg = {}
-        app_root = cfg.get("app_root", "").strip().strip("/")
+
+    app_root = ""
+    if isinstance(cfg, dict):
+        app_root = str(cfg.get("app_root") or "").strip().strip("/")
+
+    if any(k in template_type for k in ["python", "node", "django", "fastapi", "flask", "express"]):
         return f"/app/{app_root}" if app_root else "/app"
-    return "/var/www/html"
+    elif any(k in template_type for k in ["php", "laravel", "codeigniter", "wordpress"]):
+        return f"/var/www/html/{app_root}" if app_root else "/var/www/html"
+    elif any(k in template_type for k in ["static", "html", "nginx"]):
+        return f"/usr/share/nginx/html/{app_root}" if app_root else "/usr/share/nginx/html"
+
+    return f"/app/{app_root}" if (app_root or "app" in template_type) else "/var/www/html"
 
 def check_console_command_safety(command_str: str, current_cwd: str, project_root: str) -> tuple[bool, str]:
     norm_root = posixpath.normpath(project_root)
@@ -1170,6 +1202,14 @@ echo "__MIRAIGRID_PWD__$(pwd)"
 """
 
     shell_cmd = body.command.strip() if body.command else "/bin/sh"
+    # If caller requested python/node directly, wrap via /bin/sh
+    if shell_cmd in ["python", "python3", "python3.11"]:
+        raw_input = f"python {raw_input}" if raw_input else "python --version"
+        shell_cmd = "/bin/sh"
+    elif shell_cmd in ["node", "nodejs"]:
+        raw_input = f"node {raw_input}" if raw_input else "node --version"
+        shell_cmd = "/bin/sh"
+
     full_cmd = [shell_cmd, "-c", jail_script]
 
     res = await portainer.exec_container_command(

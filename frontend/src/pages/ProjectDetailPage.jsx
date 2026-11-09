@@ -225,8 +225,9 @@ export default function ProjectDetailPage({ project: propProject, onBack, onUpda
     const toastId = toast.loading(`Menjalankan script...`)
     try {
       await api.post(`/projects/${project.id}/console/exec`, {
-        command: isPython ? 'python' : 'node',
-        stdin_input: scriptCmd,
+        command: '/bin/sh',
+        stdin_input: `${isPython ? 'python' : 'node'} ${scriptCmd}`,
+        cwd: isPython || isNode ? '/app' : '/var/www/html'
       })
       toast.success('Script selesai dijalankan!', { id: toastId })
     } catch (err) {
