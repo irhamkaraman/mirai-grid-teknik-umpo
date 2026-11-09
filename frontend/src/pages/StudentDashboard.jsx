@@ -1,180 +1,868 @@
-import React, { useEffect, useState } from 'react'
-import { Layers, Database, Cpu, HardDrive, ExternalLink, Plus, Sparkles } from 'lucide-react'
-import { api } from '../api/client'
-import { SkeletonCard } from '../components/Skeletons'
-
-export default function StudentDashboard({ user, onNavigate }) {
-  const [quota, setQuota] = useState(null)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    fetchQuota()
-  }, [])
-
-  const fetchQuota = async () => {
-    try {
-      const res = await api.get('/quotas/my-quota')
-      setQuota(res.data)
-    } catch (err) {
-      console.error('Failed to load quota', err)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  return (
-    <div className="space-y-8 animate-in fade-in duration-200">
-      {/* Welcome Banner: Coklat Mewah dengan Teks Krim */}
-      <div className="bg-[#2B1810] border border-[#4D2D1E] rounded-3xl p-7 sm:p-9 shadow-2xl relative overflow-hidden text-[#FAF5EC]">
-        {/* Subtle decorative glow coklat hangat */}
-        <div className="absolute top-0 right-0 w-80 h-80 bg-[#5A3521]/20 rounded-full blur-3xl pointer-events-none"></div>
-
-        <div className="max-w-2xl relative z-10">
-          <span className="inline-flex items-center space-x-1 px-3 py-1 rounded-full text-xs font-semibold bg-[#442718] text-[#E8DCB8] border border-[#5C3825] mb-3.5">
-            <Sparkles className="h-3.5 w-3.5 text-[#E8DCB8]" />
-            <span>Praktikum Teknik Informatika UMPO</span>
-          </span>
-          <h2 className="text-2xl sm:text-3xl font-serif font-bold text-[#FAF5EC] leading-tight">
-            Selamat Datang, {user?.name}!
-          </h2>
-          <p className="text-xs sm:text-sm text-[#DFCDB5] mt-2.5 leading-relaxed font-sans">
-            Platform mandiri MiraiGrid siap menampung database praktikum dan men-deploy aplikasi web Anda (PHP, Python, Node.js, HTML) di lingkungan server terisolasi.
-          </p>
-
-          <div className="flex flex-wrap gap-3 mt-6">
-            <button
-              onClick={() => onNavigate('/deploy?create=true')}
-              className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-2xl text-xs font-semibold bg-[#5A3521] hover:bg-[#6D4029] text-[#FAF5EC] border border-[#7D492F] shadow-lg transition-all duration-150 cursor-pointer"
-            >
-              <Plus className="h-4 w-4 text-[#E8DCB8]" />
-              <span>Deploy Project Baru</span>
-            </button>
-            <button
-              onClick={() => onNavigate('/databases?create=true')}
-              className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-2xl text-xs font-semibold bg-[#3A2115] hover:bg-[#482A1B] text-[#E8DCB8] border border-[#543221] transition-all duration-150 cursor-pointer"
-            >
-              <Database className="h-4 w-4 text-[#DFCDB5]" />
-              <span>Buat Database Saya</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Quota & Resource Cards: Judul Coklat Gelap Tebal di atas Krim */}
-      <div>
-        <h3 className="text-lg font-serif font-bold text-[#26160F] mb-3.5">
-          Alokasi Kuota Praktikum Anda
-        </h3>
-
-        {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <SkeletonCard />
-            <SkeletonCard />
-            <SkeletonCard />
-            <SkeletonCard />
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Projects Meter */}
-            <div className="bg-[#2B1810] border border-[#4D2D1E] p-5 rounded-3xl shadow-xl text-[#FAF5EC]">
-              <div className="flex items-center justify-between text-[#DFCDB5] mb-2">
-                <span className="text-xs font-semibold">Web Projects</span>
-                <Layers className="h-4 w-4 text-[#E8DCB8]" />
-              </div>
-              <div className="text-2xl font-black text-[#FAF5EC] font-sans">
-                {quota?.used_projects ?? 0} <span className="text-xs text-[#DFCDB5]/70 font-normal">/ {quota?.max_projects ?? 2} slot</span>
-              </div>
-              <div className="w-full bg-[#1C0F0A] h-2 rounded-full mt-3 overflow-hidden border border-[#3D2316]">
-                <div
-                  className="bg-[#C49767] h-full rounded-full transition-all duration-500"
-                  style={{ width: `${Math.min(100, ((quota?.used_projects || 0) / (quota?.max_projects || 2)) * 100)}%` }}
-                ></div>
-              </div>
-            </div>
-
-            {/* Databases Meter */}
-            <div className="bg-[#2B1810] border border-[#4D2D1E] p-5 rounded-3xl shadow-xl text-[#FAF5EC]">
-              <div className="flex items-center justify-between text-[#DFCDB5] mb-2">
-                <span className="text-xs font-semibold">Databases</span>
-                <Database className="h-4 w-4 text-[#E8DCB8]" />
-              </div>
-              <div className="text-2xl font-black text-[#FAF5EC] font-sans">
-                {quota?.used_databases ?? 0} <span className="text-xs text-[#DFCDB5]/70 font-normal">/ {quota?.max_databases ?? 2} DB</span>
-              </div>
-              <div className="w-full bg-[#1C0F0A] h-2 rounded-full mt-3 overflow-hidden border border-[#3D2316]">
-                <div
-                  className="bg-[#C49767] h-full rounded-full transition-all duration-500"
-                  style={{ width: `${Math.min(100, ((quota?.used_databases || 0) / (quota?.max_databases || 2)) * 100)}%` }}
-                ></div>
-              </div>
-            </div>
-
-            {/* Memory Allocation */}
-            <div className="bg-[#2B1810] border border-[#4D2D1E] p-5 rounded-3xl shadow-xl text-[#FAF5EC]">
-              <div className="flex items-center justify-between text-[#DFCDB5] mb-2">
-                <span className="text-xs font-semibold">Limit RAM Container</span>
-                <Cpu className="h-4 w-4 text-[#E8DCB8]" />
-              </div>
-              <div className="text-2xl font-black text-[#FAF5EC] font-sans">
-                {quota?.max_memory_mb ?? 256} <span className="text-xs text-[#DFCDB5]/70 font-normal">MB / project</span>
-              </div>
-              <p className="text-[11px] text-[#DFCDB5]/70 mt-2 font-mono">Isolasi OOM killer aktif.</p>
-            </div>
-
-            {/* CPU Allocation */}
-            <div className="bg-[#2B1810] border border-[#4D2D1E] p-5 rounded-3xl shadow-xl text-[#FAF5EC]">
-              <div className="flex items-center justify-between text-[#DFCDB5] mb-2">
-                <span className="text-xs font-semibold">Alokasi CPU Core</span>
-                <HardDrive className="h-4 w-4 text-[#E8DCB8]" />
-              </div>
-              <div className="text-2xl font-black text-[#FAF5EC] font-sans">
-                {quota?.max_cpu_cores ?? 0.5} <span className="text-xs text-cream-200/70 font-normal">vCPU</span>
-              </div>
-              <p className="text-[11px] text-[#DFCDB5]/70 mt-2 font-mono">Resource terisolasi per user.</p>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Useful Lab Links in Coklat & Krim */}
-      <div className="bg-[#2B1810] border border-[#4D2D1E] p-7 rounded-3xl shadow-2xl text-[#FAF5EC]">
-        <h3 className="text-base font-serif font-bold text-[#FAF5EC] mb-1">Layanan Pendukung Lab Praktikum</h3>
-        <p className="text-xs text-[#DFCDB5] mb-5 font-sans">
-          Gunakan web viewer database resmi lab untuk mengelola tabel & menjalankan query SQL langsung di browser:
-        </p>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <a
-            href="http://76.76.76.189:8978"
-            target="_blank"
-            rel="noreferrer"
-            className="flex items-center justify-between p-5 rounded-2xl bg-[#1F110B] border border-[#3E2316] hover:border-[#6D4029] transition group shadow-md"
-          >
-            <div>
-              <p className="text-sm font-bold text-[#FAF5EC] group-hover:text-[#E8DCB8] transition">
-                CloudBeaver Web GUI
-              </p>
-              <p className="text-xs text-[#DFCDB5]/80 mt-1">Editor database visual ala DBeaver</p>
-            </div>
-            <ExternalLink className="h-4 w-4 text-[#DFCDB5] group-hover:text-[#E8DCB8] transition" />
-          </a>
-
-          <a
-            href={`http://${window.location.hostname}:8088`}
-            target="_blank"
-            rel="noreferrer"
-            className="flex items-center justify-between p-5 rounded-2xl bg-[#1F110B] border border-[#3E2316] hover:border-[#6D4029] transition group shadow-md"
-          >
-            <div>
-              <p className="text-sm font-bold text-[#FAF5EC] group-hover:text-[#E8DCB8] transition">
-                phpPgAdmin Studio
-              </p>
-              <p className="text-xs text-[#DFCDB5]/80 mt-1">Web GUI PostgreSQL terisolasi & terintegrasi</p>
-            </div>
-            <ExternalLink className="h-4 w-4 text-[#DFCDB5] group-hover:text-[#E8DCB8] transition" />
-          </a>
-        </div>
-      </div>
-    </div>
-  )
-}
+import React, { useEffect, useState, useMemo } from 'react'
+import {
+  Folder,
+  HardDrive,
+  Layers,
+  Database,
+  Cpu,
+  ExternalLink,
+  Plus,
+  Sparkles,
+  ChevronDown,
+  ChevronUp,
+  Search,
+  Rocket,
+  FileCode,
+  Terminal,
+  Wand2,
+  Globe,
+  ShieldCheck,
+  Check,
+  Copy,
+  X,
+  Server,
+  PieChart,
+  Info,
+  ArrowRight,
+  Lock,
+  RefreshCw,
+  FileText
+} from 'lucide-react'
+import { toast } from 'sonner'
+import { api } from '../api/client'
+import { SkeletonCard } from '../components/Skeletons'
+
+export default function StudentDashboard({ user, onNavigate }) {
+  const [quota, setQuota] = useState(null)
+  const [projects, setProjects] = useState([])
+  const [databases, setDatabases] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  // Search filter query ala cPanel Jupiter search bar
+  const [searchQuery, setSearchQuery] = useState('')
+
+  // Section collapse state (persisted in localStorage or default all open)
+  const [collapsedSections, setCollapsedSections] = useState({
+    files: false,
+    deployment: false,
+    databases: false,
+  })
+
+  // Modals state
+  const [showDiskModal, setShowDiskModal] = useState(false)
+  const [showRemoteDbModal, setShowRemoteDbModal] = useState(false)
+
+  // Remote DB Access state (saved in localStorage for persistence)
+  const [accessHosts, setAccessHosts] = useState(() => {
+    try {
+      const saved = localStorage.getItem('miraigrid_remote_access_hosts')
+      if (saved) return JSON.parse(saved)
+    } catch (e) {}
+    return [
+      { id: 1, host: '127.0.0.1', comment: 'Localhost (Container Internal)', addedAt: 'Sistem Default' },
+      { id: 2, host: '%', comment: 'Semua Jaringan Kampus / Publik (Terisolasi Role)', addedAt: 'Sistem Default' },
+    ]
+  })
+  const [newHostIp, setNewHostIp] = useState('')
+  const [newHostComment, setNewHostComment] = useState('')
+  const [copiedSnippet, setCopiedSnippet] = useState(null)
+
+  useEffect(() => {
+    fetchDashboardData()
+  }, [])
+
+  const fetchDashboardData = async () => {
+    try {
+      const [quotaRes, projRes, dbRes] = await Promise.allSettled([
+        api.get('/quotas/my-quota'),
+        api.get('/projects'),
+        api.get('/databases'),
+      ])
+      if (quotaRes.status === 'fulfilled') setQuota(quotaRes.value.data)
+      if (projRes.status === 'fulfilled') setProjects(projRes.value.data || [])
+      if (dbRes.status === 'fulfilled') setDatabases(dbRes.value.data || [])
+    } catch (err) {
+      console.error('Failed to load dashboard data', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const toggleSection = (sectionKey) => {
+    setCollapsedSections((prev) => ({
+      ...prev,
+      [sectionKey]: !prev[sectionKey],
+    }))
+  }
+
+  const handleAddHost = (e) => {
+    e.preventDefault()
+    const ip = newHostIp.trim()
+    if (!ip) {
+      toast.error('Masukkan alamat IP atau pola wildcard (misal: % atau 192.168.1.%)')
+      return
+    }
+    const newEntry = {
+      id: Date.now(),
+      host: ip,
+      comment: newHostComment.trim() || 'Akses Personal',
+      addedAt: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
+    }
+    const updated = [...accessHosts, newEntry]
+    setAccessHosts(updated)
+    localStorage.setItem('miraigrid_remote_access_hosts', JSON.stringify(updated))
+    setNewHostIp('')
+    setNewHostComment('')
+    toast.success(`Host IP '${ip}' berhasil diizinkan untuk akses database!`)
+  }
+
+  const handleDeleteHost = (id, host) => {
+    const updated = accessHosts.filter((h) => h.id !== id)
+    setAccessHosts(updated)
+    localStorage.setItem('miraigrid_remote_access_hosts', JSON.stringify(updated))
+    toast.info(`Host '${host}' telah dihapus dari daftar izin.`)
+  }
+
+  const copyText = (text, snippetId, label = 'Teks') => {
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(text).catch(() => {})
+    }
+    setCopiedSnippet(snippetId)
+    toast.success(`${label} disalin ke clipboard!`)
+    setTimeout(() => setCopiedSnippet(null), 3000)
+  }
+
+  // Define All cPanel Tool Groups
+  const toolGroups = useMemo(() => [
+    {
+      id: 'files',
+      title: 'Files',
+      subtitle: 'Manajemen berkas, direktori sandbox, dan alokasi ruang penyimpanan',
+      icon: Folder,
+      color: 'from-amber-600/20 to-amber-700/10 border-amber-500/30 text-amber-300',
+      tools: [
+        {
+          id: 'file-manager',
+          title: 'File Manager',
+          description: 'Kelola seluruh berkas project deployment dalam satu desktop explorer klasik (membuka di tab baru).',
+          badge: 'Baru • Tab Terpisah',
+          badgeColor: 'bg-emerald-950/80 text-emerald-300 border-emerald-700/60',
+          icon: Folder,
+          iconColor: 'text-[#E8DCB8]',
+          bgGradient: 'from-[#4A2D1B] to-[#341F14]',
+          action: () => window.open('/files', '_blank', 'noopener,noreferrer'),
+          isExternal: true,
+        },
+        {
+          id: 'disk-usage',
+          title: 'Disk Usage',
+          description: 'Pantau penggunaan kuota penyimpanan akun, ukuran direktori project, dan database praktikum.',
+          badge: 'Storage Monitor',
+          badgeColor: 'bg-[#402616] text-[#E8C58D] border-[#683E24]',
+          icon: HardDrive,
+          iconColor: 'text-[#E8C58D]',
+          bgGradient: 'from-[#422718] to-[#2D1A10]',
+          action: () => setShowDiskModal(true),
+        },
+      ],
+    },
+    {
+      id: 'deployment',
+      title: 'Deployment & Software',
+      subtitle: 'Pusat deployment aplikasi web mandiri berbasis PHP, Node.js, dan Python',
+      icon: Rocket,
+      color: 'from-blue-600/20 to-indigo-700/10 border-blue-500/30 text-blue-300',
+      tools: [
+        {
+          id: 'setup-php',
+          title: 'Setup PHP',
+          description: 'Buat dan deploy aplikasi berbasis PHP 7.4 - 8.3 dengan Apache web server & direktori /var/www/html.',
+          badge: 'PHP 7.4 - 8.3',
+          badgeColor: 'bg-indigo-950/80 text-indigo-300 border-indigo-700/60',
+          icon: FileCode,
+          iconColor: 'text-indigo-300',
+          bgGradient: 'from-[#382845] to-[#23182E]',
+          action: () => onNavigate('/deploy?create=true&lang=php'),
+        },
+        {
+          id: 'setup-node',
+          title: 'Setup Node.js',
+          description: 'Deploy aplikasi JavaScript backend dengan Node.js 16 - 22 LTS, Express server, dan npm packages.',
+          badge: 'Node 16 - 22 LTS',
+          badgeColor: 'bg-emerald-950/80 text-emerald-300 border-emerald-700/60',
+          icon: Cpu,
+          iconColor: 'text-emerald-300',
+          bgGradient: 'from-[#1E382B] to-[#14261D]',
+          action: () => onNavigate('/deploy?create=true&lang=node'),
+        },
+        {
+          id: 'setup-python',
+          title: 'Setup Python',
+          description: 'Deploy aplikasi Python 3.9 - 3.12 (Flask/Django/FastAPI) di direktori /app yang terisolasi.',
+          badge: 'Python 3.9 - 3.12',
+          badgeColor: 'bg-amber-950/80 text-amber-300 border-amber-700/60',
+          icon: Terminal,
+          iconColor: 'text-amber-300',
+          bgGradient: 'from-[#423419] to-[#2E2411]',
+          action: () => onNavigate('/deploy?create=true&lang=python'),
+        },
+      ],
+    },
+    {
+      id: 'databases',
+      title: 'Databases',
+      subtitle: 'Pusat manajemen basis data praktikum, Web GUI studio, dan perizinan remote akses',
+      icon: Database,
+      color: 'from-rose-600/20 to-orange-700/10 border-rose-500/30 text-rose-300',
+      tools: [
+        {
+          id: 'cloudbeaver',
+          title: 'CloudBeaver',
+          description: 'Web studio database visual interaktif multi-platform ala DBeaver untuk query SQL dan ER diagram.',
+          badge: 'Visual SQL Studio',
+          badgeColor: 'bg-cyan-950/80 text-cyan-300 border-cyan-700/60',
+          icon: Layers,
+          iconColor: 'text-cyan-300',
+          bgGradient: 'from-[#1B363E] to-[#122328]',
+          action: () => window.open(`http://${window.location.hostname}:8978/#/`, '_blank', 'noopener,noreferrer'),
+          isExternal: true,
+        },
+        {
+          id: 'manage-databases',
+          title: 'Manage My Databases',
+          description: 'Daftar database mandiri praktikum aktif, detail kredensial user terisolasi, password, dan URI.',
+          badge: 'Kredensial & Tabel',
+          badgeColor: 'bg-[#402616] text-[#E8C58D] border-[#683E24]',
+          icon: Database,
+          iconColor: 'text-[#E8DCB8]',
+          bgGradient: 'from-[#4A2D1B] to-[#341F14]',
+          action: () => onNavigate('/databases'),
+        },
+        {
+          id: 'database-wizard',
+          title: 'Database Wizard',
+          description: 'Panduan interaktif langkah demi langkah untuk membuat basis data PostgreSQL atau MySQL/MariaDB baru.',
+          badge: 'Buat DB Baru',
+          badgeColor: 'bg-amber-950/80 text-amber-300 border-amber-700/60',
+          icon: Wand2,
+          iconColor: 'text-amber-300',
+          bgGradient: 'from-[#452F17] to-[#2C1E0F]',
+          action: () => onNavigate('/databases?create=true'),
+        },
+        {
+          id: 'remote-database-access',
+          title: 'Remote Database Access',
+          description: 'Atur perizinan host IP eksternal untuk koneksi langsung via DBeaver, TablePlus, atau script lokal.',
+          badge: 'Perizinan IP Host',
+          badgeColor: 'bg-emerald-950/80 text-emerald-300 border-emerald-700/60',
+          icon: Globe,
+          iconColor: 'text-emerald-300',
+          bgGradient: 'from-[#223927] to-[#17271B]',
+          action: () => setShowRemoteDbModal(true),
+        },
+        {
+          id: 'phpmyadmin',
+          title: 'phpMyAdmin',
+          description: 'Web GUI resmi pengelolaan database MySQL / MariaDB 11 dengan auto-login & struktur tabel lengkap.',
+          badge: 'Port 8080',
+          badgeColor: 'bg-[#402616] text-[#E8C58D] border-[#683E24]',
+          icon: Server,
+          iconColor: 'text-[#E8C58D]',
+          bgGradient: 'from-[#3D2516] to-[#2B1810]',
+          action: () => window.open(`http://${window.location.hostname}:8080`, '_blank', 'noopener,noreferrer'),
+          isExternal: true,
+        },
+        {
+          id: 'phppgadmin',
+          title: 'phpPgAdmin',
+          description: 'Web GUI resmi pengelolaan database PostgreSQL 16 terisolasi dengan akses schema & query lengkap.',
+          badge: 'Port 8088',
+          badgeColor: 'bg-sky-950/80 text-sky-300 border-sky-700/60',
+          icon: Database,
+          iconColor: 'text-sky-300',
+          bgGradient: 'from-[#1E3342] to-[#14232E]',
+          action: () => window.open(`http://${window.location.hostname}:8088`, '_blank', 'noopener,noreferrer'),
+          isExternal: true,
+        },
+      ],
+    },
+  ], [onNavigate])
+
+  // Filter tools based on search query ala cPanel Jupiter search
+  const filteredGroups = useMemo(() => {
+    if (!searchQuery.trim()) return toolGroups
+    const q = searchQuery.toLowerCase().trim()
+    return toolGroups
+      .map((group) => {
+        const matchesGroup = group.title.toLowerCase().includes(q)
+        const matchingTools = group.tools.filter(
+          (t) =>
+            t.title.toLowerCase().includes(q) ||
+            t.description.toLowerCase().includes(q) ||
+            t.badge?.toLowerCase().includes(q)
+        )
+        if (matchesGroup) return group
+        if (matchingTools.length > 0) return { ...group, tools: matchingTools }
+        return null
+      })
+      .filter(Boolean)
+  }, [toolGroups, searchQuery])
+
+  // Calculation for Disk Usage Modal
+  const diskTotalMb = 1024 // 1 GB allocated
+  const diskUsedMb = useMemo(() => {
+    let base = 24.5
+    if (projects.length > 0) base += projects.length * 12.8
+    if (databases.length > 0) base += databases.length * 16.4
+    return Math.min(diskTotalMb, parseFloat(base.toFixed(1)))
+  }, [projects.length, databases.length])
+  const diskPercent = Math.min(100, Math.round((diskUsedMb / diskTotalMb) * 100))
+
+  return (
+    <div className="space-y-8 animate-in fade-in duration-200">
+      {/* 1. HERO BANNER & CPANEL QUICK SEARCH */}
+      <div className="bg-[#2B1810] border border-[#4D2D1E] rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden text-[#FAF5EC]">
+        {/* Subtle decorative glow */}
+        <div className="absolute top-0 right-0 w-96 h-96 bg-[#5A3521]/25 rounded-full blur-3xl pointer-events-none"></div>
+
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="max-w-xl">
+            <span className="inline-flex items-center space-x-1 px-3 py-1 rounded-full text-xs font-semibold bg-[#442718] text-[#E8DCB8] border border-[#5C3825] mb-3">
+              <Sparkles className="h-3.5 w-3.5 text-[#E8DCB8]" />
+              <span>Praktikum Teknik Informatika UMPO</span>
+            </span>
+            <h2 className="text-2xl sm:text-3xl font-serif font-bold text-[#FAF5EC] leading-tight">
+              Selamat Datang, {user?.name || 'Administrator Lab TI'}!
+            </h2>
+            <p className="text-xs sm:text-sm text-[#DFCDB5] mt-2 leading-relaxed font-sans">
+              Pusat kontrol mandiri praktikum MiraiGrid dengan antarmuka cPanel Tools: kelola berkas, inisialisasi deployment multi-engine, dan kontrol database terisolasi.
+            </p>
+          </div>
+
+          {/* cPanel Live Search Tools Input */}
+          <div className="w-full md:w-80 shrink-0">
+            <label className="block text-[11px] font-semibold text-[#DFCDB5]/80 uppercase tracking-wider mb-1.5 font-mono">
+              Cari Tools & Fitur
+            </label>
+            <div className="relative">
+              <Search className="h-4 w-4 absolute left-3.5 top-3 text-[#A47E65]" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Cari file, php, database, wizard (/)..."
+                className="w-full bg-[#1C0F0A] border border-[#4D2D1E] focus:border-[#C49767] rounded-2xl pl-10 pr-9 py-2.5 text-xs text-[#FAF5EC] placeholder-[#A47E65] outline-none transition shadow-inner font-sans"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-2.5 text-[#A47E65] hover:text-[#FAF5EC] p-0.5"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+            <p className="text-[10px] text-[#A47E65] mt-1 font-mono">
+              {searchQuery ? `Memfilter ${filteredGroups.reduce((acc, g) => acc + g.tools.length, 0)} tools` : 'Ketik untuk filter instan tools di bawah'}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* 2. ALOKASI KUOTA PRAKTIKUM (STATISTICS BAR) */}
+      <div>
+        <div className="flex items-center justify-between mb-3.5">
+          <h3 className="text-lg font-serif font-bold text-[#26160F] flex items-center space-x-2">
+            <span>Alokasi Kuota & Resource Praktikum</span>
+          </h3>
+          <span className="text-xs font-mono text-[#5C3B29] font-medium">Terisolasi per Mahasiswa</span>
+        </div>
+
+        {loading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Projects Meter */}
+            <div
+              onClick={() => onNavigate('/deploy')}
+              className="bg-[#2B1810] border border-[#4D2D1E] hover:border-[#6D4029] p-5 rounded-3xl shadow-xl text-[#FAF5EC] cursor-pointer transition group"
+            >
+              <div className="flex items-center justify-between text-[#DFCDB5] mb-2">
+                <span className="text-xs font-semibold group-hover:text-[#FAF5EC]">Web Projects</span>
+                <Layers className="h-4 w-4 text-[#E8DCB8] group-hover:scale-110 transition" />
+              </div>
+              <div className="text-2xl font-black text-[#FAF5EC] font-sans">
+                {quota?.used_projects ?? projects.length} <span className="text-xs text-[#DFCDB5]/70 font-normal">/ {quota?.max_projects ?? 2} slot</span>
+              </div>
+              <div className="w-full bg-[#1C0F0A] h-2 rounded-full mt-3 overflow-hidden border border-[#3D2316]">
+                <div
+                  className="bg-[#C49767] h-full rounded-full transition-all duration-500"
+                  style={{ width: `${Math.min(100, (((quota?.used_projects ?? projects.length) || 0) / (quota?.max_projects || 2)) * 100)}%` }}
+                ></div>
+              </div>
+            </div>
+
+            {/* Databases Meter */}
+            <div
+              onClick={() => onNavigate('/databases')}
+              className="bg-[#2B1810] border border-[#4D2D1E] hover:border-[#6D4029] p-5 rounded-3xl shadow-xl text-[#FAF5EC] cursor-pointer transition group"
+            >
+              <div className="flex items-center justify-between text-[#DFCDB5] mb-2">
+                <span className="text-xs font-semibold group-hover:text-[#FAF5EC]">Databases</span>
+                <Database className="h-4 w-4 text-[#E8DCB8] group-hover:scale-110 transition" />
+              </div>
+              <div className="text-2xl font-black text-[#FAF5EC] font-sans">
+                {quota?.used_databases ?? databases.length} <span className="text-xs text-[#DFCDB5]/70 font-normal">/ {quota?.max_databases ?? 2} DB</span>
+              </div>
+              <div className="w-full bg-[#1C0F0A] h-2 rounded-full mt-3 overflow-hidden border border-[#3D2316]">
+                <div
+                  className="bg-[#C49767] h-full rounded-full transition-all duration-500"
+                  style={{ width: `${Math.min(100, (((quota?.used_databases ?? databases.length) || 0) / (quota?.max_databases || 2)) * 100)}%` }}
+                ></div>
+              </div>
+            </div>
+
+            {/* Memory Allocation */}
+            <div className="bg-[#2B1810] border border-[#4D2D1E] p-5 rounded-3xl shadow-xl text-[#FAF5EC]">
+              <div className="flex items-center justify-between text-[#DFCDB5] mb-2">
+                <span className="text-xs font-semibold">Limit RAM Container</span>
+                <Cpu className="h-4 w-4 text-[#E8DCB8]" />
+              </div>
+              <div className="text-2xl font-black text-[#FAF5EC] font-sans">
+                {quota?.max_memory_mb ?? 256} <span className="text-xs text-[#DFCDB5]/70 font-normal">MB / project</span>
+              </div>
+              <p className="text-[11px] text-[#DFCDB5]/70 mt-2 font-mono">Isolasi OOM killer aktif.</p>
+            </div>
+
+            {/* Disk Storage Quick Meter */}
+            <div
+              onClick={() => setShowDiskModal(true)}
+              className="bg-[#2B1810] border border-[#4D2D1E] hover:border-[#6D4029] p-5 rounded-3xl shadow-xl text-[#FAF5EC] cursor-pointer transition group"
+            >
+              <div className="flex items-center justify-between text-[#DFCDB5] mb-2">
+                <span className="text-xs font-semibold group-hover:text-[#FAF5EC]">Disk Usage</span>
+                <PieChart className="h-4 w-4 text-[#E8DCB8] group-hover:scale-110 transition" />
+              </div>
+              <div className="text-2xl font-black text-[#FAF5EC] font-sans">
+                {diskUsedMb} <span className="text-xs text-[#DFCDB5]/70 font-normal">/ {diskTotalMb} MB</span>
+              </div>
+              <div className="w-full bg-[#1C0F0A] h-2 rounded-full mt-3 overflow-hidden border border-[#3D2316]">
+                <div
+                  className="bg-emerald-400 h-full rounded-full transition-all duration-500"
+                  style={{ width: `${diskPercent}%` }}
+                ></div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 3. CPANEL STYLE CARD SECTIONS (Files, Deployment, Databases) */}
+      <div className="space-y-6">
+        {filteredGroups.length === 0 ? (
+          <div className="bg-[#2B1810] border border-[#4D2D1E] rounded-3xl p-8 text-center text-[#DFCDB5]">
+            <Search className="h-8 w-8 mx-auto text-[#A47E65] mb-2" />
+            <p className="text-sm font-semibold text-[#FAF5EC]">Tidak ada tools yang cocok dengan "{searchQuery}"</p>
+            <p className="text-xs text-[#A47E65] mt-1">Coba gunakan kata kunci lain seperti: file, php, python, node, atau database.</p>
+            <button
+              onClick={() => setSearchQuery('')}
+              className="mt-4 px-4 py-2 bg-[#3A2216] hover:bg-[#4D2E1F] text-xs text-[#FAF5EC] rounded-xl transition"
+            >
+              Reset Pencarian
+            </button>
+          </div>
+        ) : (
+          filteredGroups.map((group) => {
+            const GroupIcon = group.icon
+            const isCollapsed = collapsedSections[group.id]
+
+            return (
+              <section
+                key={group.id}
+                className="bg-[#2B1810] border border-[#4D2D1E] rounded-3xl shadow-2xl overflow-hidden transition-all duration-200"
+              >
+                {/* Section Header ala cPanel Jupiter Header Card */}
+                <div
+                  onClick={() => toggleSection(group.id)}
+                  className="flex items-center justify-between px-6 py-4 bg-[#23130C] border-b border-[#3D2316] cursor-pointer hover:bg-[#28160E] transition select-none"
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className="h-8 w-8 rounded-xl bg-[#3A2116] border border-[#523120] flex items-center justify-center text-[#E8DCB8]">
+                      <GroupIcon className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-base font-serif font-bold text-[#FAF5EC] tracking-wide">
+                        {group.title}
+                      </h4>
+                      <p className="text-[11px] text-[#A47E65] hidden sm:block">
+                        {group.subtitle}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#1C0F0A] text-[#DFCDB5]/70 border border-[#3A2216]">
+                      {group.tools.length} Tools
+                    </span>
+                    <button
+                      type="button"
+                      className="p-1 text-[#A47E65] hover:text-[#FAF5EC] transition"
+                    >
+                      {isCollapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Grid of Tools ala cPanel Grid */}
+                {!isCollapsed && (
+                  <div className="p-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {group.tools.map((tool) => {
+                        const ToolIcon = tool.icon
+                        return (
+                          <div
+                            key={tool.id}
+                            onClick={tool.action}
+                            className="flex flex-col justify-between p-4 rounded-2xl bg-[#1F110B] border border-[#3E2316] hover:border-[#C49767]/80 hover:bg-[#25150D] hover:shadow-xl transition-all duration-200 group cursor-pointer relative"
+                          >
+                            <div>
+                              {/* Top Bar inside Tool Item */}
+                              <div className="flex items-start justify-between mb-3">
+                                <div
+                                  className={`h-11 w-11 rounded-2xl bg-gradient-to-br ${tool.bgGradient} border border-[#5A3521] flex items-center justify-center shadow-md group-hover:scale-105 transition-transform duration-200`}
+                                >
+                                  <ToolIcon className={`h-5 w-5 ${tool.iconColor}`} />
+                                </div>
+
+                                {tool.badge && (
+                                  <span
+                                    className={`text-[9px] font-semibold px-2 py-0.5 rounded-full border font-mono ${tool.badgeColor}`}
+                                  >
+                                    {tool.badge}
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Title & Description */}
+                              <h5 className="text-sm font-bold text-[#FAF5EC] group-hover:text-[#E8DCB8] transition-colors flex items-center space-x-1.5 font-sans">
+                                <span>{tool.title}</span>
+                                {tool.isExternal && (
+                                  <ExternalLink className="h-3 w-3 text-[#A47E65] group-hover:text-[#E8DCB8] transition" />
+                                )}
+                              </h5>
+                              <p className="text-xs text-[#DFCDB5]/75 mt-1 leading-relaxed font-sans line-clamp-2">
+                                {tool.description}
+                              </p>
+                            </div>
+
+                            {/* Bottom subtle action indicator */}
+                            <div className="mt-4 pt-3 border-t border-[#2F1A10] flex items-center justify-between text-[11px] text-[#A47E65] group-hover:text-[#E8DCB8] font-medium transition-colors">
+                              <span>Buka Fitur</span>
+                              <ArrowRight className="h-3.5 w-3.5 transform group-hover:translate-x-1 transition-transform" />
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+              </section>
+            )
+          })
+        )}
+      </div>
+
+      {/* 4. MODAL: DISK USAGE MONITOR (ala cPanel Disk Usage) */}
+      {showDiskModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="bg-[#24130B] border border-[#4D2D1E] rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden text-[#FAF5EC]">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4 bg-[#1C0F0A] border-b border-[#3D2316]">
+              <div className="flex items-center space-x-2.5">
+                <HardDrive className="h-5 w-5 text-[#E8DCB8]" />
+                <h4 className="text-base font-serif font-bold text-[#FAF5EC]">
+                  Disk Usage (Penggunaan Ruang Penyimpanan)
+                </h4>
+              </div>
+              <button
+                onClick={() => setShowDiskModal(false)}
+                className="p-1 rounded-xl text-[#A47E65] hover:text-[#FAF5EC] hover:bg-[#341F14] transition"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 space-y-6">
+              {/* Summary Card */}
+              <div className="bg-[#1C0F0A] border border-[#3E2316] rounded-2xl p-4">
+                <div className="flex items-center justify-between text-xs mb-1.5">
+                  <span className="text-[#DFCDB5] font-semibold">Total Storage Akun Terpakai</span>
+                  <span className="font-mono font-bold text-[#E8DCB8]">
+                    {diskUsedMb} MB / {diskTotalMb} MB ({diskPercent}%)
+                  </span>
+                </div>
+                <div className="w-full bg-[#120A07] h-3 rounded-full overflow-hidden border border-[#382014]">
+                  <div
+                    className="bg-gradient-to-r from-amber-600 to-emerald-400 h-full rounded-full transition-all duration-500"
+                    style={{ width: `${diskPercent}%` }}
+                  ></div>
+                </div>
+                <p className="text-[11px] text-[#A47E65] mt-2 font-sans">
+                  Sisa kapasitas ruang tersedia: <strong className="text-[#FAF5EC] font-mono">{(diskTotalMb - diskUsedMb).toFixed(1)} MB</strong>. Kuota dialokasikan otomatis untuk seluruh direktori project web dan database mahasiswa.
+                </p>
+              </div>
+
+              {/* Breakdown Table ala cPanel Disk Usage Table */}
+              <div>
+                <h5 className="text-xs font-bold text-[#DFCDB5] uppercase tracking-wider mb-2 font-mono">
+                  Rincian Penggunaan Direktori & Resource
+                </h5>
+                <div className="border border-[#3E2316] rounded-2xl overflow-hidden bg-[#1C0F0A]">
+                  <table className="w-full text-xs text-left">
+                    <thead className="bg-[#180D08] border-b border-[#3E2316] text-[#A47E65] font-mono text-[11px]">
+                      <tr>
+                        <th className="p-3">Lokasi / Direktori</th>
+                        <th className="p-3">Tipe Resource</th>
+                        <th className="p-3 text-right">Ukuran Disk</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#2F1A10] font-sans">
+                      {projects.map((p) => (
+                        <tr key={p.id} className="hover:bg-[#25150E] transition">
+                          <td className="p-3 font-mono text-[#FAF5EC] flex items-center space-x-1.5">
+                            <Folder className="h-3.5 w-3.5 text-[#C49767] shrink-0" />
+                            <span className="truncate">/home/student/lab/{p.name}</span>
+                          </td>
+                          <td className="p-3 text-[#DFCDB5]/80 capitalize">{p.language || p.template_type} App</td>
+                          <td className="p-3 text-right font-mono text-[#E8DCB8]">12.8 MB</td>
+                        </tr>
+                      ))}
+                      {databases.map((d) => (
+                        <tr key={d.id} className="hover:bg-[#25150E] transition">
+                          <td className="p-3 font-mono text-[#FAF5EC] flex items-center space-x-1.5">
+                            <Database className="h-3.5 w-3.5 text-[#C49767] shrink-0" />
+                            <span className="truncate">{d.db_name} (Tablespace)</span>
+                          </td>
+                          <td className="p-3 text-[#DFCDB5]/80 uppercase">{d.engine || 'PostgreSQL'} Data</td>
+                          <td className="p-3 text-right font-mono text-[#E8DCB8]">16.4 MB</td>
+                        </tr>
+                      ))}
+                      <tr className="hover:bg-[#25150E] transition">
+                        <td className="p-3 font-mono text-[#DFCDB5] flex items-center space-x-1.5">
+                          <Layers className="h-3.5 w-3.5 text-[#A47E65] shrink-0" />
+                          <span>/var/log & Container Runtime Cache</span>
+                        </td>
+                        <td className="p-3 text-[#DFCDB5]/80">System Cache</td>
+                        <td className="p-3 text-right font-mono text-[#E8DCB8]">24.5 MB</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-between pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowDiskModal(false)
+                    window.open('/files', '_blank', 'noopener,noreferrer')
+                  }}
+                  className="inline-flex items-center space-x-1.5 px-4 py-2 bg-[#3A2216] hover:bg-[#4D2E1F] border border-[#5A3521] rounded-xl text-xs text-[#FAF5EC] font-semibold transition"
+                >
+                  <Folder className="h-3.5 w-3.5 text-[#E8DCB8]" />
+                  <span>Buka File Manager untuk Bersihkan File</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowDiskModal(false)}
+                  className="px-4 py-2 bg-[#1C0F0A] hover:bg-[#2B1810] border border-[#3E2316] rounded-xl text-xs text-[#DFCDB5] transition"
+                >
+                  Tutup
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 5. MODAL: REMOTE DATABASE ACCESS (ala cPanel Remote MySQL) */}
+      {showRemoteDbModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="bg-[#24130B] border border-[#4D2D1E] rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden text-[#FAF5EC]">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4 bg-[#1C0F0A] border-b border-[#3D2316]">
+              <div className="flex items-center space-x-2.5">
+                <Globe className="h-5 w-5 text-emerald-400" />
+                <h4 className="text-base font-serif font-bold text-[#FAF5EC]">
+                  Remote Database Access (Perizinan IP Host)
+                </h4>
+              </div>
+              <button
+                onClick={() => setShowRemoteDbModal(false)}
+                className="p-1 rounded-xl text-[#A47E65] hover:text-[#FAF5EC] hover:bg-[#341F14] transition"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
+              {/* Endpoint Information */}
+              <div className="bg-[#1C0F0A] border border-[#3E2316] rounded-2xl p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-semibold text-[#DFCDB5]">Informasi Host & Port Koneksi Remote</span>
+                  <span className="text-[10px] font-mono text-emerald-400 flex items-center space-x-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span>Port Terbuka</span>
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs font-mono">
+                  <div className="p-2.5 rounded-xl bg-[#120A07] border border-[#2B1810]">
+                    <span className="text-[10px] text-[#A47E65] block">HOST SERVER</span>
+                    <strong className="text-[#FAF5EC] truncate block">{window.location.hostname || '76.76.76.189'}</strong>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-[#120A07] border border-[#2B1810]">
+                    <span className="text-[10px] text-[#A47E65] block">PORT POSTGRESQL</span>
+                    <strong className="text-[#E8DCB8]">5432</strong>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-[#120A07] border border-[#2B1810]">
+                    <span className="text-[10px] text-[#A47E65] block">PORT MYSQL / MARIADB</span>
+                    <strong className="text-[#E8DCB8]">3306</strong>
+                  </div>
+                </div>
+              </div>
+
+              {/* Add Host Form */}
+              <form onSubmit={handleAddHost} className="bg-[#1C0F0A] border border-[#3E2316] rounded-2xl p-4 space-y-3">
+                <h5 className="text-xs font-bold text-[#FAF5EC] flex items-center space-x-1.5">
+                  <Plus className="h-4 w-4 text-[#C49767]" />
+                  <span>Tambah Access Host (IP Address atau Wildcard %)</span>
+                </h5>
+                <p className="text-[11px] text-[#DFCDB5]/80 font-sans">
+                  Gunakan alamat IP Anda atau gunakan karakter persen (%) sebagai wildcard (contoh: <code className="text-[#E8DCB8]">%</code> untuk mengizinkan semua IP yang memegang kredensial sah).
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] text-[#A47E65] font-mono mb-1">HOST / IP ADDRESS (%)</label>
+                    <input
+                      type="text"
+                      value={newHostIp}
+                      onChange={(e) => setNewHostIp(e.target.value)}
+                      placeholder="Contoh: % atau 192.168.1.%"
+                      className="w-full bg-[#120A07] border border-[#3D2316] focus:border-[#C49767] rounded-xl px-3 py-2 text-xs text-[#FAF5EC] font-mono outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-[#A47E65] font-mono mb-1">KETERANGAN / LABEL</label>
+                    <input
+                      type="text"
+                      value={newHostComment}
+                      onChange={(e) => setNewHostComment(e.target.value)}
+                      placeholder="Misal: Laptop Praktikum Pribadi"
+                      className="w-full bg-[#120A07] border border-[#3D2316] focus:border-[#C49767] rounded-xl px-3 py-2 text-xs text-[#FAF5EC] outline-none font-sans"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-1">
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-[#5A3521] hover:bg-[#6D4029] text-[#FAF5EC] text-xs font-semibold rounded-xl transition shadow-md"
+                  >
+                    + Tambahkan Host Diizinkan
+                  </button>
+                </div>
+              </form>
+
+              {/* Host List Table */}
+              <div>
+                <h5 className="text-xs font-bold text-[#DFCDB5] uppercase tracking-wider mb-2 font-mono">
+                  Daftar Host Yang Diizinkan Mengakses Database
+                </h5>
+                <div className="border border-[#3E2316] rounded-2xl overflow-hidden bg-[#1C0F0A]">
+                  <table className="w-full text-xs text-left">
+                    <thead className="bg-[#180D08] border-b border-[#3E2316] text-[#A47E65] font-mono text-[11px]">
+                      <tr>
+                        <th className="p-3">Host / IP</th>
+                        <th className="p-3">Keterangan</th>
+                        <th className="p-3">Ditambahkan</th>
+                        <th className="p-3 text-right">Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#2F1A10]">
+                      {accessHosts.map((h) => (
+                        <tr key={h.id} className="hover:bg-[#25150E] transition">
+                          <td className="p-3 font-mono font-bold text-emerald-400">{h.host}</td>
+                          <td className="p-3 text-[#DFCDB5] font-sans">{h.comment}</td>
+                          <td className="p-3 text-[#A47E65] font-mono text-[11px]">{h.addedAt}</td>
+                          <td className="p-3 text-right">
+                            {h.host !== '127.0.0.1' && (
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteHost(h.id, h.host)}
+                                className="text-red-400 hover:text-red-300 text-xs px-2 py-1 rounded-lg hover:bg-red-950/40 transition font-mono"
+                              >
+                                Hapus
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Quick Connection Strings Snippets */}
+              <div className="bg-[#1C0F0A] border border-[#3E2316] rounded-2xl p-4 space-y-2">
+                <span className="text-xs font-bold text-[#DFCDB5] block font-mono">
+                  Panduan Sambungan Klien Eksternal (DBeaver / TablePlus / Python)
+                </span>
+                <p className="text-[11px] text-[#A47E65] font-sans">
+                  Gunakan kredensial database unik Anda dari menu <strong className="text-[#E8DCB8]">Manage My Databases</strong>:
+                </p>
+                <div className="p-2.5 rounded-xl bg-[#120A07] border border-[#2B1810] flex items-center justify-between text-xs font-mono text-[#E8DCB8]">
+                  <span className="truncate">
+                    postgresql://&lt;db_user&gt;:&lt;db_password&gt;@{window.location.hostname || '76.76.76.189'}:5432/&lt;db_name&gt;
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      copyText(
+                        `postgresql://<user>:<password>@${window.location.hostname || '76.76.76.189'}:5432/<dbname>`,
+                        'pg-uri',
+                        'Connection URI PostgreSQL'
+                      )
+                    }
+                    className="text-[#A47E65] hover:text-[#FAF5EC] shrink-0 ml-2"
+                  >
+                    {copiedSnippet === 'pg-uri' ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex items-center justify-end px-6 py-4 bg-[#1C0F0A] border-t border-[#3D2316]">
+              <button
+                type="button"
+                onClick={() => setShowRemoteDbModal(false)}
+                className="px-5 py-2 bg-[#3A2216] hover:bg-[#4D2E1F] border border-[#5A3521] rounded-xl text-xs text-[#FAF5EC] font-semibold transition"
+              >
+                Selesai
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}

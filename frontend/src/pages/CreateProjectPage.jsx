@@ -1,15 +1,39 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
 import { ArrowLeft, Check, AlertCircle, Sparkles } from 'lucide-react'
 import { toast } from 'sonner'
 import { api } from '../api/client'
 import { Spinner } from '../components/Skeletons'
 
 export default function CreateProjectPage({ onBack, onCreated }) {
+  const location = useLocation()
+  const initialLang = React.useMemo(() => {
+    const params = new URLSearchParams(location.search)
+    const l = params.get('lang')
+    if (l && ['php', 'node', 'python'].includes(l)) return l
+    return 'php'
+  }, [location.search])
+
   const [projectName, setProjectName] = useState('')
-  const [selectedLanguage, setSelectedLanguage] = useState('php') // 'php', 'python', 'node'
-  const [selectedVersion, setSelectedVersion] = useState('8.2')
+  const [selectedLanguage, setSelectedLanguage] = useState(initialLang) // 'php', 'python', 'node'
+  const [selectedVersion, setSelectedVersion] = useState(() => {
+    if (initialLang === 'python') return '3.11'
+    if (initialLang === 'node') return '20'
+    return '8.2'
+  })
   const [actionLoading, setActionLoading] = useState(false)
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    const l = params.get('lang')
+    if (l && ['php', 'node', 'python'].includes(l) && l !== selectedLanguage) {
+      setSelectedLanguage(l)
+      if (l === 'python') setSelectedVersion('3.11')
+      else if (l === 'node') setSelectedVersion('20')
+      else setSelectedVersion('8.2')
+    }
+  }, [location.search])
 
   const languageOptions = [
     {
