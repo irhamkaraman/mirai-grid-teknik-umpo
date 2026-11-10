@@ -45,6 +45,22 @@ class BulkCsvImportRequest(BaseModel):
     class_id: int
     students: List[BulkCsvStudentItem]
 
+class BulkDeleteUsersRequest(BaseModel):
+    user_ids: List[int]
+
+class UserQuotaUpdateRequest(BaseModel):
+    max_disk_mb: int = Field(default=1000, ge=50, le=100000, description="Storage limit in MB")
+    max_memory_mb: int = Field(default=512, ge=64, le=64000, description="RAM limit in MB")
+    max_cpu_cores: float = Field(default=1.0, ge=0.1, le=32.0, description="CPU cores limit")
+    max_projects: Optional[int] = Field(default=None, ge=1, le=100)
+    max_databases: Optional[int] = Field(default=None, ge=1, le=100)
+
+class BulkQuotaUpdateRequest(BaseModel):
+    user_ids: List[int]
+    max_disk_mb: int = Field(default=1000, ge=50, le=100000)
+    max_memory_mb: int = Field(default=512, ge=64, le=64000)
+    max_cpu_cores: float = Field(default=1.0, ge=0.1, le=32.0)
+
 class UserCreateManual(BaseModel):
     username: str = Field(min_length=3, max_length=50)
     name: str = Field(min_length=2, max_length=100)
@@ -65,6 +81,11 @@ class UserResponse(BaseModel):
     cohort_year: Optional[int] = None
     must_change_password: bool
     is_active: bool
+    max_disk_mb: Optional[int] = None
+    max_memory_mb: Optional[int] = None
+    max_cpu_cores: Optional[float] = None
+    max_projects: Optional[int] = None
+    max_databases: Optional[int] = None
 
 # Databases
 class StudentDatabaseCreate(BaseModel):

@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react'
-import { Shield, Users, UserPlus, KeyRound, Ban, Search, Clock, Trash2, Plus, Sparkles, UserCheck, ChevronLeft, ChevronRight } from 'lucide-react'
+import {
+  Shield, Users, UserPlus, KeyRound, Ban, Search, Clock, Trash2, Plus, Sparkles,
+  UserCheck, ChevronLeft, ChevronRight, Sliders, HardDrive, Cpu, X
+} from 'lucide-react'
 import { toast } from 'sonner'
 import { api } from '../api/client'
 import { SkeletonCard, SkeletonTable, Spinner } from '../components/Skeletons'
@@ -24,6 +27,22 @@ export default function AdminView() {
 
   // Confirmation modal
   const [confirmModal, setConfirmModal] = useState({ open: false, title: '', message: '', onConfirm: () => {} })
+
+  // Bulk selection states
+  const [selectedUserIds, setSelectedUserIds] = useState([])
+
+  // Resource limit modal states
+  const [limitModal, setLimitModal] = useState({
+    open: false,
+    isBulk: false,
+    userId: null,
+    username: '',
+    name: '',
+    maxDiskMb: 1000,
+    maxMemoryMb: 512,
+    maxCpuCores: 1.0,
+  })
+  const [savingLimit, setSavingLimit] = useState(false)
 
   // Bulk Generator states
   const [genCohortId, setGenCohortId] = useState('')
@@ -264,6 +283,107 @@ export default function AdminView() {
   const totalUserPages = Math.max(1, Math.ceil(users.length / userPageSize))
   const paginatedUsers = users.slice((userPage - 1) * userPageSize, userPage * userPageSize)
 
+  // Selection helpers (only student role accounts can be selected/bulk deleted)
+  const selectableUsersOnPage = paginatedUsers.filter((u) => u.role !== 'admin')
+  const allPageSelected = selectableUsersOnPage.length > 0 && selectableUsersOnPage.every((u) => selectedUserIds.includes(u.id))
+  const somePageSelected = selectableUsersOnPage.some((u) => selectedUserIds.includes(u.id))
+
+  const handleToggleSelectAll = () => {
+    if (allPageSelected) {
+      const pageIds = selectableUsersOnPage.map((u) => u.id)
+      setSelectedUserIds((prev) => prev.filter((id) => !pageIds.includes(id)))
+    } else {
+      const pageIds = selectableUsersOnPage.map((u) => u.id)
+      setSelectedUserIds((prev) => Array.from(new Set([...prev, ...pageIds])))
+    }
+  }
+
+  const handleToggleSelectUser = (id) => {
+    setSelectedUserIds((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+    )
+  }
+
+  const triggerBulkDelete = () => {
+    if (selectedUserIds.length === 0) return
+    setConfirmModal({
+      open: true,
+      title: 'Hapus Massal Akun Mahasiswa?',
+      message: `Apakah Anda yakin ingin menghapus ${selectedUserIds.length} akun mahasiswa terpilih secara permanen? Seluruh project, direktori web, dan database terkait juga akan dibersihkan. Tindakan ini tidak dapat dibatalkan.`,
+      danger: true,
+      confirmText: `Hapus ${selectedUserIds.length} Akun`,
+      onConfirm: async () => {
+        const toastId = toast.loading(`Menghapus ${selectedUserIds.length} akun mahasiswa...`)
+        try {
+          const res = await api.post('/admin/users/bulk-delete', { user_ids: selectedUserIds })
+          toast.success(res.data.message || `Berhasil menghapus ${res.data.deleted_count} akun!`, { id: toastId })
+          setSelectedUserIds([])
+          fetchUsers()
+          fetchStats()
+        } catch (err) {
+          toast.error(err.response?.data?.detail || 'Gagal menghapus akun massal.', { id: toastId })
+        }
+      }
+    })
+  }
+
+  const openLimitModal = (u) => {
+    setLimitModal({
+      open: true,
+      isBulk: false,
+      userId: u.id,
+      username: u.username,
+      name: u.name,
+      maxDiskMb: u.max_disk_mb || 1000,
+      maxMemoryMb: u.max_memory_mb || 512,
+      maxCpuCores: u.max_cpu_cores ?? 1.0,
+    })
+  }
+
+  const openBulkLimitModal = () => {
+    if (selectedUserIds.length === 0) return
+    setLimitModal({
+      open: true,
+      isBulk: true,
+      userId: null,
+      username: `${selectedUserIds.length} Akun Mahasiswa Terpilih`,
+      name: 'Pengaturan Limit Massal',
+      maxDiskMb: 1000,
+      maxMemoryMb: 512,
+      maxCpuCores: 1.0,
+    })
+  }
+
+  const handleSaveLimit = async (e) => {
+    e.preventDefault()
+    setSavingLimit(true)
+    const toastId = toast.loading('Menyimpan konfigurasi limit resource...')
+    try {
+      if (limitModal.isBulk) {
+        const res = await api.post('/admin/users/bulk-quota', {
+          user_ids: selectedUserIds,
+          max_disk_mb: parseInt(limitModal.maxDiskMb),
+          max_memory_mb: parseInt(limitModal.maxMemoryMb),
+          max_cpu_cores: parseFloat(limitModal.maxCpuCores),
+        })
+        toast.success(res.data.message || `Limit resource untuk ${res.data.updated_count} akun berhasil diperbarui!`, { id: toastId })
+      } else {
+        const res = await api.put(`/admin/users/${limitModal.userId}/quota`, {
+          max_disk_mb: parseInt(limitModal.maxDiskMb),
+          max_memory_mb: parseInt(limitModal.maxMemoryMb),
+          max_cpu_cores: parseFloat(limitModal.maxCpuCores),
+        })
+        toast.success(res.data.message || `Limit resource untuk '${limitModal.username}' berhasil diperbarui!`, { id: toastId })
+      }
+      setLimitModal((prev) => ({ ...prev, open: false }))
+      fetchUsers()
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Gagal menyimpan limit resource.', { id: toastId })
+    } finally {
+      setSavingLimit(false)
+    }
+  }
+
   const handleToggleStatus = async (userId) => {
     try {
       const res = await api.post(`/admin/users/${userId}/toggle-status`)
@@ -387,14 +507,66 @@ export default function AdminView() {
           </div>
 
           <div className="bg-[#2B1810] border border-[#4D2D1E] rounded-3xl overflow-hidden shadow-xl text-[#FAF5EC]">
+            {/* Bulk Action Toolbar */}
+            {selectedUserIds.length > 0 && (
+              <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 bg-[#1C0F0A] border-b border-[#3E2316] text-xs animate-in fade-in duration-150">
+                <div className="flex items-center space-x-2">
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-xl bg-[#5A3521]/60 text-[#E8DCB8] border border-[#7D492F] font-mono font-semibold">
+                    {selectedUserIds.length} Akun Terpilih
+                  </span>
+                  <span className="text-[#DFCDB5] text-xs hidden sm:inline">
+                    Pilih aksi massal untuk seluruh akun mahasiswa yang dicentang:
+                  </span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={openBulkLimitModal}
+                    className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-[#3A2216] hover:bg-[#4D2E1F] border border-[#5A3521] text-[#FAF5EC] transition shadow-md"
+                  >
+                    <Sliders className="h-3.5 w-3.5 text-[#C49767]" />
+                    <span>Atur Limit ({selectedUserIds.length})</span>
+                  </button>
+                  <button
+                    onClick={triggerBulkDelete}
+                    className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-rose-600/90 hover:bg-rose-600 text-white transition shadow-md shadow-rose-950/30"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    <span>Hapus Massal ({selectedUserIds.length})</span>
+                  </button>
+                  <button
+                    onClick={() => setSelectedUserIds([])}
+                    className="p-1.5 text-[#DFCDB5] hover:text-[#FAF5EC] hover:bg-[#3E2316] rounded-xl transition"
+                    title="Batalkan Pilihan"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs text-[#FAF5EC]">
                 <thead className="bg-[#1C0F0A] text-[#DFCDB5] uppercase text-[10px] tracking-wider border-b border-[#3E2316]">
                   <tr>
+                    <th className="p-4 w-12 text-center">
+                      <input
+                        type="checkbox"
+                        checked={allPageSelected}
+                        ref={(el) => {
+                          if (el) el.indeterminate = somePageSelected && !allPageSelected
+                        }}
+                        onChange={handleToggleSelectAll}
+                        className="w-4 h-4 rounded border-[#4D2D1E] text-[#C49767] focus:ring-0 focus:ring-offset-0 bg-[#2B1810] cursor-pointer accent-[#C49767]"
+                        title="Pilih Semua Mahasiswa di Halaman Ini"
+                      />
+                    </th>
                     <th className="p-4">NIM / Username</th>
                     <th className="p-4">Nama</th>
                     <th className="p-4">Role</th>
                     <th className="p-4">Kelas / Angkatan</th>
+                    <th className="p-4 text-center">Storage</th>
+                    <th className="p-4 text-center">RAM</th>
+                    <th className="p-4 text-center">CPU</th>
                     <th className="p-4">Status</th>
                     <th className="p-4 text-right">Aksi</th>
                   </tr>
@@ -402,7 +574,7 @@ export default function AdminView() {
                 <tbody className="divide-y divide-[#3E2316]">
                   {paginatedUsers.length === 0 ? (
                     <tr>
-                      <td colSpan="6" className="p-8 text-center text-[#DFCDB5]">
+                      <td colSpan="10" className="p-8 text-center text-[#DFCDB5]">
                         {loading ? (
                           <span className="flex items-center justify-center space-x-2">
                             <Spinner size="xs" />
@@ -415,7 +587,24 @@ export default function AdminView() {
                     </tr>
                   ) : (
                     paginatedUsers.map((u) => (
-                    <tr key={u.id} className="hover:bg-[#361E13] transition">
+                    <tr
+                      key={u.id}
+                      className={`hover:bg-[#361E13] transition ${
+                        selectedUserIds.includes(u.id) ? 'bg-[#3A2216]/60' : ''
+                      }`}
+                    >
+                      <td className="p-4 text-center">
+                        {u.role === 'admin' ? (
+                          <span className="text-[10px] text-[#7A5A48] select-none">-</span>
+                        ) : (
+                          <input
+                            type="checkbox"
+                            checked={selectedUserIds.includes(u.id)}
+                            onChange={() => handleToggleSelectUser(u.id)}
+                            className="w-4 h-4 rounded border-[#4D2D1E] text-[#C49767] focus:ring-0 focus:ring-offset-0 bg-[#2B1810] cursor-pointer accent-[#C49767]"
+                          />
+                        )}
+                      </td>
                       <td className="p-4 font-mono font-semibold text-[#FAF5EC]">{u.username}</td>
                       <td className="p-4 font-medium">{u.name}</td>
                       <td className="p-4">
@@ -428,6 +617,50 @@ export default function AdminView() {
                       <td className="p-4 text-[#DFCDB5]">
                         {u.class_name ? `${u.class_name} (${u.cohort_year})` : '-'}
                       </td>
+                      {/* Storage */}
+                      <td className="p-4 text-center">
+                        <button
+                          type="button"
+                          onClick={() => openLimitModal(u)}
+                          title="Klik untuk ubah limit Storage akun ini"
+                          className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-xl bg-[#1C0F0A] hover:bg-[#2A170F] border border-[#3E2316] hover:border-[#C49767]/60 text-[#DFCDB5] hover:text-[#FAF5EC] transition font-mono text-[11px]"
+                        >
+                          <HardDrive className="h-3 w-3 text-[#C49767]" />
+                          <span>
+                            {u.max_disk_mb >= 1000
+                              ? `${(u.max_disk_mb / 1000).toFixed(u.max_disk_mb % 1000 === 0 ? 0 : 1)} GB`
+                              : `${u.max_disk_mb || 1000} MB`}
+                          </span>
+                        </button>
+                      </td>
+                      {/* RAM */}
+                      <td className="p-4 text-center">
+                        <button
+                          type="button"
+                          onClick={() => openLimitModal(u)}
+                          title="Klik untuk ubah limit RAM akun ini"
+                          className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-xl bg-[#1C0F0A] hover:bg-[#2A170F] border border-[#3E2316] hover:border-emerald-500/60 text-[#DFCDB5] hover:text-[#FAF5EC] transition font-mono text-[11px]"
+                        >
+                          <Cpu className="h-3 w-3 text-emerald-400" />
+                          <span>
+                            {u.max_memory_mb >= 1024
+                              ? `${(u.max_memory_mb / 1024).toFixed(u.max_memory_mb % 1024 === 0 ? 0 : 1)} GB`
+                              : `${u.max_memory_mb || 512} MB`}
+                          </span>
+                        </button>
+                      </td>
+                      {/* CPU */}
+                      <td className="p-4 text-center">
+                        <button
+                          type="button"
+                          onClick={() => openLimitModal(u)}
+                          title="Klik untuk ubah limit CPU akun ini"
+                          className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-xl bg-[#1C0F0A] hover:bg-[#2A170F] border border-[#3E2316] hover:border-cyan-500/60 text-[#DFCDB5] hover:text-[#FAF5EC] transition font-mono text-[11px]"
+                        >
+                          <Sliders className="h-3 w-3 text-cyan-400" />
+                          <span>{u.max_cpu_cores ?? 1.0} Core</span>
+                        </button>
+                      </td>
                       <td className="p-4">
                         <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-semibold ${
                           u.is_active ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
@@ -435,7 +668,14 @@ export default function AdminView() {
                           {u.is_active ? 'Aktif' : 'Suspended'}
                         </span>
                       </td>
-                      <td className="p-4 text-right space-x-1">
+                      <td className="p-4 text-right space-x-1 whitespace-nowrap">
+                        <button
+                          onClick={() => openLimitModal(u)}
+                          title="Atur Limit Resource (Storage, RAM, CPU)"
+                          className="p-1.5 text-[#DFCDB5] hover:text-[#C49767] hover:bg-[#3E2316] rounded-lg transition"
+                        >
+                          <Sliders className="h-4 w-4" />
+                        </button>
                         <button
                           onClick={() => triggerResetPassword(u.id, u.name)}
                           title="Reset Password Sementara"
@@ -950,6 +1190,189 @@ export default function AdminView() {
         onConfirm={confirmModal.onConfirm}
         onClose={() => setConfirmModal({ open: false, title: '', message: '', onConfirm: () => {} })}
       />
+
+      {/* Resource Limit (Storage, RAM, CPU) Modal */}
+      <ModalPortal isOpen={limitModal.open}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-150">
+          <div className="w-full max-w-lg bg-[#2B1810] border border-[#4D2D1E] rounded-3xl shadow-2xl p-6 sm:p-7 text-[#FAF5EC] max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-4 mb-5 border-b border-[#3E2316]">
+              <div className="flex items-center space-x-3">
+                <div className="h-10 w-10 rounded-2xl bg-[#5A3521]/40 border border-[#7D492F] flex items-center justify-center text-[#C49767]">
+                  <Sliders className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-serif font-bold text-[#FAF5EC]">
+                    {limitModal.isBulk ? 'Atur Limit Resource Massal' : 'Atur Limit Resource Akun'}
+                  </h3>
+                  <p className="text-xs text-[#DFCDB5] font-mono mt-0.5">
+                    {limitModal.isBulk
+                      ? `${selectedUserIds.length} Akun Mahasiswa Terpilih`
+                      : `${limitModal.username} • ${limitModal.name}`}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setLimitModal((prev) => ({ ...prev, open: false }))}
+                className="p-1.5 text-[#DFCDB5] hover:text-[#FAF5EC] hover:bg-[#3E2316] rounded-xl transition"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveLimit} className="space-y-5">
+              {/* 1. Storage Quota */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-[#FAF5EC] flex items-center space-x-1.5">
+                    <HardDrive className="h-3.5 w-3.5 text-[#C49767]" />
+                    <span>Storage / Ruang Penyimpanan (MB)</span>
+                  </label>
+                  <span className="text-[11px] font-mono text-[#C49767]">
+                    {limitModal.maxDiskMb >= 1000
+                      ? `${(limitModal.maxDiskMb / 1000).toFixed(limitModal.maxDiskMb % 1000 === 0 ? 0 : 1)} GB (${limitModal.maxDiskMb} MB)`
+                      : `${limitModal.maxDiskMb} MB`}
+                  </span>
+                </div>
+                <input
+                  type="number"
+                  min="50"
+                  max="100000"
+                  step="50"
+                  value={limitModal.maxDiskMb}
+                  onChange={(e) => setLimitModal((prev) => ({ ...prev, maxDiskMb: Number(e.target.value) }))}
+                  className="w-full bg-[#1C0F0A] border border-[#4D2D1E] rounded-xl px-3.5 py-2.5 text-xs text-[#FAF5EC] focus:outline-none focus:border-[#C49767] font-mono"
+                  required
+                />
+                <div className="flex flex-wrap gap-1.5">
+                  {[500, 1000, 2000, 5000].map((val) => (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => setLimitModal((prev) => ({ ...prev, maxDiskMb: val }))}
+                      className={`px-2.5 py-1 rounded-lg text-[10px] font-mono transition border ${
+                        limitModal.maxDiskMb === val
+                          ? 'bg-[#5A3521] border-[#C49767] text-[#FAF5EC]'
+                          : 'bg-[#1C0F0A] border-[#3E2316] text-[#DFCDB5] hover:border-[#5A3521]'
+                      }`}
+                    >
+                      {val >= 1000 ? `${val / 1000} GB` : `${val} MB`}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[10px] text-[#A47E65]">
+                  Alokasi kuota penyimpanan untuk direktori web dan file project mahasiswa.
+                </p>
+              </div>
+
+              {/* 2. RAM Limit */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-[#FAF5EC] flex items-center space-x-1.5">
+                    <Cpu className="h-3.5 w-3.5 text-emerald-400" />
+                    <span>RAM / Batas Memori Container (MB)</span>
+                  </label>
+                  <span className="text-[11px] font-mono text-emerald-400">
+                    {limitModal.maxMemoryMb >= 1024
+                      ? `${(limitModal.maxMemoryMb / 1024).toFixed(limitModal.maxMemoryMb % 1024 === 0 ? 0 : 1)} GB (${limitModal.maxMemoryMb} MB)`
+                      : `${limitModal.maxMemoryMb} MB`}
+                  </span>
+                </div>
+                <input
+                  type="number"
+                  min="64"
+                  max="64000"
+                  step="64"
+                  value={limitModal.maxMemoryMb}
+                  onChange={(e) => setLimitModal((prev) => ({ ...prev, maxMemoryMb: Number(e.target.value) }))}
+                  className="w-full bg-[#1C0F0A] border border-[#4D2D1E] rounded-xl px-3.5 py-2.5 text-xs text-[#FAF5EC] focus:outline-none focus:border-emerald-500 font-mono"
+                  required
+                />
+                <div className="flex flex-wrap gap-1.5">
+                  {[256, 512, 1024, 2048].map((val) => (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => setLimitModal((prev) => ({ ...prev, maxMemoryMb: val }))}
+                      className={`px-2.5 py-1 rounded-lg text-[10px] font-mono transition border ${
+                        limitModal.maxMemoryMb === val
+                          ? 'bg-emerald-950/60 border-emerald-500 text-emerald-300'
+                          : 'bg-[#1C0F0A] border-[#3E2316] text-[#DFCDB5] hover:border-[#5A3521]'
+                      }`}
+                    >
+                      {val >= 1024 ? `${val / 1024} GB` : `${val} MB`}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[10px] text-[#A47E65]">
+                  Batas memori RAM per container runtime project praktikum mahasiswa.
+                </p>
+              </div>
+
+              {/* 3. CPU Core Allocation */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-[#FAF5EC] flex items-center space-x-1.5">
+                    <Sliders className="h-3.5 w-3.5 text-cyan-400" />
+                    <span>CPU Core Allocation (Cores)</span>
+                  </label>
+                  <span className="text-[11px] font-mono text-cyan-400">
+                    {limitModal.maxCpuCores} Core
+                  </span>
+                </div>
+                <input
+                  type="number"
+                  min="0.1"
+                  max="16.0"
+                  step="0.1"
+                  value={limitModal.maxCpuCores}
+                  onChange={(e) => setLimitModal((prev) => ({ ...prev, maxCpuCores: Number(e.target.value) }))}
+                  className="w-full bg-[#1C0F0A] border border-[#4D2D1E] rounded-xl px-3.5 py-2.5 text-xs text-[#FAF5EC] focus:outline-none focus:border-cyan-500 font-mono"
+                  required
+                />
+                <div className="flex flex-wrap gap-1.5">
+                  {[0.5, 1.0, 1.5, 2.0].map((val) => (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => setLimitModal((prev) => ({ ...prev, maxCpuCores: val }))}
+                      className={`px-2.5 py-1 rounded-lg text-[10px] font-mono transition border ${
+                        limitModal.maxCpuCores === val
+                          ? 'bg-cyan-950/60 border-cyan-500 text-cyan-300'
+                          : 'bg-[#1C0F0A] border-[#3E2316] text-[#DFCDB5] hover:border-[#5A3521]'
+                      }`}
+                    >
+                      {val} Core
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[10px] text-[#A47E65]">
+                  Batas pemakaian core CPU maksimal yang dialokasikan untuk container project.
+                </p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="grid grid-cols-2 gap-3 pt-3 border-t border-[#3E2316]">
+                <button
+                  type="button"
+                  onClick={() => setLimitModal((prev) => ({ ...prev, open: false }))}
+                  className="w-full py-2.5 rounded-xl text-xs font-semibold bg-[#3A2115] hover:bg-[#482A1B] text-[#DFCDB5] transition"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingLimit}
+                  className="w-full py-2.5 rounded-xl text-xs font-semibold bg-[#5A3521] hover:bg-[#6D4029] text-white shadow-lg shadow-black/20 transition flex items-center justify-center space-x-2 disabled:opacity-50"
+                >
+                  {savingLimit && <Spinner size="xs" />}
+                  <span>{savingLimit ? 'Menyimpan...' : 'Simpan Limit'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </ModalPortal>
     </div>
   )
 }

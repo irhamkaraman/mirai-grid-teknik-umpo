@@ -7,7 +7,8 @@ from app.core.database import get_db
 from app.core.security import hash_password
 from app.models.schemas import (
     CohortCreate, ClassCreate, BulkAccountGenerateRequest,
-    BulkCsvImportRequest, UserResponse, AuditLogResponse, UserCreateManual
+    BulkCsvImportRequest, UserResponse, AuditLogResponse, UserCreateManual,
+    BulkDeleteUsersRequest, UserQuotaUpdateRequest, BulkQuotaUpdateRequest
 )
 from app.api.deps import require_admin, get_client_ip
 
@@ -170,6 +171,139 @@ async def delete_user(
     await db.commit()
     return {"success": True, "message": f"Akun '{u['username']}' berhasil dihapus."}
 
+@router.post("/users/bulk-delete")
+async def bulk_delete_users(
+    body: BulkDeleteUsersRequest,
+    request: Request,
+    admin: dict = Depends(require_admin),
+    db: aiosqlite.Connection = Depends(get_db)
+):
+    if not body.user_ids:
+        raise HTTPException(status_code=400, detail="Daftar user_ids tidak boleh kosong.")
+
+    # Exclude current admin to prevent accidental self-deletion
+    target_ids = [uid for uid in body.user_ids if uid != admin["id"]]
+    if not target_ids:
+        raise HTTPException(status_code=400, detail="Tidak ada akun valid yang dapat dihapus.")
+
+    placeholders = ",".join("?" for _ in target_ids)
+    cursor = await db.execute(f"SELECT id, username, role FROM users WHERE id IN ({placeholders})", target_ids)
+    rows = await cursor.fetchall()
+
+    # Filter out admin role users
+    valid_delete_ids = [r["id"] for r in rows if r["role"] != "admin"]
+    deleted_usernames = [r["username"] for r in rows if r["role"] != "admin"]
+
+    if not valid_delete_ids:
+        raise HTTPException(status_code=400, detail="Tidak ada akun mahasiswa yang dapat dihapus (akun admin dilindungi).")
+
+    v_placeholders = ",".join("?" for _ in valid_delete_ids)
+    await db.execute(f"DELETE FROM users WHERE id IN ({v_placeholders})", valid_delete_ids)
+
+    ip = get_client_ip(request)
+    summary_usernames = ", ".join(deleted_usernames[:10]) + ("..." if len(deleted_usernames) > 10 else "")
+    await db.execute("""
+        INSERT INTO audit_logs (actor_id, action, target_resource, ip_address, details)
+        VALUES (?, 'BULK_DELETE_USERS', 'users', ?, ?)
+    """, (admin["id"], ip, f"Bulk deleted {len(deleted_usernames)} accounts: {summary_usernames}"))
+    await db.commit()
+
+    return {
+        "success": True,
+        "deleted_count": len(deleted_usernames),
+        "deleted_usernames": deleted_usernames,
+        "message": f"Berhasil menghapus massal {len(deleted_usernames)} akun mahasiswa."
+    }
+
+@router.put("/users/{user_id}/quota")
+async def update_user_quota(
+    user_id: int,
+    body: UserQuotaUpdateRequest,
+    request: Request,
+    admin: dict = Depends(require_admin),
+    db: aiosqlite.Connection = Depends(get_db)
+):
+    cursor = await db.execute("SELECT id, username, role FROM users WHERE id = ?", (user_id,))
+    u = await cursor.fetchone()
+    if not u:
+        raise HTTPException(status_code=404, detail="Akun pengguna tidak ditemukan.")
+
+    cursor = await db.execute("SELECT id FROM quotas WHERE user_id = ?", (user_id,))
+    q = await cursor.fetchone()
+    if q:
+        await db.execute("""
+            UPDATE quotas
+            SET max_disk_mb = ?, max_memory_mb = ?, max_cpu_cores = ?,
+                max_projects = COALESCE(?, max_projects),
+                max_databases = COALESCE(?, max_databases),
+                updated_at = CURRENT_TIMESTAMP
+            WHERE user_id = ?
+        """, (body.max_disk_mb, body.max_memory_mb, body.max_cpu_cores, body.max_projects, body.max_databases, user_id))
+    else:
+        await db.execute("""
+            INSERT INTO quotas (user_id, max_disk_mb, max_memory_mb, max_cpu_cores, max_projects, max_databases)
+            VALUES (?, ?, ?, ?, COALESCE(?, 2), COALESCE(?, 2))
+        """, (user_id, body.max_disk_mb, body.max_memory_mb, body.max_cpu_cores, body.max_projects, body.max_databases))
+
+    ip = get_client_ip(request)
+    await db.execute("""
+        INSERT INTO audit_logs (actor_id, action, target_resource, ip_address, details)
+        VALUES (?, 'UPDATE_USER_QUOTA', ?, ?, ?)
+    """, (admin["id"], u["username"], ip, f"Updated resource limits for '{u['username']}': Storage {body.max_disk_mb}MB, RAM {body.max_memory_mb}MB, CPU {body.max_cpu_cores} Cores"))
+    await db.commit()
+
+    return {
+        "success": True,
+        "user_id": user_id,
+        "username": u["username"],
+        "max_disk_mb": body.max_disk_mb,
+        "max_memory_mb": body.max_memory_mb,
+        "max_cpu_cores": body.max_cpu_cores,
+        "message": f"Limit resource akun '{u['username']}' berhasil diperbarui."
+    }
+
+@router.post("/users/bulk-quota")
+async def bulk_update_user_quota(
+    body: BulkQuotaUpdateRequest,
+    request: Request,
+    admin: dict = Depends(require_admin),
+    db: aiosqlite.Connection = Depends(get_db)
+):
+    if not body.user_ids:
+        raise HTTPException(status_code=400, detail="Daftar user_ids tidak boleh kosong.")
+
+    target_ids = [uid for uid in body.user_ids if uid != admin["id"]]
+    if not target_ids:
+        raise HTTPException(status_code=400, detail="Tidak ada akun valid yang dapat diatur limitnya.")
+
+    for uid in target_ids:
+        cursor = await db.execute("SELECT id FROM quotas WHERE user_id = ?", (uid,))
+        q = await cursor.fetchone()
+        if q:
+            await db.execute("""
+                UPDATE quotas
+                SET max_disk_mb = ?, max_memory_mb = ?, max_cpu_cores = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE user_id = ?
+            """, (body.max_disk_mb, body.max_memory_mb, body.max_cpu_cores, uid))
+        else:
+            await db.execute("""
+                INSERT INTO quotas (user_id, max_disk_mb, max_memory_mb, max_cpu_cores, max_projects, max_databases)
+                VALUES (?, ?, ?, ?, 2, 2)
+            """, (uid, body.max_disk_mb, body.max_memory_mb, body.max_cpu_cores))
+
+    ip = get_client_ip(request)
+    await db.execute("""
+        INSERT INTO audit_logs (actor_id, action, target_resource, ip_address, details)
+        VALUES (?, 'BULK_UPDATE_QUOTA', 'users', ?, ?)
+    """, (admin["id"], ip, f"Bulk updated limits for {len(target_ids)} users: Storage {body.max_disk_mb}MB, RAM {body.max_memory_mb}MB, CPU {body.max_cpu_cores} Cores"))
+    await db.commit()
+
+    return {
+        "success": True,
+        "updated_count": len(target_ids),
+        "message": f"Berhasil memperbarui limit resource untuk {len(target_ids)} akun."
+    }
+
 # 2. Bulk Account Generation
 @router.post("/generate-bulk-accounts")
 async def generate_bulk_accounts(
@@ -264,10 +398,16 @@ async def list_users(
     db: aiosqlite.Connection = Depends(get_db)
 ):
     query = """
-        SELECT u.*, c.name as class_name, co.year as cohort_year
+        SELECT u.*, c.name as class_name, co.year as cohort_year,
+               COALESCE(q.max_disk_mb, 1000) as max_disk_mb,
+               COALESCE(q.max_memory_mb, 512) as max_memory_mb,
+               COALESCE(q.max_cpu_cores, 1.0) as max_cpu_cores,
+               COALESCE(q.max_projects, 2) as max_projects,
+               COALESCE(q.max_databases, 2) as max_databases
         FROM users u
         LEFT JOIN classes c ON u.class_id = c.id
         LEFT JOIN cohorts co ON c.cohort_id = co.id
+        LEFT JOIN quotas q ON u.id = q.user_id
         WHERE 1=1
     """
     params = []
