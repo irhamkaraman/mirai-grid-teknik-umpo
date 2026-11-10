@@ -26,7 +26,10 @@ import {
   ArrowRight,
   Lock,
   RefreshCw,
-  FileText
+  FileText,
+  Users,
+  Activity,
+  CheckCircle2
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { api } from '../api/client'
@@ -34,9 +37,12 @@ import { SkeletonCard } from '../components/Skeletons'
 import { launchDatabaseSSO } from '../utils/sso'
 
 export default function StudentDashboard({ user, onNavigate }) {
+  const isAdmin = user?.role === 'admin'
   const [quota, setQuota] = useState(null)
   const [projects, setProjects] = useState([])
   const [databases, setDatabases] = useState([])
+  const [systemCapacity, setSystemCapacity] = useState(null)
+  const [accountSearchQuery, setAccountSearchQuery] = useState('')
   const [loading, setLoading] = useState(true)
 
   // Search filter query ala cPanel Jupiter search bar
@@ -55,14 +61,22 @@ export default function StudentDashboard({ user, onNavigate }) {
 
   const fetchDashboardData = async () => {
     try {
-      const [quotaRes, projRes, dbRes] = await Promise.allSettled([
+      const promises = [
         api.get('/quotas/my-quota'),
         api.get('/projects'),
         api.get('/databases'),
-      ])
-      if (quotaRes.status === 'fulfilled') setQuota(quotaRes.value.data)
-      if (projRes.status === 'fulfilled') setProjects(projRes.value.data || [])
-      if (dbRes.status === 'fulfilled') setDatabases(dbRes.value.data || [])
+      ]
+      if (isAdmin) {
+        promises.push(api.get('/admin/system-capacity'))
+      }
+
+      const results = await Promise.allSettled(promises)
+      if (results[0].status === 'fulfilled') setQuota(results[0].value.data)
+      if (results[1].status === 'fulfilled') setProjects(results[1].value.data || [])
+      if (results[2].status === 'fulfilled') setDatabases(results[2].value.data || [])
+      if (isAdmin && results[3]?.status === 'fulfilled') {
+        setSystemCapacity(results[3].value.data)
+      }
     } catch (err) {
       console.error('Failed to load dashboard data', err)
     } finally {
@@ -253,7 +267,20 @@ export default function StudentDashboard({ user, onNavigate }) {
       .filter(Boolean)
   }, [toolGroups, searchQuery])
 
-  // Calculation for Disk Usage Modal
+  // Filter accounts based on accountSearchQuery for Admin
+  const filteredAccounts = useMemo(() => {
+    if (!systemCapacity?.accounts) return []
+    if (!accountSearchQuery.trim()) return systemCapacity.accounts
+    const q = accountSearchQuery.toLowerCase().trim()
+    return systemCapacity.accounts.filter(
+      (a) =>
+        a.username?.toLowerCase().includes(q) ||
+        a.name?.toLowerCase().includes(q) ||
+        a.class_name?.toLowerCase().includes(q)
+    )
+  }, [systemCapacity, accountSearchQuery])
+
+  // Calculation for Disk Usage Modal / Student meter
   const diskTotalMb = 1024 // 1 GB allocated
   const diskUsedMb = useMemo(() => {
     let base = 24.5
@@ -272,15 +299,24 @@ export default function StudentDashboard({ user, onNavigate }) {
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="max-w-xl">
-            <span className="inline-flex items-center space-x-1 px-3 py-1 rounded-full text-xs font-semibold bg-[#442718] text-[#E8DCB8] border border-[#5C3825] mb-3">
-              <Sparkles className="h-3.5 w-3.5 text-[#E8DCB8]" />
-              <span>Praktikum Teknik Informatika UMPO</span>
-            </span>
+            {isAdmin ? (
+              <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-950/80 text-emerald-300 border border-emerald-700/60 mb-3 font-mono">
+                <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
+                <span>Hak Akses: Administrator Lab TI • Akses Penuh Tanpa Batasan (Superuser)</span>
+              </span>
+            ) : (
+              <span className="inline-flex items-center space-x-1 px-3 py-1 rounded-full text-xs font-semibold bg-[#442718] text-[#E8DCB8] border border-[#5C3825] mb-3">
+                <Sparkles className="h-3.5 w-3.5 text-[#E8DCB8]" />
+                <span>Praktikum Teknik Informatika UMPO</span>
+              </span>
+            )}
             <h2 className="text-2xl sm:text-3xl font-serif font-bold text-[#FAF5EC] leading-tight">
               Selamat Datang, {user?.name || 'Administrator Lab TI'}!
             </h2>
             <p className="text-xs sm:text-sm text-[#DFCDB5] mt-2 leading-relaxed font-sans">
-              Pusat kontrol mandiri praktikum MiraiGrid dengan antarmuka cPanel Tools: kelola berkas, inisialisasi deployment multi-engine, dan kontrol database terisolasi.
+              {isAdmin
+                ? 'Pusat kendali & monitor infrastruktur MiraiGrid: pantau total kapasitas host server, alokasi container, pemakaian database, dan distribusi resource tiap akun mahasiswa.'
+                : 'Pusat kontrol mandiri praktikum MiraiGrid dengan antarmuka cPanel Tools: kelola berkas, inisialisasi deployment multi-engine, dan kontrol database terisolasi.'}
             </p>
           </div>
 
@@ -314,13 +350,29 @@ export default function StudentDashboard({ user, onNavigate }) {
         </div>
       </div>
 
-      {/* 2. ALOKASI KUOTA PRAKTIKUM (STATISTICS BAR) */}
+      {/* 2. STATISTIK: MONITOR KAPASITAS SERVER (ADMIN) ATAU KUOTA MAHASISWA */}
       <div>
-        <div className="flex items-center justify-between mb-3.5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3.5">
           <h3 className="text-lg font-serif font-bold text-[#26160F] flex items-center space-x-2">
-            <span>Alokasi Kuota & Resource Praktikum</span>
+            {isAdmin ? (
+              <>
+                <Activity className="h-5 w-5 text-emerald-800" />
+                <span>Monitor Kapasitas & Infrastruktur Global Lab</span>
+              </>
+            ) : (
+              <span>Alokasi Kuota & Resource Praktikum</span>
+            )}
           </h3>
-          <span className="text-xs font-mono text-[#5C3B29] font-medium">Terisolasi per Mahasiswa</span>
+          <span className="text-xs font-mono text-[#5C3B29] font-medium flex items-center space-x-1.5">
+            {isAdmin ? (
+              <>
+                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span>Host Server Labdocker • Tanpa Batas Alokasi (Akses Root)</span>
+              </>
+            ) : (
+              <span>Terisolasi per Mahasiswa</span>
+            )}
+          </span>
         </div>
 
         {loading ? (
@@ -330,7 +382,200 @@ export default function StudentDashboard({ user, onNavigate }) {
             <SkeletonCard />
             <SkeletonCard />
           </div>
+        ) : isAdmin ? (
+          /* TAMPILAN ADMIN: MONITOR SELURUH KAPASITAS INFRASTRUKTUR SERVER */
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* 1. Host Server Storage Meter */}
+              <div
+                onClick={() => onNavigate('/disk-usage')}
+                className="bg-[#2B1810] border border-[#4D2D1E] hover:border-emerald-600/50 p-5 rounded-3xl shadow-xl text-[#FAF5EC] cursor-pointer transition group"
+              >
+                <div className="flex items-center justify-between text-[#DFCDB5] mb-2">
+                  <span className="text-xs font-semibold group-hover:text-[#FAF5EC]">Total Storage Server</span>
+                  <HardDrive className="h-4 w-4 text-[#E8DCB8] group-hover:scale-110 transition" />
+                </div>
+                <div className="text-2xl font-black text-[#FAF5EC] font-sans">
+                  {systemCapacity?.host?.disk_used_gb ?? '8.6'} <span className="text-xs text-[#DFCDB5]/70 font-normal">/ {systemCapacity?.host?.disk_total_gb ?? '116'} GB</span>
+                </div>
+                <div className="w-full bg-[#1C0F0A] h-2 rounded-full mt-3 overflow-hidden border border-[#3D2316]">
+                  <div
+                    className="bg-emerald-400 h-full rounded-full transition-all duration-500"
+                    style={{ width: `${Math.max(4, systemCapacity?.host?.disk_percent ?? 8)}%` }}
+                  ></div>
+                </div>
+                <p className="text-[11px] text-[#DFCDB5]/70 mt-2 font-mono flex items-center justify-between">
+                  <span>Sisa Free: {systemCapacity?.host?.disk_free_gb ?? '107.4'} GB</span>
+                  <span className="text-emerald-400 font-bold">{systemCapacity?.host?.disk_percent ?? 8}%</span>
+                </p>
+              </div>
+
+              {/* 2. Host RAM Meter */}
+              <div className="bg-[#2B1810] border border-[#4D2D1E] p-5 rounded-3xl shadow-xl text-[#FAF5EC]">
+                <div className="flex items-center justify-between text-[#DFCDB5] mb-2">
+                  <span className="text-xs font-semibold">Total RAM Server</span>
+                  <Cpu className="h-4 w-4 text-[#E8DCB8]" />
+                </div>
+                <div className="text-2xl font-black text-[#FAF5EC] font-sans">
+                  {((systemCapacity?.host?.mem_used_mb ?? 1638) / 1024).toFixed(1)} <span className="text-xs text-[#DFCDB5]/70 font-normal">/ {((systemCapacity?.host?.mem_total_mb ?? 11264) / 1024).toFixed(1)} GB</span>
+                </div>
+                <div className="w-full bg-[#1C0F0A] h-2 rounded-full mt-3 overflow-hidden border border-[#3D2316]">
+                  <div
+                    className="bg-[#C49767] h-full rounded-full transition-all duration-500"
+                    style={{ width: `${Math.max(4, systemCapacity?.host?.mem_percent ?? 15)}%` }}
+                  ></div>
+                </div>
+                <p className="text-[11px] text-[#DFCDB5]/70 mt-2 font-mono flex items-center justify-between">
+                  <span>Host & Containers OS</span>
+                  <span className="text-[#E8DCB8] font-bold">{systemCapacity?.host?.mem_percent ?? 15}%</span>
+                </p>
+              </div>
+
+              {/* 3. Global Containers Meter */}
+              <div
+                onClick={() => onNavigate('/deploy')}
+                className="bg-[#2B1810] border border-[#4D2D1E] hover:border-indigo-500/50 p-5 rounded-3xl shadow-xl text-[#FAF5EC] cursor-pointer transition group"
+              >
+                <div className="flex items-center justify-between text-[#DFCDB5] mb-2">
+                  <span className="text-xs font-semibold group-hover:text-[#FAF5EC]">Container Mahasiswa</span>
+                  <Layers className="h-4 w-4 text-[#E8DCB8] group-hover:scale-110 transition" />
+                </div>
+                <div className="text-2xl font-black text-[#FAF5EC] font-sans flex items-baseline space-x-2">
+                  <span>{systemCapacity?.host?.total_projects ?? projects.length}</span>
+                  <span className="text-xs text-emerald-400 font-mono font-medium">({systemCapacity?.host?.running_projects ?? 0} Running)</span>
+                </div>
+                <div className="w-full bg-[#1C0F0A] h-2 rounded-full mt-3 overflow-hidden border border-[#3D2316]">
+                  <div className="bg-indigo-400 h-full rounded-full w-full"></div>
+                </div>
+                <p className="text-[11px] text-[#DFCDB5]/70 mt-2 font-mono">
+                  {systemCapacity?.host?.total_students ?? 0} Mahasiswa Terdaftar
+                </p>
+              </div>
+
+              {/* 4. Global Databases Meter */}
+              <div
+                onClick={() => onNavigate('/databases')}
+                className="bg-[#2B1810] border border-[#4D2D1E] hover:border-amber-500/50 p-5 rounded-3xl shadow-xl text-[#FAF5EC] cursor-pointer transition group"
+              >
+                <div className="flex items-center justify-between text-[#DFCDB5] mb-2">
+                  <span className="text-xs font-semibold group-hover:text-[#FAF5EC]">Database Server</span>
+                  <Database className="h-4 w-4 text-[#E8DCB8] group-hover:scale-110 transition" />
+                </div>
+                <div className="text-2xl font-black text-[#FAF5EC] font-sans">
+                  {systemCapacity?.host?.total_databases ?? databases.length} <span className="text-xs text-[#DFCDB5]/70 font-normal">DB Aktif</span>
+                </div>
+                <div className="w-full bg-[#1C0F0A] h-2 rounded-full mt-3 overflow-hidden border border-[#3D2316]">
+                  <div className="bg-amber-400 h-full rounded-full w-full"></div>
+                </div>
+                <p className="text-[11px] text-[#DFCDB5]/70 mt-2 font-mono">
+                  {systemCapacity?.host?.total_databases_postgres ?? 0} PG • {systemCapacity?.host?.total_databases_mariadb ?? 0} MariaDB
+                </p>
+              </div>
+            </div>
+
+            {/* PEMBAGIAN TIAP AKUN MAHASISWA (PER-ACCOUNT CAPACITY DISTRIBUTION) */}
+            <div className="bg-[#2B1810] border border-[#4D2D1E] rounded-3xl p-6 shadow-2xl text-[#FAF5EC]">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 pb-4 border-b border-[#3D2316]">
+                <div>
+                  <h4 className="text-base font-serif font-bold text-[#FAF5EC] flex items-center space-x-2">
+                    <Users className="h-4 w-4 text-[#C49767]" />
+                    <span>Pembagian & Penggunaan Tiap Akun Mahasiswa</span>
+                  </h4>
+                  <p className="text-xs text-[#DFCDB5] mt-0.5 font-sans">
+                    Pantau alokasi container, database praktikum, dan estimasi storage per mahasiswa secara transparan.
+                  </p>
+                </div>
+
+                <div className="flex items-center space-x-3">
+                  <div className="relative w-full sm:w-64">
+                    <Search className="h-3.5 w-3.5 absolute left-3 top-2.5 text-[#A47E65]" />
+                    <input
+                      type="text"
+                      value={accountSearchQuery}
+                      onChange={(e) => setAccountSearchQuery(e.target.value)}
+                      placeholder="Cari NIM, Nama, Kelas..."
+                      className="w-full bg-[#1C0F0A] border border-[#3E2316] focus:border-[#C49767] rounded-xl pl-9 pr-3 py-1.5 text-xs text-[#FAF5EC] placeholder-[#A47E65] outline-none font-sans"
+                    />
+                  </div>
+                  <button
+                    onClick={() => onNavigate('/disk-usage')}
+                    className="px-3.5 py-1.5 bg-[#3E2316] hover:bg-[#5A3521] border border-[#5C3825] rounded-xl text-xs text-[#FAF5EC] font-semibold transition shrink-0"
+                  >
+                    Detail Storage
+                  </button>
+                </div>
+              </div>
+
+              {/* Table of Accounts */}
+              <div className="border border-[#3E2316] rounded-2xl overflow-hidden bg-[#1C0F0A]">
+                <table className="w-full text-xs text-left">
+                  <thead className="bg-[#160C08] border-b border-[#3E2316] text-[#A47E65] font-mono text-[11px]">
+                    <tr>
+                      <th className="p-3">Akun / NIM</th>
+                      <th className="p-3">Nama Mahasiswa</th>
+                      <th className="p-3">Kelas / Angkatan</th>
+                      <th className="p-3 text-center">Web Projects</th>
+                      <th className="p-3 text-center">Databases</th>
+                      <th className="p-3 text-right">Est. Storage</th>
+                      <th className="p-3 text-center">Status Akun</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#2F1A10]">
+                    {filteredAccounts.length === 0 ? (
+                      <tr>
+                        <td colSpan="7" className="p-6 text-center text-[#A47E65] font-sans">
+                          Tidak ada akun yang sesuai dengan pencarian "{accountSearchQuery}".
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredAccounts.map((acc) => (
+                        <tr key={acc.id} className="hover:bg-[#25150E] transition">
+                          <td className="p-3 font-mono font-bold text-[#FAF5EC] flex items-center space-x-2">
+                            <span>{acc.username}</span>
+                            {acc.role === 'admin' && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-950/80 text-amber-300 border border-amber-700/60 font-mono">
+                                Admin
+                              </span>
+                            )}
+                          </td>
+                          <td className="p-3 text-[#DFCDB5] font-medium">{acc.name}</td>
+                          <td className="p-3 text-[#A47E65] font-mono text-[11px]">
+                            {acc.class_name ? `${acc.class_name} (${acc.cohort_year || 'Aktif'})` : 'Superadmin'}
+                          </td>
+                          <td className="p-3 text-center">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full font-mono text-xs ${
+                              acc.project_count > 0 ? 'bg-indigo-950/80 text-indigo-300 border border-indigo-700/60 font-bold' : 'text-[#A47E65]'
+                            }`}>
+                              {acc.project_count} slot
+                            </span>
+                          </td>
+                          <td className="p-3 text-center">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full font-mono text-xs ${
+                              acc.database_count > 0 ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-700/60 font-bold' : 'text-[#A47E65]'
+                            }`}>
+                              {acc.database_count} DB
+                            </span>
+                          </td>
+                          <td className="p-3 text-right font-mono text-[#E8DCB8] font-semibold">
+                            {acc.estimated_disk_mb} MB
+                          </td>
+                          <td className="p-3 text-center">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-mono ${
+                              acc.is_active ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-800/60' : 'bg-rose-950/80 text-rose-300 border border-rose-800/60'
+                            }`}>
+                              {acc.is_active ? '● Aktif' : 'Nonaktif'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
         ) : (
+          /* TAMPILAN MAHASISWA: KUOTA PERSONAL */
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Projects Meter */}
             <div
