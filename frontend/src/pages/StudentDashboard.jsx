@@ -31,6 +31,7 @@ import {
 import { toast } from 'sonner'
 import { api } from '../api/client'
 import { SkeletonCard } from '../components/Skeletons'
+import { launchDatabaseSSO } from '../utils/sso'
 
 export default function StudentDashboard({ user, onNavigate }) {
   const [quota, setQuota] = useState(null)
@@ -269,7 +270,7 @@ export default function StudentDashboard({ user, onNavigate }) {
           icon: Server,
           iconColor: 'text-[#E8C58D]',
           bgGradient: 'from-[#3D2516] to-[#2B1810]',
-          action: () => window.open(`http://${window.location.hostname}:8080`, '_blank', 'noopener,noreferrer'),
+          action: () => launchDatabaseSSO('mariadb'),
           isExternal: true,
         },
         {
@@ -281,7 +282,7 @@ export default function StudentDashboard({ user, onNavigate }) {
           icon: Database,
           iconColor: 'text-sky-300',
           bgGradient: 'from-[#1E3342] to-[#14232E]',
-          action: () => window.open(`http://${window.location.hostname}:8088`, '_blank', 'noopener,noreferrer'),
+          action: () => launchDatabaseSSO('postgres'),
           isExternal: true,
         },
       ],

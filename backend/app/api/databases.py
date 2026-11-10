@@ -1,4 +1,8 @@
-from typing import List
+import hmac
+import hashlib
+import time
+from typing import List, Optional
+from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException, Request
 import aiosqlite
 from app.core.database import get_db
@@ -179,3 +183,85 @@ async def delete_external_database(
     await db.execute("DELETE FROM external_databases WHERE id = ? AND user_id = ?", (ext_id, current_user["id"]))
     await db.commit()
     return {"success": True, "message": "Koneksi database eksternal dihapus."}
+
+# Single Sign-On (Auto-Login) Launch for phpMyAdmin (8080) & phpPgAdmin (8088)
+SSO_SHARED_SECRET = "MiraiGrid-LabTI-SuperSecretKey-2026"
+
+class SSOLaunchRequest(BaseModel):
+    engine: str = "postgres"
+    db_id: Optional[int] = None
+
+@router.post("/sso-launch")
+async def sso_launch_database(
+    body: SSOLaunchRequest,
+    current_user: dict = Depends(get_current_user),
+    db: aiosqlite.Connection = Depends(get_db)
+):
+    engine_norm = "mariadb" if ("maria" in body.engine.lower() or "mysql" in body.engine.lower()) else "postgres"
+    
+    row = None
+    if body.db_id:
+        cursor = await db.execute(
+            "SELECT * FROM student_databases WHERE id = ? AND user_id = ?",
+            (body.db_id, current_user["id"])
+        )
+        row = await cursor.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Database tidak ditemukan atau bukan milik akun Anda.")
+    else:
+        cursor = await db.execute(
+            "SELECT * FROM student_databases WHERE user_id = ? AND engine = ? ORDER BY id ASC LIMIT 1",
+            (current_user["id"], engine_norm)
+        )
+        row = await cursor.fetchone()
+        if not row:
+            # Auto-provision a default isolated database for this student
+            nim = current_user["username"]
+            raw_db_name = "db"
+            try:
+                if engine_norm == "mariadb":
+                    prov = await DatabaseProvisioner.create_mariadb_db(nim, raw_db_name)
+                else:
+                    prov = await DatabaseProvisioner.create_postgres_db(nim, raw_db_name)
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"Gagal membuat database otomatis: {str(e)}")
+
+            encrypted_pass = encrypt_secret(prov["db_password"])
+            cursor = await db.execute("""
+                INSERT INTO student_databases (user_id, engine, db_name, db_username, db_password_enc, host, port)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (current_user["id"], prov["engine"], prov["db_name"], prov["db_username"], encrypted_pass, prov["host"], prov["port"]))
+            await db.commit()
+            
+            cursor = await db.execute("SELECT * FROM student_databases WHERE id = ?", (cursor.lastrowid,))
+            row = await cursor.fetchone()
+
+    # Strict multi-tenant authorization check
+    if row["user_id"] != current_user["id"]:
+        raise HTTPException(status_code=403, detail="Akses ditolak: Anda tidak memiliki akses ke database ini.")
+
+    decrypted_pass = decrypt_secret(row["db_password_enc"])
+    db_user = row["db_username"]
+    timestamp = int(time.time())
+
+    # Generate HMAC SHA256 Signature (valid for 120s)
+    msg = f"{db_user}:{timestamp}".encode("utf-8")
+    token = hmac.new(SSO_SHARED_SECRET.encode("utf-8"), msg, hashlib.sha256).hexdigest()
+
+    is_maria = ("maria" in row["engine"] or "mysql" in row["engine"])
+    port = 8080 if is_maria else 8088
+
+    return {
+        "success": True,
+        "engine": row["engine"],
+        "db_name": row["db_name"],
+        "db_username": db_user,
+        "port": port,
+        "path": "/signon.php",
+        "fields": {
+            "user": db_user,
+            "password": decrypted_pass,
+            "time": timestamp,
+            "token": token
+        }
+    }

@@ -13,6 +13,7 @@ import { SkeletonTable, SkeletonCard, Spinner } from '../components/Skeletons'
 import ConfirmModal from '../components/ConfirmModal'
 
 import ModalPortal from '../components/ModalPortal'
+import { launchDatabaseSSO } from '../utils/sso'
 
 // Robust clipboard copy supporting both Secure Contexts (HTTPS/localhost) and HTTP fallback
 function safeCopy(text) {
@@ -429,10 +430,6 @@ export default function DatabasesView() {
 
                     const showPass = visiblePasswords[db.id]
 
-                    const ppaUrl = 'http://76.76.76.189:8088/'
-
-                    const pmaUrl = `http://76.76.76.189:8080/?pma_username=${encodeURIComponent(db.db_username)}`
-
                     return (
 
                       <tr key={db.id} className="hover:bg-[#361E13] transition group">
@@ -605,29 +602,19 @@ export default function DatabasesView() {
 
                             </a>
 
-                            {/* Dedicated Manager (phpPgAdmin / phpMyAdmin) */}
+                            {/* Dedicated Manager (phpPgAdmin / phpMyAdmin with Auto-Login SSO) */}
 
                             {isPg ? (
 
-                              <a
+                              <button
 
-                                href={ppaUrl}
+                                type="button"
 
-                                target="_blank"
+                                onClick={() => launchDatabaseSSO('postgres', db.id)}
 
-                                rel="noreferrer"
+                                className="inline-flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl bg-[#3A2216] hover:bg-[#4D2E1F] border border-[#5E3926] text-xs text-[#E8DCB8] hover:text-white transition font-medium shadow-sm active:scale-95 cursor-pointer"
 
-                                onClick={() => {
-
-                                  safeCopy(db.db_password)
-
-                                  toast.success(`Password disalin ke clipboard! Masuk dengan user '${db.db_username}' di phpPgAdmin.`, { duration: 5000 })
-
-                                }}
-
-                                className="inline-flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl bg-[#3A2216] hover:bg-[#4D2E1F] border border-[#5E3926] text-xs text-[#E8DCB8] hover:text-white transition font-medium shadow-sm"
-
-                                title="Buka phpPgAdmin"
+                                title="Auto-Login ke phpPgAdmin (Sesi Terisolasi)"
 
                               >
 
@@ -635,29 +622,19 @@ export default function DatabasesView() {
 
                                 <ExternalLink className="h-3 w-3 text-[#A47E65]" />
 
-                              </a>
+                              </button>
 
                             ) : (
 
-                              <a
+                              <button
 
-                                href={pmaUrl}
+                                type="button"
 
-                                target="_blank"
+                                onClick={() => launchDatabaseSSO('mariadb', db.id)}
 
-                                rel="noreferrer"
+                                className="inline-flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl bg-[#3D2516] hover:bg-[#52331F] border border-[#633C24] text-xs text-[#E8C58D] hover:text-white transition font-medium shadow-sm active:scale-95 cursor-pointer"
 
-                                onClick={() => {
-
-                                  safeCopy(db.db_password)
-
-                                  toast.success(`Password disalin ke clipboard! Username '${db.db_username}' terisi di phpMyAdmin.`, { duration: 5000 })
-
-                                }}
-
-                                className="inline-flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl bg-[#3D2516] hover:bg-[#52331F] border border-[#633C24] text-xs text-[#E8C58D] hover:text-white transition font-medium shadow-sm"
-
-                                title="Buka phpMyAdmin"
+                                title="Auto-Login ke phpMyAdmin (Sesi Terisolasi)"
 
                               >
 
@@ -667,7 +644,7 @@ export default function DatabasesView() {
 
                                 <ExternalLink className="h-3 w-3 text-[#A47E65]" />
 
-                              </a>
+                              </button>
 
                             )}
 

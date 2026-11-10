@@ -39,6 +39,8 @@ class DatabaseProvisioner:
         )
 
         try:
+            # Enforce md5 password encryption for phpPgAdmin compatibility
+            await conn.execute("SET password_encryption = 'md5';")
             # 1. Create or update user with connection limit
             user_exists = await conn.fetchval("SELECT 1 FROM pg_roles WHERE rolname = $1", db_username)
             if not user_exists:
