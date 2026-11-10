@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
 import { Toaster } from 'sonner'
+import { Search, X } from 'lucide-react'
 import Navigation from './components/Navigation'
 import ProfileAvatar from './components/ProfileFloating'
 import ChangePasswordModal from './components/ChangePasswordModal'
@@ -19,6 +20,7 @@ export default function App() {
   const navigate = useNavigate()
   const location = useLocation()
   const [user, setUser] = useState(null)
+  const [searchQuery, setSearchQuery] = useState('')
   const [showPasswordModal, setShowPasswordModal] = useState(false)
   const [isMandatoryPasswordChange, setIsMandatoryPasswordChange] = useState(false)
   const [isCollapsed, setIsCollapsed] = useState(() => {
@@ -142,8 +144,35 @@ export default function App() {
         }`}
       >
         <div className="max-w-6xl mx-auto">
-          {/* Header Tanpa Latar Belakang Navbar: Cukup lingkaran inisial di pojok kanan atas */}
-          <header className="flex items-center justify-end pb-4 pt-1">
+          {/* Header Navbar: Input Pencarian di samping Icon Profil */}
+          <header className="flex items-center justify-between gap-4 pb-5 pt-1">
+            {/* Live Search Bar Tools */}
+            <div className="relative w-full max-w-sm sm:max-w-md">
+              <Search className="h-4 w-4 absolute left-3.5 top-2.5 text-[#A47E65]" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value)
+                  if (location.pathname !== '/dashboard' && e.target.value) {
+                    navigate('/dashboard')
+                  }
+                }}
+                placeholder="Cari tools, php, python, file, wizard (/)..."
+                className="w-full bg-[#2B1810] border border-[#4D2D1E] focus:border-[#C49767] rounded-2xl pl-10 pr-9 py-2 text-xs text-[#FAF5EC] placeholder-[#A47E65] outline-none transition shadow-sm font-sans"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-2 text-[#A47E65] hover:text-[#FAF5EC] p-0.5"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Profile Avatar */}
             <ProfileAvatar
               user={user}
               onLogout={handleLogout}
@@ -159,7 +188,14 @@ export default function App() {
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route
               path="/dashboard"
-              element={<StudentDashboard user={user} onNavigate={(path) => navigate(path.startsWith('/') ? path : '/' + path)} />}
+              element={
+                <StudentDashboard
+                  user={user}
+                  onNavigate={(path) => navigate(path.startsWith('/') ? path : '/' + path)}
+                  searchQuery={searchQuery}
+                  setSearchQuery={setSearchQuery}
+                />
+              }
             />
             <Route path="/deploy/*" element={<ProjectsView />} />
             <Route path="/databases" element={<DatabasesView />} />

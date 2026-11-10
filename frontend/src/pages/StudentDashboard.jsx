@@ -36,7 +36,12 @@ import { api } from '../api/client'
 import { SkeletonCard } from '../components/Skeletons'
 import { launchDatabaseSSO } from '../utils/sso'
 
-export default function StudentDashboard({ user, onNavigate }) {
+export default function StudentDashboard({
+  user,
+  onNavigate,
+  searchQuery = '',
+  setSearchQuery = () => {},
+}) {
   const isAdmin = user?.role === 'admin'
   const [quota, setQuota] = useState(null)
   const [projects, setProjects] = useState([])
@@ -44,9 +49,6 @@ export default function StudentDashboard({ user, onNavigate }) {
   const [systemCapacity, setSystemCapacity] = useState(null)
   const [accountSearchQuery, setAccountSearchQuery] = useState('')
   const [loading, setLoading] = useState(true)
-
-  // Search filter query ala cPanel Jupiter search bar
-  const [searchQuery, setSearchQuery] = useState('')
 
   // Section collapse state (persisted in localStorage or default all open)
   const [collapsedSections, setCollapsedSections] = useState({
@@ -292,65 +294,7 @@ export default function StudentDashboard({ user, onNavigate }) {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-200">
-      {/* 1. HERO BANNER & CPANEL QUICK SEARCH */}
-      <div className="bg-[#2B1810] border border-[#4D2D1E] rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden text-[#FAF5EC]">
-        {/* Subtle decorative glow */}
-        <div className="absolute top-0 right-0 w-96 h-96 bg-[#5A3521]/25 rounded-full blur-3xl pointer-events-none"></div>
-
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="max-w-xl">
-            {isAdmin ? (
-              <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-950/80 text-emerald-300 border border-emerald-700/60 mb-3 font-mono">
-                <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
-                <span>Hak Akses: Administrator Lab TI • Akses Penuh Tanpa Batasan (Superuser)</span>
-              </span>
-            ) : (
-              <span className="inline-flex items-center space-x-1 px-3 py-1 rounded-full text-xs font-semibold bg-[#442718] text-[#E8DCB8] border border-[#5C3825] mb-3">
-                <Sparkles className="h-3.5 w-3.5 text-[#E8DCB8]" />
-                <span>Praktikum Teknik Informatika UMPO</span>
-              </span>
-            )}
-            <h2 className="text-2xl sm:text-3xl font-serif font-bold text-[#FAF5EC] leading-tight">
-              Selamat Datang, {user?.name || 'Administrator Lab TI'}!
-            </h2>
-            <p className="text-xs sm:text-sm text-[#DFCDB5] mt-2 leading-relaxed font-sans">
-              {isAdmin
-                ? 'Pusat kendali & monitor infrastruktur MiraiGrid: pantau total kapasitas host server, alokasi container, pemakaian database, dan distribusi resource tiap akun mahasiswa.'
-                : 'Pusat kontrol mandiri praktikum MiraiGrid dengan antarmuka cPanel Tools: kelola berkas, inisialisasi deployment multi-engine, dan kontrol database terisolasi.'}
-            </p>
-          </div>
-
-          {/* cPanel Live Search Tools Input */}
-          <div className="w-full md:w-80 shrink-0">
-            <label className="block text-[11px] font-semibold text-[#DFCDB5]/80 uppercase tracking-wider mb-1.5 font-mono">
-              Cari Tools & Fitur
-            </label>
-            <div className="relative">
-              <Search className="h-4 w-4 absolute left-3.5 top-3 text-[#A47E65]" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Cari file, php, database, wizard (/)..."
-                className="w-full bg-[#1C0F0A] border border-[#4D2D1E] focus:border-[#C49767] rounded-2xl pl-10 pr-9 py-2.5 text-xs text-[#FAF5EC] placeholder-[#A47E65] outline-none transition shadow-inner font-sans"
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-3 top-2.5 text-[#A47E65] hover:text-[#FAF5EC] p-0.5"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              )}
-            </div>
-            <p className="text-[10px] text-[#A47E65] mt-1 font-mono">
-              {searchQuery ? `Memfilter ${filteredGroups.reduce((acc, g) => acc + g.tools.length, 0)} tools` : 'Ketik untuk filter instan tools di bawah'}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* 2. STATISTIK: MONITOR KAPASITAS SERVER (ADMIN) ATAU KUOTA MAHASISWA */}
+      {/* 1. STATISTIK: MONITOR KAPASITAS SERVER (ADMIN) ATAU KUOTA MAHASISWA */}
       <div>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3.5">
           <h3 className="text-lg font-serif font-bold text-[#26160F] flex items-center space-x-2">
