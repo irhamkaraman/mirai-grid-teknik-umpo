@@ -29,7 +29,9 @@ import {
   FileText,
   Users,
   Activity,
-  CheckCircle2
+  CheckCircle2,
+  Sliders,
+  Settings
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { api } from '../api/client'
@@ -169,6 +171,17 @@ export default function StudentDashboard({
           iconColor: 'text-amber-300',
           bgGradient: 'from-[#1C2C42] to-[#121E2E]',
           action: () => onNavigate('/deploy?create=true&lang=python'),
+        },
+        {
+          id: 'deploy-config',
+          title: 'Konfigurasi Deploy',
+          description: 'Kelola seluruh container aplikasi web praktikum, environment variable, port routing, dan status runtime.',
+          badge: 'Kelola Container',
+          badgeColor: 'bg-[#402616] text-[#E8C58D] border-[#683E24]',
+          icon: Sliders,
+          iconColor: 'text-[#E8C58D]',
+          bgGradient: 'from-[#422A1A] to-[#2B1810]',
+          action: () => onNavigate('/deploy'),
         },
       ],
     },
@@ -661,7 +674,11 @@ export default function StudentDashboard({
                 {/* Grid of Tools ala cPanel Grid */}
                 {!isCollapsed && (
                   <div className="p-6">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div
+                      className={`grid grid-cols-1 sm:grid-cols-2 ${
+                        group.tools.length % 3 === 0 ? 'lg:grid-cols-3' : 'lg:grid-cols-3 xl:grid-cols-4'
+                      } gap-4`}
+                    >
                       {group.tools.map((tool) => {
                         const ToolIcon = tool.icon
                         return (
