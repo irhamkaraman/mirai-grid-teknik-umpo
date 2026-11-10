@@ -671,65 +671,41 @@ export default function StudentDashboard({
                   </div>
                 </div>
 
-                {/* Grid of Tools ala cPanel Grid */}
+                {/* Grid of Tools ala cPanel Grid (Compact: Icon + Title only) */}
                 {!isCollapsed && (
-                  <div className="p-6">
-                    <div
-                      className={`grid grid-cols-1 sm:grid-cols-2 ${
-                        group.tools.length % 3 === 0 ? 'lg:grid-cols-3' : 'lg:grid-cols-3 xl:grid-cols-4'
-                      } gap-4`}
-                    >
+                  <div className="p-5 sm:p-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                       {group.tools.map((tool) => {
                         const ToolIcon = tool.icon
                         return (
                           <div
                             key={tool.id}
                             onClick={tool.action}
-                            className="flex flex-col justify-between p-4 rounded-2xl bg-[#1F110B] border border-[#3E2316] hover:border-[#C49767]/80 hover:bg-[#25150D] hover:shadow-xl transition-all duration-200 group cursor-pointer relative"
+                            className="flex items-center space-x-3.5 p-3 rounded-2xl bg-[#1C0F0A] hover:bg-[#25150D] border border-[#3E2316] hover:border-[#C49767]/80 hover:shadow-md transition-all duration-150 group cursor-pointer"
                           >
-                            <div>
-                              {/* Top Bar inside Tool Item */}
-                              <div className="flex items-start justify-between mb-3">
-                                <div
-                                  className={`h-11 w-11 rounded-2xl bg-gradient-to-br ${tool.bgGradient} border border-[#5A3521] flex items-center justify-center shadow-md group-hover:scale-105 transition-transform duration-200 p-2 overflow-hidden`}
-                                >
-                                  {tool.logo ? (
-                                    <img
-                                      src={tool.logo}
-                                      alt={tool.title}
-                                      className="h-6 w-6 object-contain filter drop-shadow group-hover:scale-110 transition-transform duration-200"
-                                    />
-                                  ) : (
-                                    <ToolIcon className={`h-5 w-5 ${tool.iconColor}`} />
-                                  )}
-                                </div>
-
-                                {tool.badge && (
-                                  <span
-                                    className={`text-[9px] font-semibold px-2 py-0.5 rounded-full border font-mono ${tool.badgeColor}`}
-                                  >
-                                    {tool.badge}
-                                  </span>
-                                )}
-                              </div>
-
-                              {/* Title & Description */}
-                              <h5 className="text-sm font-bold text-[#FAF5EC] group-hover:text-[#E8DCB8] transition-colors flex items-center space-x-1.5 font-sans">
-                                <span>{tool.title}</span>
-                                {tool.isExternal && (
-                                  <ExternalLink className="h-3 w-3 text-[#A47E65] group-hover:text-[#E8DCB8] transition" />
-                                )}
-                              </h5>
-                              <p className="text-xs text-[#DFCDB5]/75 mt-1 leading-relaxed font-sans line-clamp-2">
-                                {tool.description}
-                              </p>
+                            <div
+                              className={`h-10 w-10 rounded-xl bg-gradient-to-br ${tool.bgGradient} border border-[#5A3521] flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform duration-150 p-2 shrink-0 overflow-hidden`}
+                            >
+                              {tool.logo ? (
+                                <img
+                                  src={tool.logo}
+                                  alt={tool.title}
+                                  className="max-h-6 max-w-6 h-auto w-auto object-contain filter drop-shadow group-hover:scale-110 transition-transform duration-150"
+                                />
+                              ) : (
+                                <ToolIcon className={`h-5 w-5 ${tool.iconColor}`} />
+                              )}
                             </div>
 
-                            {/* Bottom subtle action indicator */}
-                            <div className="mt-4 pt-3 border-t border-[#2F1A10] flex items-center justify-between text-[11px] text-[#A47E65] group-hover:text-[#E8DCB8] font-medium transition-colors">
-                              <span>Buka Fitur</span>
-                              <ArrowRight className="h-3.5 w-3.5 transform group-hover:translate-x-1 transition-transform" />
+                            <div className="flex-1 min-w-0">
+                              <span className="text-xs sm:text-sm font-semibold text-[#FAF5EC] group-hover:text-[#E8DCB8] transition-colors truncate block">
+                                {tool.title}
+                              </span>
                             </div>
+
+                            {tool.isExternal && (
+                              <ExternalLink className="h-3.5 w-3.5 text-[#A47E65] group-hover:text-[#E8DCB8] shrink-0 transition" />
+                            )}
                           </div>
                         )
                       })}
