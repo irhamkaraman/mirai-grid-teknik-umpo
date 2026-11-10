@@ -140,6 +140,7 @@ export default function StudentDashboard({
           description: 'Buat dan deploy aplikasi berbasis PHP 7.4 - 8.3 dengan Apache web server & direktori /var/www/html.',
           badge: 'PHP 7.4 - 8.3',
           badgeColor: 'bg-indigo-950/80 text-indigo-300 border-indigo-700/60',
+          logo: '/logos/php.svg',
           icon: FileCode,
           iconColor: 'text-indigo-300',
           bgGradient: 'from-[#382845] to-[#23182E]',
@@ -151,6 +152,7 @@ export default function StudentDashboard({
           description: 'Deploy aplikasi JavaScript backend dengan Node.js 16 - 22 LTS, Express server, dan npm packages.',
           badge: 'Node 16 - 22 LTS',
           badgeColor: 'bg-emerald-950/80 text-emerald-300 border-emerald-700/60',
+          logo: '/logos/node.svg',
           icon: Cpu,
           iconColor: 'text-emerald-300',
           bgGradient: 'from-[#1E382B] to-[#14261D]',
@@ -162,9 +164,10 @@ export default function StudentDashboard({
           description: 'Deploy aplikasi Python 3.9 - 3.12 (Flask/Django/FastAPI) di direktori /app yang terisolasi.',
           badge: 'Python 3.9 - 3.12',
           badgeColor: 'bg-amber-950/80 text-amber-300 border-amber-700/60',
+          logo: '/logos/python.svg',
           icon: Terminal,
           iconColor: 'text-amber-300',
-          bgGradient: 'from-[#423419] to-[#2E2411]',
+          bgGradient: 'from-[#1C2C42] to-[#121E2E]',
           action: () => onNavigate('/deploy?create=true&lang=python'),
         },
       ],
@@ -668,9 +671,17 @@ export default function StudentDashboard({
                               {/* Top Bar inside Tool Item */}
                               <div className="flex items-start justify-between mb-3">
                                 <div
-                                  className={`h-11 w-11 rounded-2xl bg-gradient-to-br ${tool.bgGradient} border border-[#5A3521] flex items-center justify-center shadow-md group-hover:scale-105 transition-transform duration-200`}
+                                  className={`h-11 w-11 rounded-2xl bg-gradient-to-br ${tool.bgGradient} border border-[#5A3521] flex items-center justify-center shadow-md group-hover:scale-105 transition-transform duration-200 p-2 overflow-hidden`}
                                 >
-                                  <ToolIcon className={`h-5 w-5 ${tool.iconColor}`} />
+                                  {tool.logo ? (
+                                    <img
+                                      src={tool.logo}
+                                      alt={tool.title}
+                                      className="h-6 w-6 object-contain filter drop-shadow group-hover:scale-110 transition-transform duration-200"
+                                    />
+                                  ) : (
+                                    <ToolIcon className={`h-5 w-5 ${tool.iconColor}`} />
+                                  )}
                                 </div>
 
                                 {tool.badge && (
