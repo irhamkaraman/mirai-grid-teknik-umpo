@@ -49,25 +49,6 @@ export default function StudentDashboard({ user, onNavigate }) {
     databases: false,
   })
 
-  // Modals state
-  const [showDiskModal, setShowDiskModal] = useState(false)
-  const [showRemoteDbModal, setShowRemoteDbModal] = useState(false)
-
-  // Remote DB Access state (saved in localStorage for persistence)
-  const [accessHosts, setAccessHosts] = useState(() => {
-    try {
-      const saved = localStorage.getItem('miraigrid_remote_access_hosts')
-      if (saved) return JSON.parse(saved)
-    } catch (e) {}
-    return [
-      { id: 1, host: '127.0.0.1', comment: 'Localhost (Container Internal)', addedAt: 'Sistem Default' },
-      { id: 2, host: '%', comment: 'Semua Jaringan Kampus / Publik (Terisolasi Role)', addedAt: 'Sistem Default' },
-    ]
-  })
-  const [newHostIp, setNewHostIp] = useState('')
-  const [newHostComment, setNewHostComment] = useState('')
-  const [copiedSnippet, setCopiedSnippet] = useState(null)
-
   useEffect(() => {
     fetchDashboardData()
   }, [])
@@ -94,43 +75,6 @@ export default function StudentDashboard({ user, onNavigate }) {
       ...prev,
       [sectionKey]: !prev[sectionKey],
     }))
-  }
-
-  const handleAddHost = (e) => {
-    e.preventDefault()
-    const ip = newHostIp.trim()
-    if (!ip) {
-      toast.error('Masukkan alamat IP atau pola wildcard (misal: % atau 192.168.1.%)')
-      return
-    }
-    const newEntry = {
-      id: Date.now(),
-      host: ip,
-      comment: newHostComment.trim() || 'Akses Personal',
-      addedAt: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
-    }
-    const updated = [...accessHosts, newEntry]
-    setAccessHosts(updated)
-    localStorage.setItem('miraigrid_remote_access_hosts', JSON.stringify(updated))
-    setNewHostIp('')
-    setNewHostComment('')
-    toast.success(`Host IP '${ip}' berhasil diizinkan untuk akses database!`)
-  }
-
-  const handleDeleteHost = (id, host) => {
-    const updated = accessHosts.filter((h) => h.id !== id)
-    setAccessHosts(updated)
-    localStorage.setItem('miraigrid_remote_access_hosts', JSON.stringify(updated))
-    toast.info(`Host '${host}' telah dihapus dari daftar izin.`)
-  }
-
-  const copyText = (text, snippetId, label = 'Teks') => {
-    if (navigator?.clipboard?.writeText) {
-      navigator.clipboard.writeText(text).catch(() => {})
-    }
-    setCopiedSnippet(snippetId)
-    toast.success(`${label} disalin ke clipboard!`)
-    setTimeout(() => setCopiedSnippet(null), 3000)
   }
 
   // Define All cPanel Tool Groups
@@ -163,7 +107,7 @@ export default function StudentDashboard({ user, onNavigate }) {
           icon: HardDrive,
           iconColor: 'text-[#E8C58D]',
           bgGradient: 'from-[#422718] to-[#2D1A10]',
-          action: () => setShowDiskModal(true),
+          action: () => onNavigate('/disk-usage'),
         },
       ],
     },
@@ -248,7 +192,7 @@ export default function StudentDashboard({ user, onNavigate }) {
           icon: Wand2,
           iconColor: 'text-amber-300',
           bgGradient: 'from-[#452F17] to-[#2C1E0F]',
-          action: () => onNavigate('/databases?create=true'),
+          action: () => onNavigate('/database-wizard'),
         },
         {
           id: 'remote-database-access',
@@ -259,7 +203,7 @@ export default function StudentDashboard({ user, onNavigate }) {
           icon: Globe,
           iconColor: 'text-emerald-300',
           bgGradient: 'from-[#223927] to-[#17271B]',
-          action: () => setShowRemoteDbModal(true),
+          action: () => onNavigate('/remote-database'),
         },
         {
           id: 'phpmyadmin',
@@ -442,7 +386,7 @@ export default function StudentDashboard({ user, onNavigate }) {
 
             {/* Disk Storage Quick Meter */}
             <div
-              onClick={() => setShowDiskModal(true)}
+              onClick={() => onNavigate('/disk-usage')}
               className="bg-[#2B1810] border border-[#4D2D1E] hover:border-[#6D4029] p-5 rounded-3xl shadow-xl text-[#FAF5EC] cursor-pointer transition group"
             >
               <div className="flex items-center justify-between text-[#DFCDB5] mb-2">
@@ -577,293 +521,6 @@ export default function StudentDashboard({ user, onNavigate }) {
           })
         )}
       </div>
-
-      {/* 4. MODAL: DISK USAGE MONITOR (ala cPanel Disk Usage) */}
-      {showDiskModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-150">
-          <div className="bg-[#24130B] border border-[#4D2D1E] rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden text-[#FAF5EC]">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between px-6 py-4 bg-[#1C0F0A] border-b border-[#3D2316]">
-              <div className="flex items-center space-x-2.5">
-                <HardDrive className="h-5 w-5 text-[#E8DCB8]" />
-                <h4 className="text-base font-serif font-bold text-[#FAF5EC]">
-                  Disk Usage (Penggunaan Ruang Penyimpanan)
-                </h4>
-              </div>
-              <button
-                onClick={() => setShowDiskModal(false)}
-                className="p-1 rounded-xl text-[#A47E65] hover:text-[#FAF5EC] hover:bg-[#341F14] transition"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="p-6 space-y-6">
-              {/* Summary Card */}
-              <div className="bg-[#1C0F0A] border border-[#3E2316] rounded-2xl p-4">
-                <div className="flex items-center justify-between text-xs mb-1.5">
-                  <span className="text-[#DFCDB5] font-semibold">Total Storage Akun Terpakai</span>
-                  <span className="font-mono font-bold text-[#E8DCB8]">
-                    {diskUsedMb} MB / {diskTotalMb} MB ({diskPercent}%)
-                  </span>
-                </div>
-                <div className="w-full bg-[#120A07] h-3 rounded-full overflow-hidden border border-[#382014]">
-                  <div
-                    className="bg-gradient-to-r from-amber-600 to-emerald-400 h-full rounded-full transition-all duration-500"
-                    style={{ width: `${diskPercent}%` }}
-                  ></div>
-                </div>
-                <p className="text-[11px] text-[#A47E65] mt-2 font-sans">
-                  Sisa kapasitas ruang tersedia: <strong className="text-[#FAF5EC] font-mono">{(diskTotalMb - diskUsedMb).toFixed(1)} MB</strong>. Kuota dialokasikan otomatis untuk seluruh direktori project web dan database mahasiswa.
-                </p>
-              </div>
-
-              {/* Breakdown Table ala cPanel Disk Usage Table */}
-              <div>
-                <h5 className="text-xs font-bold text-[#DFCDB5] uppercase tracking-wider mb-2 font-mono">
-                  Rincian Penggunaan Direktori & Resource
-                </h5>
-                <div className="border border-[#3E2316] rounded-2xl overflow-hidden bg-[#1C0F0A]">
-                  <table className="w-full text-xs text-left">
-                    <thead className="bg-[#180D08] border-b border-[#3E2316] text-[#A47E65] font-mono text-[11px]">
-                      <tr>
-                        <th className="p-3">Lokasi / Direktori</th>
-                        <th className="p-3">Tipe Resource</th>
-                        <th className="p-3 text-right">Ukuran Disk</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#2F1A10] font-sans">
-                      {projects.map((p) => (
-                        <tr key={p.id} className="hover:bg-[#25150E] transition">
-                          <td className="p-3 font-mono text-[#FAF5EC] flex items-center space-x-1.5">
-                            <Folder className="h-3.5 w-3.5 text-[#C49767] shrink-0" />
-                            <span className="truncate">/home/student/lab/{p.name}</span>
-                          </td>
-                          <td className="p-3 text-[#DFCDB5]/80 capitalize">{p.language || p.template_type} App</td>
-                          <td className="p-3 text-right font-mono text-[#E8DCB8]">12.8 MB</td>
-                        </tr>
-                      ))}
-                      {databases.map((d) => (
-                        <tr key={d.id} className="hover:bg-[#25150E] transition">
-                          <td className="p-3 font-mono text-[#FAF5EC] flex items-center space-x-1.5">
-                            <Database className="h-3.5 w-3.5 text-[#C49767] shrink-0" />
-                            <span className="truncate">{d.db_name} (Tablespace)</span>
-                          </td>
-                          <td className="p-3 text-[#DFCDB5]/80 uppercase">{d.engine || 'PostgreSQL'} Data</td>
-                          <td className="p-3 text-right font-mono text-[#E8DCB8]">16.4 MB</td>
-                        </tr>
-                      ))}
-                      <tr className="hover:bg-[#25150E] transition">
-                        <td className="p-3 font-mono text-[#DFCDB5] flex items-center space-x-1.5">
-                          <Layers className="h-3.5 w-3.5 text-[#A47E65] shrink-0" />
-                          <span>/var/log & Container Runtime Cache</span>
-                        </td>
-                        <td className="p-3 text-[#DFCDB5]/80">System Cache</td>
-                        <td className="p-3 text-right font-mono text-[#E8DCB8]">24.5 MB</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex items-center justify-between pt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowDiskModal(false)
-                    window.open('/files', '_blank', 'noopener,noreferrer')
-                  }}
-                  className="inline-flex items-center space-x-1.5 px-4 py-2 bg-[#3A2216] hover:bg-[#4D2E1F] border border-[#5A3521] rounded-xl text-xs text-[#FAF5EC] font-semibold transition"
-                >
-                  <Folder className="h-3.5 w-3.5 text-[#E8DCB8]" />
-                  <span>Buka File Manager untuk Bersihkan File</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowDiskModal(false)}
-                  className="px-4 py-2 bg-[#1C0F0A] hover:bg-[#2B1810] border border-[#3E2316] rounded-xl text-xs text-[#DFCDB5] transition"
-                >
-                  Tutup
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 5. MODAL: REMOTE DATABASE ACCESS (ala cPanel Remote MySQL) */}
-      {showRemoteDbModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-150">
-          <div className="bg-[#24130B] border border-[#4D2D1E] rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden text-[#FAF5EC]">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between px-6 py-4 bg-[#1C0F0A] border-b border-[#3D2316]">
-              <div className="flex items-center space-x-2.5">
-                <Globe className="h-5 w-5 text-emerald-400" />
-                <h4 className="text-base font-serif font-bold text-[#FAF5EC]">
-                  Remote Database Access (Perizinan IP Host)
-                </h4>
-              </div>
-              <button
-                onClick={() => setShowRemoteDbModal(false)}
-                className="p-1 rounded-xl text-[#A47E65] hover:text-[#FAF5EC] hover:bg-[#341F14] transition"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
-              {/* Endpoint Information */}
-              <div className="bg-[#1C0F0A] border border-[#3E2316] rounded-2xl p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-semibold text-[#DFCDB5]">Informasi Host & Port Koneksi Remote</span>
-                  <span className="text-[10px] font-mono text-emerald-400 flex items-center space-x-1">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                    <span>Port Terbuka</span>
-                  </span>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs font-mono">
-                  <div className="p-2.5 rounded-xl bg-[#120A07] border border-[#2B1810]">
-                    <span className="text-[10px] text-[#A47E65] block">HOST SERVER</span>
-                    <strong className="text-[#FAF5EC] truncate block">{window.location.hostname || '76.76.76.189'}</strong>
-                  </div>
-                  <div className="p-2.5 rounded-xl bg-[#120A07] border border-[#2B1810]">
-                    <span className="text-[10px] text-[#A47E65] block">PORT POSTGRESQL</span>
-                    <strong className="text-[#E8DCB8]">5432</strong>
-                  </div>
-                  <div className="p-2.5 rounded-xl bg-[#120A07] border border-[#2B1810]">
-                    <span className="text-[10px] text-[#A47E65] block">PORT MYSQL / MARIADB</span>
-                    <strong className="text-[#E8DCB8]">3306</strong>
-                  </div>
-                </div>
-              </div>
-
-              {/* Add Host Form */}
-              <form onSubmit={handleAddHost} className="bg-[#1C0F0A] border border-[#3E2316] rounded-2xl p-4 space-y-3">
-                <h5 className="text-xs font-bold text-[#FAF5EC] flex items-center space-x-1.5">
-                  <Plus className="h-4 w-4 text-[#C49767]" />
-                  <span>Tambah Access Host (IP Address atau Wildcard %)</span>
-                </h5>
-                <p className="text-[11px] text-[#DFCDB5]/80 font-sans">
-                  Gunakan alamat IP Anda atau gunakan karakter persen (%) sebagai wildcard (contoh: <code className="text-[#E8DCB8]">%</code> untuk mengizinkan semua IP yang memegang kredensial sah).
-                </p>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[10px] text-[#A47E65] font-mono mb-1">HOST / IP ADDRESS (%)</label>
-                    <input
-                      type="text"
-                      value={newHostIp}
-                      onChange={(e) => setNewHostIp(e.target.value)}
-                      placeholder="Contoh: % atau 192.168.1.%"
-                      className="w-full bg-[#120A07] border border-[#3D2316] focus:border-[#C49767] rounded-xl px-3 py-2 text-xs text-[#FAF5EC] font-mono outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] text-[#A47E65] font-mono mb-1">KETERANGAN / LABEL</label>
-                    <input
-                      type="text"
-                      value={newHostComment}
-                      onChange={(e) => setNewHostComment(e.target.value)}
-                      placeholder="Misal: Laptop Praktikum Pribadi"
-                      className="w-full bg-[#120A07] border border-[#3D2316] focus:border-[#C49767] rounded-xl px-3 py-2 text-xs text-[#FAF5EC] outline-none font-sans"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex justify-end pt-1">
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-[#5A3521] hover:bg-[#6D4029] text-[#FAF5EC] text-xs font-semibold rounded-xl transition shadow-md"
-                  >
-                    + Tambahkan Host Diizinkan
-                  </button>
-                </div>
-              </form>
-
-              {/* Host List Table */}
-              <div>
-                <h5 className="text-xs font-bold text-[#DFCDB5] uppercase tracking-wider mb-2 font-mono">
-                  Daftar Host Yang Diizinkan Mengakses Database
-                </h5>
-                <div className="border border-[#3E2316] rounded-2xl overflow-hidden bg-[#1C0F0A]">
-                  <table className="w-full text-xs text-left">
-                    <thead className="bg-[#180D08] border-b border-[#3E2316] text-[#A47E65] font-mono text-[11px]">
-                      <tr>
-                        <th className="p-3">Host / IP</th>
-                        <th className="p-3">Keterangan</th>
-                        <th className="p-3">Ditambahkan</th>
-                        <th className="p-3 text-right">Aksi</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#2F1A10]">
-                      {accessHosts.map((h) => (
-                        <tr key={h.id} className="hover:bg-[#25150E] transition">
-                          <td className="p-3 font-mono font-bold text-emerald-400">{h.host}</td>
-                          <td className="p-3 text-[#DFCDB5] font-sans">{h.comment}</td>
-                          <td className="p-3 text-[#A47E65] font-mono text-[11px]">{h.addedAt}</td>
-                          <td className="p-3 text-right">
-                            {h.host !== '127.0.0.1' && (
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteHost(h.id, h.host)}
-                                className="text-red-400 hover:text-red-300 text-xs px-2 py-1 rounded-lg hover:bg-red-950/40 transition font-mono"
-                              >
-                                Hapus
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* Quick Connection Strings Snippets */}
-              <div className="bg-[#1C0F0A] border border-[#3E2316] rounded-2xl p-4 space-y-2">
-                <span className="text-xs font-bold text-[#DFCDB5] block font-mono">
-                  Panduan Sambungan Klien Eksternal (DBeaver / TablePlus / Python)
-                </span>
-                <p className="text-[11px] text-[#A47E65] font-sans">
-                  Gunakan kredensial database unik Anda dari menu <strong className="text-[#E8DCB8]">Manage My Databases</strong>:
-                </p>
-                <div className="p-2.5 rounded-xl bg-[#120A07] border border-[#2B1810] flex items-center justify-between text-xs font-mono text-[#E8DCB8]">
-                  <span className="truncate">
-                    postgresql://&lt;db_user&gt;:&lt;db_password&gt;@{window.location.hostname || '76.76.76.189'}:5432/&lt;db_name&gt;
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      copyText(
-                        `postgresql://<user>:<password>@${window.location.hostname || '76.76.76.189'}:5432/<dbname>`,
-                        'pg-uri',
-                        'Connection URI PostgreSQL'
-                      )
-                    }
-                    className="text-[#A47E65] hover:text-[#FAF5EC] shrink-0 ml-2"
-                  >
-                    {copiedSnippet === 'pg-uri' ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Modal Footer */}
-            <div className="flex items-center justify-end px-6 py-4 bg-[#1C0F0A] border-t border-[#3D2316]">
-              <button
-                type="button"
-                onClick={() => setShowRemoteDbModal(false)}
-                className="px-5 py-2 bg-[#3A2216] hover:bg-[#4D2E1F] border border-[#5A3521] rounded-xl text-xs text-[#FAF5EC] font-semibold transition"
-              >
-                Selesai
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

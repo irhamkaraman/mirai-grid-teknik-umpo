@@ -10,6 +10,9 @@ import ProjectsView from './pages/ProjectsView'
 import DatabasesView from './pages/DatabasesView'
 import FilesView from './pages/FilesView'
 import AdminView from './pages/AdminView'
+import DiskUsagePage from './pages/DiskUsagePage'
+import RemoteDatabasePage from './pages/RemoteDatabasePage'
+import DatabaseWizardPage from './pages/DatabaseWizardPage'
 import ErrorBoundary from './components/ErrorBoundary'
 
 export default function App() {
@@ -160,6 +163,18 @@ export default function App() {
             />
             <Route path="/deploy/*" element={<ProjectsView />} />
             <Route path="/databases" element={<DatabasesView />} />
+            <Route
+              path="/disk-usage"
+              element={<DiskUsagePage user={user} onNavigate={(path) => navigate(path.startsWith('/') ? path : '/' + path)} />}
+            />
+            <Route
+              path="/remote-database"
+              element={<RemoteDatabasePage user={user} onNavigate={(path) => navigate(path.startsWith('/') ? path : '/' + path)} />}
+            />
+            <Route
+              path="/database-wizard"
+              element={<DatabaseWizardPage user={user} onNavigate={(path) => navigate(path.startsWith('/') ? path : '/' + path)} />}
+            />
             <Route
               path="/admin"
               element={user.role === 'admin' ? (

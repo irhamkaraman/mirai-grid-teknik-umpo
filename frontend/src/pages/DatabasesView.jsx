@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react'
-
-import { useLocation } from 'react-router-dom'
-
-import { Database, Plus, Trash2, Copy, Check, Eye, EyeOff, Server, ExternalLink, AlertCircle } from 'lucide-react'
+import { useLocation, useNavigate } from 'react-router-dom'
+import { Database, Plus, Trash2, Copy, Check, Eye, EyeOff, Server, ExternalLink, AlertCircle, Wand2 } from 'lucide-react'
 
 import { toast } from 'sonner'
 
@@ -99,16 +97,13 @@ export default function DatabasesView() {
   }, [])
 
   const location = useLocation()
+  const navigate = useNavigate()
 
   useEffect(() => {
-
     if (location.search.includes('create=true')) {
-
-      setShowCreateModal(true)
-
+      navigate('/database-wizard', { replace: true })
     }
-
-  }, [location.search])
+  }, [location.search, navigate])
 
   const fetchDatabases = async () => {
 
@@ -341,17 +336,11 @@ export default function DatabasesView() {
           </button>
 
           <button
-
-            onClick={() => { setError(''); setShowCreateModal(true); }}
-
+            onClick={() => navigate('/database-wizard')}
             className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-2xl text-xs font-semibold bg-[#2B1810] hover:bg-[#3D2317] text-[#FAF5EC] border border-[#4D2D1E] shadow-lg shadow-black/10 transition shrink-0"
-
           >
-
-            <Plus className="h-4 w-4 text-[#E8DCB8]" />
-
-            <span>Buat Database Baru</span>
-
+            <Wand2 className="h-4 w-4 text-[#E8DCB8]" />
+            <span>Database Wizard (Buat DB Baru)</span>
           </button>
 
         </div>

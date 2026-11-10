@@ -20,7 +20,15 @@ export default function Navigation({ userRole, isCollapsed, setIsCollapsed }) {
 
   const isItemActive = (itemPath) => {
     if (itemPath === '/dashboard') {
-      return location.pathname === '/' || location.pathname === '/dashboard' || location.pathname.startsWith('/deploy') || location.pathname.startsWith('/databases')
+      return (
+        location.pathname === '/' ||
+        location.pathname === '/dashboard' ||
+        location.pathname.startsWith('/deploy') ||
+        location.pathname.startsWith('/databases') ||
+        location.pathname.startsWith('/disk-usage') ||
+        location.pathname.startsWith('/remote-database') ||
+        location.pathname.startsWith('/database-wizard')
+      )
     }
     return location.pathname === itemPath || location.pathname.startsWith(itemPath + '/')
   }
