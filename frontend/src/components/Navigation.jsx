@@ -1,33 +1,26 @@
 import React from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { LayoutDashboard, Layers, Database, ShieldAlert, Server, ChevronLeft, ChevronRight, Folder } from 'lucide-react'
+import { Wrench, Users, Server, ChevronLeft, ChevronRight } from 'lucide-react'
 
 export default function Navigation({ userRole, isCollapsed, setIsCollapsed }) {
   const navigate = useNavigate()
   const location = useLocation()
 
   const navItems = [
-    { id: 'dashboard', label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-    { id: 'deploy', label: 'Deploy', path: '/deploy', icon: Layers },
-    { id: 'files', label: 'File Manager', path: '/files', icon: Folder },
-    { id: 'databases', label: 'Databases', path: '/databases', icon: Database },
+    { id: 'tools', label: 'Tools', path: '/dashboard', icon: Wrench },
   ]
 
   if (userRole === 'admin') {
-    navItems.push({ id: 'admin', label: 'Admin Lab', path: '/admin', icon: ShieldAlert })
+    navItems.push({ id: 'accounts', label: 'Kelola Akun', path: '/admin', icon: Users })
   }
 
   const handleNavClick = (item) => {
-    if (item.id === 'files') {
-      window.open('/files', '_blank', 'noopener,noreferrer')
-      return
-    }
     navigate(item.path)
   }
 
   const isItemActive = (itemPath) => {
     if (itemPath === '/dashboard') {
-      return location.pathname === '/' || location.pathname === '/dashboard'
+      return location.pathname === '/' || location.pathname === '/dashboard' || location.pathname.startsWith('/deploy') || location.pathname.startsWith('/databases')
     }
     return location.pathname === itemPath || location.pathname.startsWith(itemPath + '/')
   }

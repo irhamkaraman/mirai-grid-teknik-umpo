@@ -279,8 +279,8 @@ export default function AdminView() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-serif font-bold text-[#26160F] flex items-center space-x-2">
-            <Shield className="h-6 w-6 text-[#5A3521]" />
-            <span>Admin Lab Panel — MiraiGrid</span>
+            <Users className="h-6 w-6 text-[#5A3521]" />
+            <span>Kelola Akun — MiraiGrid</span>
           </h2>
           <p className="text-xs text-[#5C3B29] mt-1 font-sans">
             Kelola angkatan, kelas praktikum, akun mahasiswa massal & kustom, dan audit log.
