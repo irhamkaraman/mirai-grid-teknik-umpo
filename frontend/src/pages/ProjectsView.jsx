@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { useLocation } from 'react-router-dom'
-import { Plus, Play, Square, RotateCw, Trash2, Edit2, ExternalLink, Layers, AlertCircle, Terminal, Search, RefreshCw, ChevronLeft, ChevronRight, Globe, Copy, Check } from 'lucide-react'
+import { Plus, Play, Square, RotateCw, Trash2, Edit2, ExternalLink, Layers, AlertCircle, Terminal, Search, RefreshCw, ChevronLeft, ChevronRight, Globe, Copy, Check, Folder } from 'lucide-react'
 import { toast } from 'sonner'
 import { api } from '../api/client'
 import { SkeletonTable, Spinner } from '../components/Skeletons'
@@ -197,6 +197,18 @@ export default function ProjectsView({ user: propUser }) {
         onOpenConsole={(proj) => {
           setActiveProjectDetail(null)
           setActiveConsoleProject(proj)
+        }}
+        onOpenFile={(targetPath) => {
+          const subpath = (targetPath || '').replace(new RegExp(`^/home/[^/]+/?`), '')
+          setActiveProjectDetail(null)
+          setActiveFileManagerProject({
+            id: 'root',
+            name: 'Storage',
+            is_home_root: true,
+            owner_username: activeProjectDetail.owner_username || currentUser.username,
+            virtual_path: `/home/${activeProjectDetail.owner_username || currentUser.username}`,
+            initial_path: subpath
+          })
         }}
       />
     )
@@ -477,16 +489,33 @@ export default function ProjectsView({ user: propUser }) {
                         )}
                       </td>
 
-                      {/* 2. App Root Directory */}
-                      <td className="p-4 font-mono text-[#DFCDB5]/80 text-[11px]">
-                        <div className="flex items-center space-x-1.5 flex-wrap">
-                          <span className="truncate max-w-[260px]" title={appRoot}>{appRoot}</span>
+                      {/* 2. App Root Directory (Clickable -> Direct to File Manager) */}
+                      <td className="p-4 font-mono text-[11px]">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const subpath = appRoot.replace(new RegExp(`^/home/[^/]+/?`), '')
+                            setActiveFileManagerProject({
+                              id: 'root',
+                              name: 'Storage',
+                              is_home_root: true,
+                              owner_username: projOwner,
+                              virtual_path: `/home/${projOwner}`,
+                              initial_path: subpath
+                            })
+                          }}
+                          className="group inline-flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl bg-[#201008] hover:bg-[#341B0E] border border-[#4D2D1E] hover:border-[#C49767] text-[#DFCDB5] hover:text-[#FAF5EC] transition text-left cursor-pointer shadow-sm hover:shadow"
+                          title="Buka direktori ini langsung di File Manager"
+                        >
+                          <Folder className="h-3.5 w-3.5 text-[#C49767] group-hover:scale-110 transition-transform shrink-0" />
+                          <span className="truncate max-w-[220px] underline decoration-dotted decoration-[#C49767]/60 group-hover:decoration-solid">{appRoot}</span>
+                          <ExternalLink className="h-3 w-3 text-[#C49767] opacity-60 group-hover:opacity-100 transition-opacity ml-1 shrink-0" />
                           {isGitRepo && (
-                            <span className="px-1.5 py-0.5 rounded text-[9px] bg-[#C49767]/20 border border-[#C49767]/40 text-[#E8DCB8] font-sans font-medium">
+                            <span className="px-1.5 py-0.2 rounded text-[9px] bg-[#C49767]/20 border border-[#C49767]/40 text-[#E8DCB8] font-sans font-medium ml-1">
                               Git™ Repo
                             </span>
                           )}
-                        </div>
+                        </button>
                       </td>
 
                       {/* 3. Mode */}

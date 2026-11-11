@@ -258,9 +258,9 @@ async def setup_step3_runtime_and_files(
     nim = re.sub(r"[^a-zA-Z0-9_-]", "", current_user["username"]).lower()
     user_id = current_user["id"]
 
-    clean_proj_name = re.sub(r"[^a-zA-Z0-9_-]", "", (project_name or "starter-app").strip().lower())
-    if not clean_proj_name:
-        clean_proj_name = "starter-app"
+    clean_proj_name = re.sub(r"[^a-zA-Z0-9_-]", "", (project_name or "public_html").strip().lower())
+    if not clean_proj_name or clean_proj_name == "starter-app":
+        clean_proj_name = "public_html"
 
     # Normalize runtime
     rt_lower = runtime.lower().strip()
@@ -281,15 +281,24 @@ async def setup_step3_runtime_and_files(
         version = "8.2"
         template_type = "php82"
 
-    # Check existing project
+    # Check existing project (either public_html or legacy starter-app)
     existing = await (await db.execute(
-        "SELECT * FROM projects WHERE user_id = ? AND name = ?",
+        "SELECT * FROM projects WHERE user_id = ? AND (name = ? OR name = 'starter-app')",
         (user_id, clean_proj_name)
     )).fetchone()
 
-    # Standard project paths
-    standard_local_dir = os.path.realpath(os.path.join(settings.PROJECTS_DIR, nim, clean_proj_name))
-    standard_host_dir = f"/var/lib/docker/volumes/miraigrid_miraigrid_data/_data/projects/{nim}/{clean_proj_name}"
+    # Ensure user home directory exists
+    user_home_dir = ensure_user_home(nim, current_user.get("name"), current_user.get("email"))
+
+    if clean_proj_name == "public_html":
+        standard_local_dir = os.path.realpath(os.path.join(user_home_dir, "public_html"))
+        standard_host_dir = f"/var/lib/docker/volumes/miraigrid_miraigrid_data/_data/home/{nim}/public_html"
+        display_app_root = f"/home/{nim}/public_html"
+    else:
+        standard_local_dir = os.path.realpath(os.path.join(settings.PROJECTS_DIR, nim, clean_proj_name))
+        standard_host_dir = f"/var/lib/docker/volumes/miraigrid_miraigrid_data/_data/projects/{nim}/{clean_proj_name}"
+        display_app_root = f"/home/{nim}/{clean_proj_name}"
+
     os.makedirs(standard_local_dir, exist_ok=True)
 
     extracted_files_count = 0
@@ -337,7 +346,7 @@ async def setup_step3_runtime_and_files(
     app_config = {
         "app_root": "",
         "app_root_subpath": "",
-        "display_app_root": f"/home/{nim}/{clean_proj_name}",
+        "display_app_root": display_app_root,
         "is_custom_dir": False
     }
 

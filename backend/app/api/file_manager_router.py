@@ -68,19 +68,35 @@ def resolve_safe_user_path(home_dir: str, subpath: str = "") -> str:
     """
     Resolves subpath inside user's isolated home directory.
     Strictly verifies that the resolved path does not escape home_dir or user's isolated repositories.
+    Supports relative paths, root ('/'), and absolute virtual paths like '/home/{username}/public_html'.
     """
+    if not subpath:
+        return home_dir
+
     if "\x00" in subpath:
         raise HTTPException(status_code=400, detail="Null byte terdeteksi pada parameter path.")
 
-    clean_sub = subpath.strip().lstrip("/\\")
+    username = os.path.basename(home_dir)
+    s = subpath.strip().replace("\\", "/")
+
+    # Strip absolute /home/{username} or home/{username} prefix if user passed full virtual path
+    if s.startswith(f"/home/{username}/"):
+        s = s[len(f"/home/{username}/"):]
+    elif s == f"/home/{username}" or s == f"/home/{username}/":
+        s = ""
+    elif s.startswith(f"home/{username}/"):
+        s = s[len(f"home/{username}/"):]
+    elif s == f"home/{username}" or s == f"home/{username}/":
+        s = ""
+
+    clean_sub = s.strip().lstrip("/")
     if not clean_sub or clean_sub in (".", ""):
         return home_dir
 
     combined = os.path.join(home_dir, clean_sub)
     resolved = os.path.realpath(combined)
 
-    allowed_roots = [home_dir]
-    username = os.path.basename(home_dir)
+    allowed_roots = [os.path.realpath(home_dir)]
     data_base = os.path.dirname(os.path.dirname(home_dir))
     user_repo_dir = os.path.realpath(os.path.join(data_base, "repositories", username))
     if os.path.exists(user_repo_dir):
@@ -96,7 +112,7 @@ def resolve_safe_user_path(home_dir: str, subpath: str = "") -> str:
             pass
 
     if not is_safe:
-        raise HTTPException(status_code=403, detail="Akses di luar root sandbox akun Anda dilarang keras.")
+        raise HTTPException(status_code=403, detail="Akses di luar root sandbox storage akun Anda dilarang keras.")
 
     return resolved
 
@@ -276,7 +292,7 @@ async def copy_user_item(
     current_user: dict = Depends(get_current_user)
 ):
     """
-    Copies a file or folder into destination directory.
+    Copies a file or folder into destination directory within user home storage.
     """
     username = current_user["username"]
     home_dir = ensure_user_home(username, current_user.get("name"), current_user.get("email"))
@@ -285,21 +301,25 @@ async def copy_user_item(
     dst_dir = resolve_safe_user_path(home_dir, dest_param)
 
     if not os.path.exists(src):
-        raise HTTPException(status_code=404, detail="Item sumber tidak ditemukan.")
-    if not os.path.isdir(dst_dir):
-        raise HTTPException(status_code=400, detail="Direktori tujuan tidak valid.")
+        raise HTTPException(status_code=404, detail=f"Item sumber '{req.source_path}' tidak ditemukan.")
+    if not os.path.exists(dst_dir) or not os.path.isdir(dst_dir):
+        raise HTTPException(status_code=400, detail=f"Direktori tujuan '{dest_param or '/'}' tidak valid atau tidak ditemukan.")
 
     base_name = os.path.basename(src)
     dst = os.path.join(dst_dir, base_name)
     if os.path.exists(dst):
-        raise HTTPException(status_code=400, detail="Item dengan nama sama sudah ada di direktori tujuan.")
+        raise HTTPException(status_code=400, detail=f"Item dengan nama '{base_name}' sudah ada di direktori tujuan.")
 
     try:
         if os.path.isdir(src):
             shutil.copytree(src, dst)
         else:
             shutil.copy2(src, dst)
-        return {"success": True, "message": "Item berhasil disalin."}
+        try:
+            os.chmod(dst, 0o755 if os.path.isdir(dst) else 0o644)
+        except Exception:
+            pass
+        return {"success": True, "message": f"Item '{base_name}' berhasil disalin ke '{dest_param or '/'}'."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Gagal menyalin item: {e}")
 
@@ -310,7 +330,7 @@ async def move_user_item(
     current_user: dict = Depends(get_current_user)
 ):
     """
-    Moves a file or folder into destination directory.
+    Moves a file or folder into destination directory within user home storage.
     """
     username = current_user["username"]
     home_dir = ensure_user_home(username, current_user.get("name"), current_user.get("email"))
@@ -319,18 +339,22 @@ async def move_user_item(
     dst_dir = resolve_safe_user_path(home_dir, dest_param)
 
     if not os.path.exists(src):
-        raise HTTPException(status_code=404, detail="Item sumber tidak ditemukan.")
-    if not os.path.isdir(dst_dir):
-        raise HTTPException(status_code=400, detail="Direktori tujuan tidak valid.")
+        raise HTTPException(status_code=404, detail=f"Item sumber '{req.source_path}' tidak ditemukan.")
+    if not os.path.exists(dst_dir) or not os.path.isdir(dst_dir):
+        raise HTTPException(status_code=400, detail=f"Direktori tujuan '{dest_param or '/'}' tidak valid atau tidak ditemukan.")
 
     base_name = os.path.basename(src)
     dst = os.path.join(dst_dir, base_name)
     if os.path.exists(dst):
-        raise HTTPException(status_code=400, detail="Item dengan nama sama sudah ada di direktori tujuan.")
+        raise HTTPException(status_code=400, detail=f"Item dengan nama '{base_name}' sudah ada di direktori tujuan.")
 
     try:
         shutil.move(src, dst)
-        return {"success": True, "message": "Item berhasil dipindahkan."}
+        try:
+            os.chmod(dst, 0o755 if os.path.isdir(dst) else 0o644)
+        except Exception:
+            pass
+        return {"success": True, "message": f"Item '{base_name}' berhasil dipindahkan ke '{dest_param or '/'}'."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Gagal memindahkan item: {e}")
 

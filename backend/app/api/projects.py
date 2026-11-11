@@ -180,10 +180,15 @@ def resolve_app_root_paths(
     is_admin = current_user.get("role") == "admin"
     raw = (app_root_raw or "").strip()
 
-    # Standard base paths
-    standard_local_dir = os.path.realpath(os.path.join(settings.PROJECTS_DIR, f"{project_owner_username}_{project_name}"))
-    standard_host_dir = os.path.join(settings.HOST_PROJECTS_DIR, f"{project_owner_username}_{project_name}").replace("\\", "/")
-    standard_virtual_prefix = f"/home/{project_owner_username}/{project_name}"
+    # Standard base paths (public_html is the unified default web root for all student projects)
+    if project_name in ["public_html", "starter-app"] or "public_html" in raw:
+        standard_local_dir = os.path.realpath(os.path.join(settings.DATA_DIR, "home", project_owner_username, "public_html"))
+        standard_host_dir = f"/var/lib/docker/volumes/miraigrid_miraigrid_data/_data/home/{project_owner_username}/public_html"
+        standard_virtual_prefix = f"/home/{project_owner_username}/public_html"
+    else:
+        standard_local_dir = os.path.realpath(os.path.join(settings.PROJECTS_DIR, f"{project_owner_username}_{project_name}"))
+        standard_host_dir = os.path.join(settings.HOST_PROJECTS_DIR, f"{project_owner_username}_{project_name}").replace("\\", "/")
+        standard_virtual_prefix = f"/home/{project_owner_username}/{project_name}"
 
     # Default / Empty case
     if not raw or raw == standard_virtual_prefix or raw == f"{standard_virtual_prefix}/":

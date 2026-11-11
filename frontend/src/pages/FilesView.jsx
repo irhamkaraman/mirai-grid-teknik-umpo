@@ -70,7 +70,7 @@ export default function FilesView({ onNavigate, isStandalone = false }) {
 
       setProjects([...repos, ...standalones])
     } catch (err) {
-      toast.error('Gagal memuat daftar workspace & repositori.')
+      toast.error('Gagal memuat storage akun.')
     } finally {
       setLoading(false)
     }

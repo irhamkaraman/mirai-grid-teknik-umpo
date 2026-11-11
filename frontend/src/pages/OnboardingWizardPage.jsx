@@ -162,7 +162,7 @@ export default function OnboardingWizardPage({ user, onComplete }) {
     try {
       const formData = new FormData()
       formData.append('runtime', selectedRuntime)
-      formData.append('project_name', 'starter-app')
+      formData.append('project_name', 'public_html')
       if (uploadedFile && !useStarterTemplate) {
         formData.append('file', uploadedFile)
       }

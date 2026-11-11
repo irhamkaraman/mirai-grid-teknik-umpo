@@ -39,9 +39,43 @@ export default function FileManager({ project: initialProject, projects: propPro
   const [expandedHomeRoot, setExpandedHomeRoot] = useState(true)
   const [projectTrees, setProjectTrees] = useState({})
   const [expandedProjects, setExpandedProjects] = useState({})
-  const [expandedDirs, setExpandedDirs] = useState({})
+  const [expandedDirs, setExpandedDirs] = useState(() => {
+    const init = {}
+    let target = initialProject?.initial_path || ''
+    if (!target) {
+      try {
+        const urlParams = new URLSearchParams(window.location.search)
+        target = urlParams.get('dir') || urlParams.get('path') || ''
+      } catch (e) {}
+    }
+    if (target) {
+      target = target.replace(new RegExp(`^/?home/[^/]+/?`), '').replace(/^\/+/, '').replace(/\/+$/, '')
+      if (target) {
+        const parts = target.split('/')
+        let acc = ''
+        parts.forEach(part => {
+          acc = acc ? `${acc}/${part}` : part
+          init[`home-${acc}`] = true
+        })
+      }
+    }
+    return init
+  })
 
-  const [currentPath, setCurrentPath] = useState('')
+  const [currentPath, setCurrentPath] = useState(() => {
+    if (initialProject?.initial_path) {
+      return initialProject.initial_path.replace(/^\/+/, '').replace(/\/+$/, '')
+    }
+    try {
+      const urlParams = new URLSearchParams(window.location.search)
+      let p = urlParams.get('dir') || urlParams.get('path') || ''
+      if (p) {
+        p = p.replace(new RegExp(`^/?home/[^/]+/?`), '')
+        return p.replace(/^\/+/, '').replace(/\/+$/, '')
+      }
+    } catch (e) {}
+    return ''
+  })
   const [pathHistory, setPathHistory] = useState([])
   const [historyIndex, setHistoryIndex] = useState(-1)
   const [items, setItems] = useState([])
@@ -196,7 +230,7 @@ export default function FileManager({ project: initialProject, projects: propPro
       }
       fetchAllTrees(combined)
     } catch (err) {
-      toast.error('Gagal memuat daftar workspace & repositori.')
+      toast.error('Gagal memuat storage akun.')
     }
   }
 
@@ -1124,11 +1158,11 @@ export default function FileManager({ project: initialProject, projects: propPro
                       <ChevronRight className="h-3.5 w-3.5 text-[#8C6D58]" />
                     )}
                   </button>
-                  <Folder className="h-4 w-4 text-[#946132] shrink-0" />
-                  <span className="font-bold text-[#26160F]">(/home/{projectOwner})</span>
+                  <HardDrive className="h-4 w-4 text-[#946132] shrink-0" />
+                  <span className="font-bold text-[#26160F]">Storage (/home/{projectOwner})</span>
                 </div>
                 <span className="text-[9px] px-1.5 py-0.5 rounded bg-[#E5D7C2] text-[#5C3B25] font-mono">
-                  root
+                  storage
                 </span>
               </div>
 
@@ -1138,57 +1172,6 @@ export default function FileManager({ project: initialProject, projects: propPro
                 </div>
               )}
             </div>
-
-            {/* Repositories & Workspaces Quick Links (if any exist) */}
-            {projects.length > 0 && (
-              <div className="pt-2 mt-2 border-t border-[#D4C1AC]/60">
-                <div className="text-[10px] uppercase font-bold text-[#7A5844] px-2 py-1 flex items-center space-x-1.5 tracking-wider mb-1">
-                  <Layers className="h-3 w-3 text-[#946132]" />
-                  <span>Workspaces & Repositori</span>
-                </div>
-
-                {/* Repositories directory under /home/{username} */}
-                {projects.some(p => p.is_git) && (
-                  <div className="select-none text-xs">
-                    <div 
-                      onClick={() => setExpandedReposDir(!expandedReposDir)}
-                      className="flex items-center justify-between py-1.5 px-2 rounded cursor-pointer text-[#3D2316] hover:bg-[#E5D7C2] transition"
-                    >
-                      <div className="flex items-center space-x-1.5 overflow-hidden">
-                        <button 
-                          type="button" 
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setExpandedReposDir(!expandedReposDir)
-                          }}
-                          className="p-0.5 text-[#8C6D58] hover:text-[#26160F]"
-                        >
-                          {expandedReposDir ? (
-                            <ChevronDown className="h-3.5 w-3.5 text-[#946132]" />
-                          ) : (
-                            <ChevronRight className="h-3.5 w-3.5 text-[#8C6D58]" />
-                          )}
-                        </button>
-                        <Folder className="h-4 w-4 text-[#B37D42] shrink-0" />
-                        <span className="font-semibold text-[#26160F]">repositories</span>
-                      </div>
-                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-[#E5D7C2] text-[#5C3B25] font-mono">
-                        {projects.filter(p => p.is_git).length} repos
-                      </span>
-                    </div>
-
-                    {expandedReposDir && (
-                      <div className="pl-3 border-l border-[#D4C1AC] ml-3.5 my-0.5 space-y-0.5">
-                        {projects.filter(p => p.is_git).map((p) => renderProjectFolderItem(p))}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Standalone projects (if any) */}
-                {projects.filter(p => !p.is_git).map((p) => renderProjectFolderItem(p))}
-              </div>
-            )}
           </div>
         </div>
 
@@ -1509,20 +1492,58 @@ export default function FileManager({ project: initialProject, projects: propPro
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-150">
           <div className="w-full max-w-md bg-[#FDFBF7] border border-[#D4C1AC] rounded-2xl shadow-2xl p-5 text-[#26160F]">
             <h4 className="text-base font-serif font-bold text-[#26160F] mb-1">
-              {modalType === 'move' ? 'Move File' : 'Copy File'}
+              {modalType === 'move' ? 'Move File / Folder' : 'Copy File / Folder'}
             </h4>
-            <p className="text-xs text-[#704D36] mb-4">
-              Tentukan path direktori tujuan untuk '{selectedItem?.name}':
+            <p className="text-xs text-[#704D36] mb-3">
+              Tentukan path direktori tujuan di dalam storage akun Anda untuk <code className="font-mono bg-[#EFE4D2] px-1.5 py-0.5 rounded text-[#26160F]">{selectedItem?.name}</code>:
             </p>
-            <div className="space-y-4">
+            <div className="space-y-3">
               <input
                 type="text"
-                placeholder="e.g. app atau kosongkan untuk root project"
+                placeholder="e.g. public_html atau kosongkan untuk root storage"
                 value={targetDestination}
                 onChange={(e) => setTargetDestination(e.target.value)}
-                className="w-full bg-[#FFFFFF] border border-[#D4C1AC] rounded-lg px-3 py-1.5 text-xs text-[#26160F] font-mono focus:outline-none focus:border-[#946132]"
+                className="w-full bg-[#FFFFFF] border border-[#D4C1AC] rounded-lg px-3 py-2 text-xs text-[#26160F] font-mono focus:outline-none focus:border-[#946132] shadow-inner"
               />
-              <div className="flex justify-end space-x-2">
+              
+              {/* Quick Destination Chips */}
+              <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                <span className="text-[#8C6D58] text-[10px] font-sans">Pilihan Cepat:</span>
+                <button
+                  type="button"
+                  onClick={() => setTargetDestination('')}
+                  className="px-2 py-0.5 rounded bg-[#EFE4D2] hover:bg-[#DECDBD] text-[#5C3B25] font-mono text-[10px] border border-[#D4C1AC] transition"
+                  title="Root /home/{username}"
+                >
+                  / (Root)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTargetDestination('public_html')}
+                  className="px-2 py-0.5 rounded bg-[#EFE4D2] hover:bg-[#DECDBD] text-[#5C3B25] font-mono text-[10px] border border-[#D4C1AC] transition font-semibold"
+                  title="Direktori Web Utama"
+                >
+                  public_html
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTargetDestination('logs')}
+                  className="px-2 py-0.5 rounded bg-[#EFE4D2] hover:bg-[#DECDBD] text-[#5C3B25] font-mono text-[10px] border border-[#D4C1AC] transition"
+                  title="Direktori Log Server"
+                >
+                  logs
+                </button>
+              </div>
+
+              {/* Live Preview */}
+              <div className="text-[11px] text-[#8C6D58] font-mono bg-[#F4EDE2] p-2.5 rounded-lg border border-[#D4C1AC]/60">
+                <span className="text-[10px] font-sans text-[#704D36] block mb-0.5">Preview Path Tujuan:</span>
+                <span className="text-[#26160F] font-semibold break-all">
+                  /home/{projectOwner}/{targetDestination ? targetDestination.replace(/^\/+/, '') : ''}
+                </span>
+              </div>
+
+              <div className="flex justify-end space-x-2 pt-1">
                 <button
                   type="button"
                   onClick={() => setModalType(null)}

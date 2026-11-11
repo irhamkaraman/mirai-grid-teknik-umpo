@@ -3,20 +3,29 @@ import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, ExternalLink, Play, Square, RotateCw, Trash2,
   Save, Sliders, Terminal, FileCode, Check, RefreshCw, AlertCircle, Globe, Copy,
-  Boxes, Hammer, CheckCircle2, X
+  Boxes, Hammer, CheckCircle2, X, Folder
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { api } from '../api/client'
 import { Spinner, SkeletonCard } from '../components/Skeletons'
 import ConfirmModal from '../components/ConfirmModal'
 
-export default function ProjectDetailPage({ project: propProject, onBack, onUpdated, onOpenConsole, user: propUser }) {
+export default function ProjectDetailPage({ project: propProject, onBack, onUpdated, onOpenConsole, onOpenFile, user: propUser }) {
   const currentUser = propUser || JSON.parse(localStorage.getItem('miraigrid_user') || '{}')
   const isAdmin = currentUser?.role === 'admin'
   const { id: paramId } = useParams()
   const navigate = useNavigate()
   const [project, setProject] = useState(propProject || null)
   const [loading, setLoading] = useState(!propProject)
+
+  const handleOpenInFileManager = (targetPath) => {
+    if (onOpenFile) {
+      onOpenFile(targetPath)
+    } else {
+      const subpath = (targetPath || '').replace(new RegExp('^/home/[^/]+/?'), '')
+      navigate(`/files?dir=${encodeURIComponent(subpath || '')}`)
+    }
+  }
 
   useEffect(() => {
     if (!propProject && paramId) {
@@ -538,13 +547,23 @@ export default function ProjectDetailPage({ project: propProject, onBack, onUpda
         {/* PHP Application Root (Document Root) */}
         {isPhp && (
           <div className="bg-[#1C0F0A] border border-[#3E2316] rounded-2xl p-4 sm:p-5">
-            <div className="flex items-center justify-between mb-1.5">
+            <div className="flex items-center justify-between mb-1.5 flex-wrap gap-2">
               <label className="block text-xs font-semibold text-[#DFCDB5]">
                 Application Root (Document Root)
                 <span className="text-[#C49767] font-normal ml-2">
                   {isAdmin ? '(Bisa Custom / Repositori Git)' : '(Bisa Diedit / Subfolder Sandbox)'}
                 </span>
               </label>
+              <button
+                type="button"
+                onClick={() => handleOpenInFileManager(phpAppRoot || `/home/${project?.owner_username || 'nim'}/${project?.name}`)}
+                className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-xl bg-[#2B1810] hover:bg-[#3E2316] border border-[#4D2D1E] hover:border-[#C49767] text-[#C49767] hover:text-[#FAF5EC] text-[11px] font-sans transition cursor-pointer"
+                title="Buka folder ini langsung di File Manager"
+              >
+                <Folder className="h-3 w-3" />
+                <span>Buka di File Manager</span>
+                <ExternalLink className="h-2.5 w-2.5 opacity-70" />
+              </button>
             </div>
             <input
               type="text"
@@ -829,9 +848,20 @@ export default function ProjectDetailPage({ project: propProject, onBack, onUpda
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-[#DFCDB5] mb-1.5">
-                    Application Root {isAdmin ? <span className="text-[#C49767] font-normal">(Bisa Custom / Git Repo)</span> : null}
-                  </label>
+                  <div className="flex items-center justify-between mb-1.5 flex-wrap gap-2">
+                    <label className="block text-xs font-semibold text-[#DFCDB5]">
+                      Application Root {isAdmin ? <span className="text-[#C49767] font-normal">(Bisa Custom / Git Repo)</span> : null}
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenInFileManager(pyAppRoot || `/home/${project?.owner_username || 'nim'}/${project?.name}`)}
+                      className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-xl bg-[#2B1810] hover:bg-[#3E2316] border border-[#4D2D1E] hover:border-[#C49767] text-[#C49767] hover:text-[#FAF5EC] text-[10px] font-sans transition cursor-pointer"
+                      title="Buka folder ini langsung di File Manager"
+                    >
+                      <Folder className="h-3 w-3" />
+                      <span>Buka File Manager</span>
+                    </button>
+                  </div>
                   <input
                     type="text"
                     placeholder={isAdmin ? 'e.g. app atau /home/admin/repositories/nama_repo' : 'e.g. app atau src (kosongkan untuk root)'}
@@ -953,9 +983,20 @@ export default function ProjectDetailPage({ project: propProject, onBack, onUpda
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-[#DFCDB5] mb-1.5">
-                    Application Root {isAdmin ? <span className="text-[#C49767] font-normal">(Bisa Custom / Git Repo)</span> : null}
-                  </label>
+                  <div className="flex items-center justify-between mb-1.5 flex-wrap gap-2">
+                    <label className="block text-xs font-semibold text-[#DFCDB5]">
+                      Application Root {isAdmin ? <span className="text-[#C49767] font-normal">(Bisa Custom / Git Repo)</span> : null}
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenInFileManager(nodeAppRoot || `/home/${project?.owner_username || 'nim'}/${project?.name}`)}
+                      className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-xl bg-[#2B1810] hover:bg-[#3E2316] border border-[#4D2D1E] hover:border-[#C49767] text-[#C49767] hover:text-[#FAF5EC] text-[10px] font-sans transition cursor-pointer"
+                      title="Buka folder ini langsung di File Manager"
+                    >
+                      <Folder className="h-3 w-3" />
+                      <span>Buka File Manager</span>
+                    </button>
+                  </div>
                   <input
                     type="text"
                     placeholder={isAdmin ? 'e.g. task-nextjs atau /home/admin/repositories/nama_repo' : 'e.g. task-nextjs atau kosongkan untuk root'}
