@@ -1,0 +1,27 @@
+#!/bin/bash
+set -e
+
+USERNAME="$1"
+PORT="$2"
+FOLDER="$3"
+USER_UID="$4"
+
+if [ -z "$USERNAME" ] || [ -z "$PORT" ]; then
+    echo "Usage: $0 <username> <port> [folder] [uid]"
+    exit 1
+fi
+
+if [ -z "$USER_UID" ]; then
+    USER_UID=$(id -u "${USERNAME}" 2>/dev/null || echo 10000)
+fi
+USER_GID="${USER_UID}"
+
+DATA_HOME="/var/lib/docker/volumes/miraigrid_miraigrid_data/_data/home/${USERNAME}"
+mkdir -p "${DATA_HOME}/.code-server/User" "${DATA_HOME}/.code-server/extensions"
+chown -R "${USER_UID}:${USER_GID}" "${DATA_HOME}"
+
+if [[ -z "$FOLDER" || "$FOLDER" != "/home/${USERNAME}"* ]]; then
+    FOLDER="/home/${USERNAME}"
+fi
+
+exec unshare --propagation private -m -p --fork /usr/local/bin/miraigrid-code-jail-inner "$USERNAME" "$PORT" "$FOLDER" "$USER_UID"

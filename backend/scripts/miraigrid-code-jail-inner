@@ -1,0 +1,53 @@
+#!/bin/bash
+set -e
+
+USERNAME="$1"
+PORT="$2"
+FOLDER="$3"
+USER_UID="$4"
+USER_GID="${USER_UID}"
+
+DATA_HOME="/var/lib/docker/volumes/miraigrid_miraigrid_data/_data/home/${USERNAME}"
+
+# 1. Remount sensitive system dirs as READ-ONLY
+for d in /usr /etc /opt /boot /srv; do
+    if [ -d "$d" ]; then
+        mount --bind "$d" "$d"
+        mount -o remount,ro,bind "$d" 2>/dev/null || true
+    fi
+done
+
+# 2. Private tmpfs over /home (other student homes do not exist)
+mount -t tmpfs -o mode=755,size=50M tmpfs /home
+mkdir -p "/home/${USERNAME}"
+mount --bind "${DATA_HOME}" "/home/${USERNAME}"
+mount -o remount,rw,bind "/home/${USERNAME}"
+
+# 3. Private tmpfs for /tmp
+mount -t tmpfs -o mode=1777,size=100M tmpfs /tmp
+
+# 4. Mask sensitive dirs
+mount -t tmpfs -o mode=000,size=1M tmpfs /root
+mount -t tmpfs -o mode=000,size=1M tmpfs /app
+mount -t tmpfs -o mode=000,size=1M tmpfs /var/lib/docker
+
+# 5. Mask shadow files
+mount --bind /dev/null /etc/shadow 2>/dev/null || true
+mount --bind /dev/null /etc/gshadow 2>/dev/null || true
+
+# 6. Mount isolated proc
+mount -t proc proc /proc
+
+# 7. Disarm dangerous binaries
+for b in /sbin/reboot /usr/sbin/reboot          /sbin/shutdown /usr/sbin/shutdown          /sbin/poweroff /usr/sbin/poweroff          /sbin/halt /usr/sbin/halt          /sbin/init /usr/sbin/init          /bin/systemctl /usr/bin/systemctl          /usr/bin/sudo /usr/bin/su /usr/bin/pkexec          /usr/bin/apt /usr/bin/apt-get /usr/bin/dpkg          /usr/bin/docker /usr/bin/lxc          /bin/umount /usr/bin/umount          /bin/mount /usr/bin/mount; do
+    if [ -f "$b" ]; then
+        mount --bind /bin/false "$b" 2>/dev/null || true
+    fi
+done
+
+export HOME="/home/${USERNAME}"
+export USER="${USERNAME}"
+cd "/home/${USERNAME}"
+
+# 8. Drop all capabilities & switch to unprivileged user
+exec /usr/bin/setpriv     --reuid="${USER_UID}"     --regid="${USER_GID}"     --clear-groups     --inh-caps=-all     --bounding-set=-all     /usr/bin/code-server     --bind-addr "0.0.0.0:${PORT}"     --auth none     --user-data-dir "/home/${USERNAME}/.code-server"     --extensions-dir "/home/${USERNAME}/.code-server/extensions"     --disable-telemetry     --disable-update-check     "${FOLDER}"
