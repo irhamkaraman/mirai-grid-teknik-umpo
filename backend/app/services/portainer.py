@@ -137,6 +137,7 @@ class PortainerClient:
                         name.startswith(f"app_{username}_") or
                         name.startswith(f"miraigrid_{username}_") or
                         name == f"vscode_{username}" or
+                        name == f"tb_{username}" or
                         f"_{username}_" in name or
                         name.endswith(f"_{username}")
                     ):

@@ -14,6 +14,16 @@ export function JupyterIcon({ className = "h-4 w-4" }) {
   )
 }
 
+export function ThingsBoardIcon({ className = "h-4 w-4" }) {
+  return (
+    <img
+      src="/logos/thingsboard-emblem.svg"
+      alt="ThingsBoard"
+      className={`${className} object-contain`}
+    />
+  )
+}
+
 export default function Navigation({ userRole, isCollapsed, setIsCollapsed }) {
   const navigate = useNavigate()
   const location = useLocation()
@@ -36,7 +46,8 @@ export default function Navigation({ userRole, isCollapsed, setIsCollapsed }) {
       id: 'platform',
       label: 'Platform',
       items: [
-        { id: 'jupyter', label: 'Jupyter Hub', action: 'jupyter', icon: JupyterIcon },
+        { id: 'jupyter', label: 'Jupyter Hub', action: 'jupyter', icon: JupyterIcon, badge: 'LAN' },
+        { id: 'thingsboard', label: 'ThingsBoard', path: '/thingsboard', icon: ThingsBoardIcon, badge: 'IoT' },
       ],
     },
     {
@@ -198,9 +209,15 @@ export default function Navigation({ userRole, isCollapsed, setIsCollapsed }) {
                     {!isCollapsed && (
                       <span className="truncate flex-1 text-left flex items-center justify-between">
                         <span>{item.label}</span>
-                        {item.id === 'jupyter' && (
-                          <span className="ml-1 px-1.5 py-0.5 text-[9px] rounded-md bg-[#F37626]/20 text-[#F37626] font-mono border border-[#F37626]/30">
-                            LAN
+                        {item.badge && (
+                          <span
+                            className={`ml-1 px-1.5 py-0.5 text-[9px] rounded-md font-mono border ${
+                              item.id === 'thingsboard'
+                                ? 'bg-[#00897B]/20 text-[#26A69A] border-[#26A69A]/30 font-semibold'
+                                : 'bg-[#F37626]/20 text-[#F37626] border-[#F37626]/30'
+                            }`}
+                          >
+                            {item.badge}
                           </span>
                         )}
                       </span>

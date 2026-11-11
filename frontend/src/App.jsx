@@ -21,6 +21,7 @@ import TerminalPage from './pages/TerminalPage'
 import CronJobsPage from './pages/CronJobsPage'
 import RedisView from './pages/RedisView'
 import VSCodeView from './pages/VSCodeView'
+import ThingsBoardView from './pages/ThingsBoardView'
 import OnboardingWizardPage from './pages/OnboardingWizardPage'
 import ErrorBoundary from './components/ErrorBoundary'
 import { syncPageRoute, checkUrlTampering, triggerRouteSecurityAlarm } from './utils/securityRoute'
@@ -52,7 +53,7 @@ export default function App() {
       return
     }
 
-    if (user && !location.pathname.startsWith('/files') && !location.pathname.startsWith('/vscode')) {
+    if (user && !location.pathname.startsWith('/files') && !location.pathname.startsWith('/vscode') && !location.pathname.startsWith('/thingsboard')) {
       syncPageRoute(location.pathname)
     }
   }, [location.pathname, location.search, user])
@@ -225,6 +226,29 @@ export default function App() {
       </div>
     )
   }
+
+  // 3. STANDALONE LAYOUT FOR THINGSBOARD IOT PLATFORM
+  const isStandaloneThingsBoard = location.pathname.startsWith('/thingsboard')
+  if (isStandaloneThingsBoard) {
+    return (
+      <div className="h-screen w-screen bg-[#1E110A] flex flex-col font-sans overflow-hidden select-none m-0 p-0">
+        <Toaster
+          richColors
+          position="top-right"
+          toastOptions={{
+            style: {
+              background: '#2B1810',
+              border: '1px solid #5A3521',
+              color: '#FAF5EC',
+              borderRadius: '18px',
+              fontFamily: 'Plus Jakarta Sans, sans-serif',
+            },
+          }}
+        />
+        <ThingsBoardView user={user} onNavigate={(path) => navigate(path.startsWith('/') ? path : '/' + path)} isStandalone={true} />
+      </div>
+    )
+  }
   // 2. MAIN LAYOUT WITH FLOATING SIDEBAR (Untuk Dashboard, Deploy, Databases, Admin)
   return (
     <div className="min-h-screen bg-[#E6D7BE] text-[#26160F] flex flex-col font-sans selection:bg-[#5A3521] selection:text-[#FAF5EC] relative">
@@ -335,6 +359,10 @@ export default function App() {
             <Route
               path="/cron"
               element={<CronJobsPage user={user} onNavigate={(path) => navigate(path.startsWith('/') ? path : '/' + path)} />}
+            />
+            <Route
+              path="/thingsboard"
+              element={<ThingsBoardView user={user} onNavigate={(path) => navigate(path.startsWith('/') ? path : '/' + path)} />}
             />
             <Route
               path="/redis"
