@@ -33,11 +33,13 @@ async def get_redis_status(
 
 @router.post("/start")
 async def start_redis(
-    body: RedisStartConfig,
     request: Request,
+    body: Optional[RedisStartConfig] = None,
     current_user: dict = Depends(get_current_user),
     db: aiosqlite.Connection = Depends(get_db)
 ):
+    if body is None:
+        body = RedisStartConfig()
     try:
         status = await UserRedisManager.start(
             db, 

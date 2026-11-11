@@ -31,6 +31,11 @@ class UserRedisManager:
         base_dir = os.path.realpath(os.path.join(settings.DATA_DIR, "home", clean_user, ".redis"))
         os.makedirs(base_dir, exist_ok=True)
         os.makedirs(os.path.join(base_dir, "db"), exist_ok=True)
+        try:
+            os.chmod(base_dir, 0o777)
+            os.chmod(os.path.join(base_dir, "db"), 0o777)
+        except Exception:
+            pass
         return base_dir
 
     @staticmethod
@@ -108,9 +113,9 @@ class UserRedisManager:
 daemonize yes
 pidfile {pid_path}
 port {port}
-bind 127.0.0.1
+bind 0.0.0.0
 unixsocket {sock_path}
-unixsocketperm 770
+unixsocketperm 777
 timeout 0
 tcp-keepalive 300
 loglevel notice
@@ -123,7 +128,7 @@ dbfilename dump.rdb
 requirepass {password}
 maxmemory {max_memory_mb}mb
 maxmemory-policy {policy}
-protected-mode yes
+protected-mode no
 """
         conf_file = UserRedisManager.get_conf_path(username)
         with open(conf_file, "w", encoding="utf-8") as f:
@@ -170,6 +175,12 @@ protected-mode yes
 
         if not started:
             raise RuntimeError("Redis instance gagal membuat socket atau tidak aktif setelah dijalankan.")
+
+        if os.path.exists(sock_path):
+            try:
+                os.chmod(sock_path, 0o777)
+            except Exception:
+                pass
 
         await db.execute("""
             UPDATE user_redis_instances 
