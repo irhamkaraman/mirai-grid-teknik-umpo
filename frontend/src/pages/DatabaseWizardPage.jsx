@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   Wand2,
   Database,
@@ -11,7 +11,8 @@ import {
   ShieldCheck,
   Sparkles,
   ArrowRight,
-  RefreshCw
+  RefreshCw,
+  Plus
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { api } from '../api/client'
@@ -24,6 +25,17 @@ export default function DatabaseWizardPage({ user, onNavigate }) {
   const [loading, setLoading] = useState(false)
   const [createdResult, setCreatedResult] = useState(null)
   const [copiedKey, setCopiedKey] = useState(null)
+  const [quota, setQuota] = useState(null)
+
+  useEffect(() => {
+    api.get('/quotas/my-quota')
+      .then(res => setQuota(res.data))
+      .catch(() => {})
+  }, [])
+
+  const dbStorageMaxMb = quota?.max_database_disk_mb || 100
+  const dbStorageUsedMb = quota?.used_database_disk_mb || 0
+  const dbStorageRemainingMb = Math.max(0, parseFloat((dbStorageMaxMb - dbStorageUsedMb).toFixed(1)))
 
   const studentNim = user?.username || 'mahasiswa'
   const cleanDbName = dbName.toLowerCase().replace(/[^a-z0-9_]/g, '_')
@@ -126,6 +138,19 @@ export default function DatabaseWizardPage({ user, onNavigate }) {
           <Database className="h-3.5 w-3.5 text-[#E8C58D]" />
           <span>Lihat Semua Database Saya</span>
         </button>
+      </div>
+
+      {/* Storage Quota Info Banner */}
+      <div className="p-4 rounded-2xl bg-[#2B1810] border border-[#4D2D1E] text-[#FAF5EC] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-md">
+        <div className="flex items-center space-x-2.5">
+          <Database className="h-4 w-4 text-[#E8C58D] shrink-0" />
+          <span>
+            Storage Database: <strong className="font-mono text-[#FAF5EC]">{dbStorageUsedMb} MB</strong> / {dbStorageMaxMb} MB (Sisa Ruang: <span className="text-emerald-400 font-bold font-mono">{dbStorageRemainingMb} MB</span>)
+          </span>
+        </div>
+        <span className="text-[11px] text-[#DFCDB5]/80 font-sans">
+          Bebas membuat banyak database hingga kapasitas penyimpanan 100 MB penuh.
+        </span>
       </div>
 
       {/* Stepper Progress */}
@@ -347,9 +372,10 @@ export default function DatabaseWizardPage({ user, onNavigate }) {
             <button
               type="button"
               onClick={() => setStep(1)}
-              className="px-5 py-2.5 bg-[#1C0F0A] hover:bg-[#341F14] border border-[#3E2316] text-xs font-semibold text-[#DFCDB5] rounded-xl transition"
+              className="inline-flex items-center space-x-2 px-6 py-3 bg-[#1C0F0A] hover:bg-[#341F14] border border-[#4D2D1E] hover:border-[#6B3F2B] text-xs font-bold text-[#DFCDB5] hover:text-[#FAF5EC] rounded-2xl transition shadow-md active:scale-95 group"
             >
-              ← Kembali ke Langkah 1
+              <ArrowLeft className="h-4 w-4 text-[#A47E65] group-hover:text-[#FAF5EC] transition-transform group-hover:-translate-x-0.5" />
+              <span>Kembali ke Langkah 1</span>
             </button>
 
             <button
@@ -439,15 +465,16 @@ export default function DatabaseWizardPage({ user, onNavigate }) {
             <button
               type="button"
               onClick={handleReset}
-              className="px-5 py-2.5 bg-[#1C0F0A] hover:bg-[#341F14] border border-[#3E2316] text-xs font-semibold text-[#DFCDB5] rounded-xl transition"
+              className="inline-flex items-center space-x-2 px-6 py-3 bg-[#1C0F0A] hover:bg-[#341F14] border border-[#4D2D1E] hover:border-[#6B3F2B] text-xs font-bold text-[#DFCDB5] hover:text-[#FAF5EC] rounded-2xl transition shadow-md active:scale-95 group"
             >
-              + Buat Database Lain
+              <Plus className="h-4 w-4 text-[#A47E65] group-hover:text-[#FAF5EC]" />
+              <span>Buat Database Lain</span>
             </button>
 
             <button
               type="button"
               onClick={() => onNavigate('/databases')}
-              className="inline-flex items-center space-x-2 px-6 py-2.5 bg-[#3A2216] hover:bg-[#4D2E1F] border border-[#5A3521] text-xs font-bold text-[#FAF5EC] rounded-xl transition shadow-md"
+              className="inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-chocolate-700 to-chocolate-600 hover:from-chocolate-600 hover:to-terracotta-600 text-xs font-bold text-[#FAF5EC] rounded-2xl shadow-lg border border-chocolate-500/40 transition active:scale-95"
             >
               <span>Buka Daftar Database Saya</span>
               <ArrowRight className="h-4 w-4" />

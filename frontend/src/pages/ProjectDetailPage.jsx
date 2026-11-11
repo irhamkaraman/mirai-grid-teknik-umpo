@@ -2,14 +2,17 @@ import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, ExternalLink, Play, Square, RotateCw, Trash2,
-  Save, Sliders, Terminal, FileCode, Check, RefreshCw, AlertCircle
+  Save, Sliders, Terminal, FileCode, Check, RefreshCw, AlertCircle, Globe, Copy,
+  Boxes, Hammer, CheckCircle2, X
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { api } from '../api/client'
 import { Spinner, SkeletonCard } from '../components/Skeletons'
 import ConfirmModal from '../components/ConfirmModal'
 
-export default function ProjectDetailPage({ project: propProject, onBack, onUpdated, onOpenConsole }) {
+export default function ProjectDetailPage({ project: propProject, onBack, onUpdated, onOpenConsole, user: propUser }) {
+  const currentUser = propUser || JSON.parse(localStorage.getItem('miraigrid_user') || '{}')
+  const isAdmin = currentUser?.role === 'admin'
   const { id: paramId } = useParams()
   const navigate = useNavigate()
   const [project, setProject] = useState(propProject || null)
@@ -68,6 +71,42 @@ export default function ProjectDetailPage({ project: propProject, onBack, onUpda
   const [saving, setSaving] = useState(false)
   const [runningAction, setRunningAction] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [publishLoading, setPublishLoading] = useState(false)
+  const [copied, setCopied] = useState(false)
+
+  const handlePublishWeb = async () => {
+    setPublishLoading(true)
+    try {
+      const res = await api.post('/deployments/publish', { project_id: project.id })
+      toast.success(`Berhasil mem-publish web ke subdomain resmi: ${res.data.subdomain}`)
+      await fetchProject(project.id)
+      if (onUpdated) onUpdated()
+    } catch (err) {
+      console.error(err)
+      toast.error(err.response?.data?.detail || 'Gagal mem-publish web.')
+    } finally {
+      setPublishLoading(false)
+    }
+  }
+
+  const handleToggleDeployment = async (depId) => {
+    try {
+      const res = await api.post(`/deployments/${depId}/toggle`)
+      toast.success(`Status publikasi diubah menjadi: ${res.data.status}`)
+      await fetchProject(project.id)
+      if (onUpdated) onUpdated()
+    } catch (err) {
+      console.error(err)
+      toast.error(err.response?.data?.detail || 'Gagal mengubah status publikasi.')
+    }
+  }
+
+  const handleCopyLink = (url) => {
+    navigator.clipboard.writeText(url)
+    setCopied(true)
+    toast.success('Link publik resmi disalin ke clipboard!')
+    setTimeout(() => setCopied(false), 2500)
+  }
 
   // PHP Directives State (Image 2)
   const [phpDirectives, setPhpDirectives] = useState(initialCfg.directives || {
@@ -97,10 +136,11 @@ export default function ProjectDetailPage({ project: propProject, onBack, onUpda
   const [phpExtensions, setPhpExtensions] = useState(initialCfg.extensions || [
     'pdo', 'pdo_mysql', 'pdo_pgsql', 'pdo_sqlite', 'curl', 'mbstring', 'gd', 'bcmath', 'intl', 'zip', 'json', 'sodium'
   ])
+  const [phpAppRoot, setPhpAppRoot] = useState(initialCfg.app_root_subpath || initialCfg.app_root || initialCfg.display_app_root || '')
 
   // Python Settings State (Image 4)
   const [pyVersion, setPyVersion] = useState(project.version || '3.11')
-  const [pyAppRoot, setPyAppRoot] = useState(initialCfg.app_root || '')
+  const [pyAppRoot, setPyAppRoot] = useState(initialCfg.app_root_subpath || initialCfg.app_root || initialCfg.display_app_root || '')
   const [pyStartupFile, setPyStartupFile] = useState(initialCfg.startup_file || 'app.py')
   const [pyEntryPoint, setPyEntryPoint] = useState(initialCfg.entry_point || 'app')
   const [pyCustomScript, setPyCustomScript] = useState('')
@@ -108,9 +148,14 @@ export default function ProjectDetailPage({ project: propProject, onBack, onUpda
   // Node.js Settings State (Image 5)
   const [nodeVersion, setNodeVersion] = useState(project.version || '20')
   const [nodeAppMode, setNodeAppMode] = useState(initialCfg.app_mode || 'development')
-  const [nodeAppRoot, setNodeAppRoot] = useState(initialCfg.app_root || '')
+  const [nodeAppRoot, setNodeAppRoot] = useState(initialCfg.app_root_subpath || initialCfg.app_root || initialCfg.display_app_root || '')
   const [nodeStartupFile, setNodeStartupFile] = useState(initialCfg.startup_file || 'server.js')
   const [nodeCustomScript, setNodeCustomScript] = useState('')
+
+  // Build / Compiler Output Modal State
+  const [buildOutput, setBuildOutput] = useState('')
+  const [showBuildModal, setShowBuildModal] = useState(false)
+  const [buildTitle, setBuildTitle] = useState('')
 
   // Toggle extension
   const toggleExtension = (ext) => {
@@ -131,17 +176,18 @@ export default function ProjectDetailPage({ project: propProject, onBack, onUpda
       app_config = {
         directives: phpDirectives,
         extensions: phpExtensions,
+        app_root: phpAppRoot.trim(),
       }
     } else if (isPython) {
       app_config = {
-        app_root: pyAppRoot,
+        app_root: pyAppRoot.trim(),
         startup_file: pyStartupFile,
         entry_point: pyEntryPoint,
       }
     } else if (isNode) {
       app_config = {
         app_mode: nodeAppMode,
-        app_root: nodeAppRoot,
+        app_root: nodeAppRoot.trim(),
         startup_file: nodeStartupFile,
       }
     }
@@ -195,8 +241,13 @@ export default function ProjectDetailPage({ project: propProject, onBack, onUpda
     setRunningAction(true)
     const toastId = toast.loading('Menjalankan pip install -r requirements.txt di container...')
     try {
-      await api.post(`/projects/${project.id}/pip-install`)
+      const res = await api.post(`/projects/${project.id}/pip-install`)
       toast.success('Pip install selesai!', { id: toastId })
+      if (res.data?.output) {
+        setBuildTitle('Hasil Pip Install')
+        setBuildOutput(res.data.output)
+        setShowBuildModal(true)
+      }
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Gagal menjalankan pip install.', { id: toastId })
     } finally {
@@ -209,10 +260,53 @@ export default function ProjectDetailPage({ project: propProject, onBack, onUpda
     setRunningAction(true)
     const toastId = toast.loading('Menjalankan npm install di container...')
     try {
-      await api.post(`/projects/${project.id}/npm-install`)
+      const res = await api.post(`/projects/${project.id}/npm-install`)
       toast.success('NPM install selesai!', { id: toastId })
+      if (res.data?.output) {
+        setBuildTitle('Hasil NPM Install')
+        setBuildOutput(res.data.output)
+        setShowBuildModal(true)
+      }
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Gagal menjalankan npm install.', { id: toastId })
+    } finally {
+      setRunningAction(false)
+    }
+  }
+
+  // Run Composer Install (PHP / Laravel / CI3)
+  const handleRunComposerInstall = async () => {
+    setRunningAction(true)
+    const toastId = toast.loading('Menjalankan composer install & setup di container...')
+    try {
+      const res = await api.post(`/projects/${project.id}/composer-install`)
+      toast.success('Composer install selesai!', { id: toastId })
+      if (res.data?.output) {
+        setBuildTitle('Hasil Composer Install & Setup')
+        setBuildOutput(res.data.output)
+        setShowBuildModal(true)
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Gagal menjalankan composer install.', { id: toastId })
+    } finally {
+      setRunningAction(false)
+    }
+  }
+
+  // Universal Build / Compiler
+  const handleRunBuildProject = async () => {
+    setRunningAction(true)
+    const toastId = toast.loading('Menjalankan compiler & build pipeline...')
+    try {
+      const res = await api.post(`/projects/${project.id}/build`)
+      toast.success('Kompilasi & Build Project selesai!', { id: toastId })
+      if (res.data?.output) {
+        setBuildTitle(`Hasil Kompilasi Build — ${project.name}`)
+        setBuildOutput(res.data.output)
+        setShowBuildModal(true)
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Gagal menjalankan build project.', { id: toastId })
     } finally {
       setRunningAction(false)
     }
@@ -264,7 +358,7 @@ export default function ProjectDetailPage({ project: propProject, onBack, onUpda
               </h2>
             </div>
             <p className="text-xs text-[#5C3B29] font-mono mt-0.5">
-              URI: {project.access_url}
+              URI: {project.public_url || project.access_url}
             </p>
           </div>
         </div>
@@ -316,6 +410,16 @@ export default function ProjectDetailPage({ project: propProject, onBack, onUpda
           </button>
 
           <button
+            onClick={handleRunBuildProject}
+            disabled={runningAction}
+            className="px-4 py-2 rounded-2xl text-xs font-semibold bg-[#4A2D1B] hover:bg-[#5C3822] text-[#F3E5D0] border border-[#6D4229] shadow-md transition disabled:opacity-50 flex items-center space-x-1.5"
+            title="Kompilasi Dependensi & Build Project (Composer, NPM, Pip)"
+          >
+            <Boxes className="h-3.5 w-3.5 text-[#C49767]" />
+            <span>{runningAction ? 'BUILDING...' : 'BUILD / COMPILE'}</span>
+          </button>
+
+          <button
             onClick={() => setConfirmDelete(true)}
             className="px-4 py-2 rounded-2xl text-xs font-semibold bg-rose-700 hover:bg-rose-600 text-white shadow-md transition flex items-center space-x-1.5"
           >
@@ -334,8 +438,139 @@ export default function ProjectDetailPage({ project: propProject, onBack, onUpda
         </div>
       </div>
 
+      {/* Public Web Subdomain & Deployment Card */}
+      <div className="bg-[#2B1810] border border-[#4D2D1E] rounded-3xl p-5 sm:p-6 shadow-xl text-[#FAF5EC] flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-start space-x-3.5">
+          <div className="p-3 rounded-2xl bg-[#1C0F0A] border border-[#3E2316] text-emerald-400 shrink-0">
+            <Globe className="h-6 w-6" />
+          </div>
+          <div>
+            <div className="flex items-center space-x-2">
+              <h3 className="text-base font-serif font-bold text-[#FAF5EC]">
+                Public Web Subdomain
+              </h3>
+              <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-semibold ${
+                project.is_published
+                  ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-700/60'
+                  : 'bg-stone-900 text-stone-400 border border-stone-700'
+              }`}>
+                {project.is_published ? 'Online & Terpublikasi' : 'Belum Publik / Stopped'}
+              </span>
+            </div>
+
+            {project.public_url ? (
+              <div className="mt-1.5 flex items-center space-x-2 flex-wrap">
+                <a
+                  href={project.public_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-mono text-sm text-emerald-300 hover:text-emerald-200 hover:underline flex items-center space-x-1 font-semibold"
+                >
+                  <span>{project.public_url}</span>
+                  <ExternalLink className="h-3.5 w-3.5 opacity-80" />
+                </a>
+                <span className="text-[11px] text-[#A47E65] font-mono">
+                  (Port: {project.allocated_port})
+                </span>
+              </div>
+            ) : (
+              <p className="text-xs text-[#DFCDB5]/70 mt-1">
+                Publikasikan aplikasi web ini ke domain resmi <code className="text-[#E8DCB8] font-mono">*.miraigrid.web.id</code> agar dapat diakses dari internet via Cloudflare Tunnel.
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Buttons */}
+        <div className="flex items-center space-x-2 self-start md:self-center shrink-0">
+          {project.public_url ? (
+            <>
+              <button
+                type="button"
+                onClick={() => handleCopyLink(project.public_url)}
+                className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-[#1C0F0A] hover:bg-[#382115] text-[#DFCDB5] border border-[#3E2316] transition flex items-center space-x-1.5"
+              >
+                {copied ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5 text-[#C49767]" />}
+                <span>{copied ? 'Tersalin' : 'Salin Link'}</span>
+              </button>
+
+              {project.deployment_id && (
+                <button
+                  type="button"
+                  onClick={() => handleToggleDeployment(project.deployment_id)}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition border flex items-center space-x-1.5 ${
+                    project.is_published
+                      ? 'bg-[#3A2115] hover:bg-[#4D2D1E] text-amber-300 border-[#5C341F]'
+                      : 'bg-emerald-900/40 hover:bg-emerald-800/60 text-emerald-300 border-emerald-700/60'
+                  }`}
+                >
+                  <Globe className="h-3.5 w-3.5" />
+                  <span>{project.is_published ? 'Hentikan Publikasi' : 'Aktifkan Kembali'}</span>
+                </button>
+              )}
+
+              <a
+                href={project.public_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-4 py-2 rounded-xl text-xs font-semibold bg-[#4A2D1B] hover:bg-[#5C3822] text-[#FAF5EC] border border-[#683E24] shadow-sm transition flex items-center space-x-1.5"
+              >
+                <span>Buka Web</span>
+                <ExternalLink className="h-3.5 w-3.5" />
+              </a>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={handlePublishWeb}
+              disabled={publishLoading}
+              className="px-5 py-2.5 rounded-xl text-xs font-semibold bg-[#3A2115] hover:bg-[#52301E] text-[#FAF5EC] border border-[#633A23] shadow-md transition disabled:opacity-50 flex items-center space-x-2"
+            >
+              <Globe className="h-4 w-4 text-emerald-400" />
+              <span>{publishLoading ? 'Mengenerate Subdomain...' : 'Deploy / Publish Web Sekarang'}</span>
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* 2. Main Body Tabs & Form (cPanel Web Application Selector Style) */}
       <div className="bg-[#2B1810] border border-[#4D2D1E] rounded-3xl p-6 sm:p-8 shadow-2xl text-[#FAF5EC] space-y-6">
+        {/* PHP Application Root (Document Root) */}
+        {isPhp && (
+          <div className="bg-[#1C0F0A] border border-[#3E2316] rounded-2xl p-4 sm:p-5">
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-semibold text-[#DFCDB5]">
+                Application Root (Document Root)
+                <span className="text-[#C49767] font-normal ml-2">
+                  {isAdmin ? '(Bisa Custom / Repositori Git)' : '(Bisa Diedit / Subfolder Sandbox)'}
+                </span>
+              </label>
+            </div>
+            <input
+              type="text"
+              placeholder={
+                isAdmin
+                  ? 'contoh: public atau /home/admin/repositories/nama_repo (kosongkan untuk default root)'
+                  : 'contoh: public atau public_html (kosongkan untuk default root project)'
+              }
+              value={phpAppRoot}
+              onChange={(e) => setPhpAppRoot(e.target.value)}
+              className="w-full bg-[#2B1810] border border-[#4D2D1E] rounded-xl px-3.5 py-2.5 text-xs text-[#FAF5EC] font-mono focus:outline-none focus:border-[#C49767] transition placeholder-[#553826]"
+            />
+            <p className="text-[10px] text-[#A47E65] mt-1.5 font-sans leading-relaxed">
+              {isAdmin ? (
+                <span>
+                  <strong className="text-[#E8DCB8]">Akses Administrator:</strong> Anda dapat mengarahkan DocumentRoot ke subfolder (e.g. <code className="font-mono text-[#E8DCB8]">public</code>) atau ke repositori Git di server seperti <code className="font-mono text-[#E8DCB8]">/home/admin/repositories/nama_repo</code>.
+                </span>
+              ) : (
+                <span>
+                  <strong className="text-[#E8DCB8]">Sandbox Mahasiswa:</strong> Anda dapat menyesuaikan DocumentRoot ke subfolder project Anda (misal <code className="font-mono text-[#E8DCB8]">public</code> untuk Laravel / CodeIgniter 4, atau path lengkap <code className="font-mono text-[#E8DCB8]">/home/{project.owner_username || 'nim'}/{project.name}/public</code>). Terisolasi aman di bawah akun Anda.
+                </span>
+              )}
+            </p>
+          </div>
+        )}
+
         {/* Navigation Tabs for PHP */}
         {isPhp && (
           <div className="flex border-b border-[#3E2316] space-x-3 pb-2">
@@ -530,6 +765,50 @@ export default function ProjectDetailPage({ project: propProject, onBack, onUpda
           </div>
         )}
 
+
+
+        {/* PHP Composer & Build Toolchain Card */}
+        {isPhp && (
+          <div className="bg-[#1C0F0A] border border-[#3E2316] rounded-2xl p-6 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-[#3E2316]">
+              <div>
+                <h4 className="text-sm font-serif font-bold text-[#FAF5EC] flex items-center space-x-2">
+                  <Boxes className="h-4 w-4 text-[#C49767]" />
+                  <span>Composer & Framework Build Engine</span>
+                </h4>
+                <p className="text-xs text-[#DFCDB5]/70">
+                  Otomatis mendeteksi composer.json, menginstal dependensi (Laravel, CodeIgniter, Filament), generate APP_KEY, dan optimasi runtime.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3 pt-1">
+              <button
+                type="button"
+                onClick={handleRunComposerInstall}
+                disabled={runningAction}
+                className="px-4 py-2.5 rounded-xl text-xs font-semibold bg-[#3A2115] hover:bg-[#482A1B] text-[#FAF5EC] border border-[#5A3521] shadow-md transition disabled:opacity-50 flex items-center space-x-2"
+              >
+                <Boxes className="h-4 w-4 text-[#C49767]" />
+                <span>{runningAction ? 'Installing...' : 'Run Composer Install'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleRunBuildProject}
+                disabled={runningAction}
+                className="px-4 py-2.5 rounded-xl text-xs font-semibold bg-[#4A2D1B] hover:bg-[#5C3822] text-[#F3E5D0] border border-[#6D4229] shadow-md transition disabled:opacity-50 flex items-center space-x-2"
+              >
+                <Hammer className="h-4 w-4 text-emerald-400" />
+                <span>{runningAction ? 'Compiling...' : 'Compile & Optimize Framework'}</span>
+              </button>
+            </div>
+            <p className="text-[11px] text-[#A47E65]">
+              Tip: Jika Anda mengunggah project Laravel baru atau terjadi error missing vendor/autoload.php, klik tombol di atas untuk mengompilasi dependensi secara otomatis.
+            </p>
+          </div>
+        )}
+
         {/* C. PYTHON APPLICATION SELECTOR (Image 4) */}
         {isPython && (
           <div className="space-y-6">
@@ -550,15 +829,21 @@ export default function ProjectDetailPage({ project: propProject, onBack, onUpda
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-[#DFCDB5] mb-1.5">Application root</label>
+                  <label className="block text-xs font-semibold text-[#DFCDB5] mb-1.5">
+                    Application Root {isAdmin ? <span className="text-[#C49767] font-normal">(Bisa Custom / Git Repo)</span> : null}
+                  </label>
                   <input
                     type="text"
-                    placeholder="e.g. app atau predictive-maintenance"
+                    placeholder={isAdmin ? 'e.g. app atau /home/admin/repositories/nama_repo' : 'e.g. app atau src (kosongkan untuk root)'}
                     value={pyAppRoot}
                     onChange={(e) => setPyAppRoot(e.target.value)}
                     className="w-full bg-[#2B1810] border border-[#4D2D1E] rounded-xl px-3.5 py-2 text-xs text-[#FAF5EC] font-mono focus:outline-none focus:border-[#C49767]"
                   />
-                  <p className="text-[10px] text-[#A47E65] mt-1">Physical address to your application on server that corresponds with its URI.</p>
+                  <p className="text-[10px] text-[#A47E65] mt-1 font-sans">
+                    {isAdmin
+                      ? 'Admin: Dapat mengarahkan root direktori ke subfolder atau repositori git /home/admin/repositories/nama_repo.'
+                      : 'Sandbox Mahasiswa: Direktori aplikasi di dalam akun Anda. Terisolasi aman.'}
+                  </p>
                 </div>
               </div>
 
@@ -632,6 +917,8 @@ export default function ProjectDetailPage({ project: propProject, onBack, onUpda
           </div>
         )}
 
+
+
         {/* D. NODE.JS APPLICATION SELECTOR (Image 5) */}
         {isNode && (
           <div className="space-y-6">
@@ -666,15 +953,21 @@ export default function ProjectDetailPage({ project: propProject, onBack, onUpda
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-[#DFCDB5] mb-1.5">Application root</label>
+                  <label className="block text-xs font-semibold text-[#DFCDB5] mb-1.5">
+                    Application Root {isAdmin ? <span className="text-[#C49767] font-normal">(Bisa Custom / Git Repo)</span> : null}
+                  </label>
                   <input
                     type="text"
-                    placeholder="e.g. task-nextjs atau kosongkan untuk root"
+                    placeholder={isAdmin ? 'e.g. task-nextjs atau /home/admin/repositories/nama_repo' : 'e.g. task-nextjs atau kosongkan untuk root'}
                     value={nodeAppRoot}
                     onChange={(e) => setNodeAppRoot(e.target.value)}
                     className="w-full bg-[#2B1810] border border-[#4D2D1E] rounded-xl px-3.5 py-2 text-xs text-[#FAF5EC] font-mono focus:outline-none focus:border-[#C49767]"
                   />
-                  <p className="text-[10px] text-[#A47E65] mt-1">Physical address to your application on server that corresponds with its URI.</p>
+                  <p className="text-[10px] text-[#A47E65] mt-1 font-sans">
+                    {isAdmin
+                      ? 'Admin: Dapat mengarahkan root direktori ke subfolder atau repositori git /home/admin/repositories/nama_repo.'
+                      : 'Sandbox Mahasiswa: Direktori aplikasi di dalam akun Anda. Terisolasi aman.'}
+                  </p>
                 </div>
 
                 <div>
@@ -732,8 +1025,45 @@ export default function ProjectDetailPage({ project: propProject, onBack, onUpda
                 </div>
               </div>
             </div>
+
+            {/* Node.js NPM & Build Toolchain Card */}
+          <div className="bg-[#1C0F0A] border border-[#3E2316] rounded-2xl p-6 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-[#3E2316]">
+              <div>
+                <h4 className="text-sm font-serif font-bold text-[#FAF5EC] flex items-center space-x-2">
+                  <Boxes className="h-4 w-4 text-[#C49767]" />
+                  <span>Node.js NPM & Compiler Pipeline</span>
+                </h4>
+                <p className="text-xs text-[#DFCDB5]/70">
+                  Otomatis mendeteksi package.json, menginstal modul (React, Next.js, Express, Vite), dan menjalankan npm run build.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3 pt-1">
+              <button
+                type="button"
+                onClick={handleRunNpmInstall}
+                disabled={runningAction}
+                className="px-4 py-2.5 rounded-xl text-xs font-semibold bg-[#3A2115] hover:bg-[#482A1B] text-[#FAF5EC] border border-[#5A3521] shadow-md transition disabled:opacity-50 flex items-center space-x-2"
+              >
+                <Boxes className="h-4 w-4 text-[#C49767]" />
+                <span>{runningAction ? 'Installing...' : 'Run NPM Install'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleRunBuildProject}
+                disabled={runningAction}
+                className="px-4 py-2.5 rounded-xl text-xs font-semibold bg-[#4A2D1B] hover:bg-[#5C3822] text-[#F3E5D0] border border-[#6D4229] shadow-md transition disabled:opacity-50 flex items-center space-x-2"
+              >
+                <Hammer className="h-4 w-4 text-emerald-400" />
+                <span>{runningAction ? 'Building...' : 'Compile & Build Node.js Project'}</span>
+              </button>
+            </div>
           </div>
-        )}
+        </div>
+      )}
       </div>
 
       {/* Confirmation Modal */}
@@ -745,6 +1075,39 @@ export default function ProjectDetailPage({ project: propProject, onBack, onUpda
         onConfirm={executeDelete}
         onClose={() => setConfirmDelete(false)}
       />
+
+      {/* Build / Compilation Log Modal */}
+      {showBuildModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-[#1C0F0A] border border-[#4D2D1E] rounded-3xl max-w-3xl w-full shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+            <div className="px-6 py-4 bg-[#2B1810] border-b border-[#3E2316] flex items-center justify-between">
+              <div className="flex items-center space-x-2.5">
+                <Boxes className="h-5 w-5 text-[#C49767]" />
+                <h3 className="text-sm font-serif font-bold text-[#FAF5EC]">{buildTitle || 'Execution Output'}</h3>
+              </div>
+              <button
+                onClick={() => setShowBuildModal(false)}
+                className="p-1 rounded-xl text-[#DFCDB5]/70 hover:text-white hover:bg-[#3A2115] transition"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-5 flex-1 overflow-auto bg-[#140B07]">
+              <pre className="font-mono text-xs text-[#E8DCB8] whitespace-pre-wrap leading-relaxed select-text">
+                {buildOutput || 'Tidak ada log output.'}
+              </pre>
+            </div>
+            <div className="px-6 py-3.5 bg-[#2B1810] border-t border-[#3E2316] flex justify-end">
+              <button
+                onClick={() => setShowBuildModal(false)}
+                className="px-5 py-2 rounded-xl text-xs font-semibold bg-[#4A2D1B] hover:bg-[#5C3822] text-[#FAF5EC] transition"
+              >
+                Tutup Log
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

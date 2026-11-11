@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
-import { ArrowLeft, Check, AlertCircle, Sparkles } from 'lucide-react'
+import { ArrowLeft, Check, AlertCircle, Folder, Rocket, ChevronDown } from 'lucide-react'
 import { toast } from 'sonner'
 import { api } from '../api/client'
 import { Spinner } from '../components/Skeletons'
 
-export default function CreateProjectPage({ onBack, onCreated }) {
+export default function CreateProjectPage({ onBack, onCreated, user: propUser }) {
+  const currentUser = propUser || JSON.parse(localStorage.getItem('miraigrid_user') || '{}')
+  const isAdmin = currentUser?.role === 'admin'
   const location = useLocation()
   const initialLang = React.useMemo(() => {
     const params = new URLSearchParams(location.search)
@@ -15,6 +17,9 @@ export default function CreateProjectPage({ onBack, onCreated }) {
   }, [location.search])
 
   const [projectName, setProjectName] = useState('')
+  const [appRoot, setAppRoot] = useState('')
+  const [gitRepos, setGitRepos] = useState([])
+  const [loadingRepos, setLoadingRepos] = useState(false)
   const [selectedLanguage, setSelectedLanguage] = useState(initialLang) // 'php', 'python', 'node'
   const [selectedVersion, setSelectedVersion] = useState(() => {
     if (initialLang === 'python') return '3.11'
@@ -23,6 +28,20 @@ export default function CreateProjectPage({ onBack, onCreated }) {
   })
   const [actionLoading, setActionLoading] = useState(false)
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (isAdmin) {
+      setLoadingRepos(true)
+      api.get('/git/repositories')
+        .then((res) => {
+          if (res.data?.success && Array.isArray(res.data.repositories)) {
+            setGitRepos(res.data.repositories)
+          }
+        })
+        .catch(() => {})
+        .finally(() => setLoadingRepos(false))
+    }
+  }, [isAdmin])
 
   useEffect(() => {
     const params = new URLSearchParams(location.search)
@@ -98,6 +117,7 @@ export default function CreateProjectPage({ onBack, onCreated }) {
         language: selectedLanguage,
         version: selectedVersion,
         app_config: {
+          app_root: appRoot.trim(),
           startup_file: selectedLanguage === 'python' ? 'app.py' : selectedLanguage === 'node' ? 'server.js' : 'index.php'
         }
       })
@@ -136,7 +156,7 @@ export default function CreateProjectPage({ onBack, onCreated }) {
       </div>
 
       {/* Main Form Container (Dedicated Page View, BUKAN MODAL!) */}
-      <div className="max-w-3xl bg-[#2B1810] border border-[#4D2D1E] rounded-3xl p-6 sm:p-9 shadow-2xl text-[#FAF5EC]">
+      <div className="w-full bg-[#2B1810] border border-[#4D2D1E] rounded-3xl p-6 sm:p-9 shadow-2xl text-[#FAF5EC]">
         {error && (
           <div className="mb-6 p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs flex items-center space-x-2.5">
             <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
@@ -213,19 +233,103 @@ export default function CreateProjectPage({ onBack, onCreated }) {
             <label className="block text-xs font-semibold text-[#DFCDB5] mb-1.5">
               Pilih Versi {currentLangConfig.name}
             </label>
-            <select
-              value={selectedVersion}
-              onChange={(e) => setSelectedVersion(e.target.value)}
-              className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-2xl px-4 py-3 text-xs text-[#FAF5EC] font-mono focus:outline-none focus:border-[#C49767] transition"
-            >
-              {currentLangConfig.versions.map((ver) => (
-                <option key={ver.val} value={ver.val}>
-                  {ver.label}
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <select
+                value={selectedVersion}
+                onChange={(e) => setSelectedVersion(e.target.value)}
+                className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-2xl pl-4 pr-11 py-3 text-xs text-[#FAF5EC] font-mono focus:outline-none focus:border-[#C49767] transition appearance-none cursor-pointer"
+              >
+                {currentLangConfig.versions.map((ver) => (
+                  <option key={ver.val} value={ver.val}>
+                    {ver.label}
+                  </option>
+                ))}
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-4 text-[#A47E65]">
+                <ChevronDown className="h-4 w-4" />
+              </div>
+            </div>
             <p className="text-[11px] text-[#A47E65] mt-1.5 font-mono">
               Container Docker resmi {currentLangConfig.name} akan otomatis di-pull dan dijalankan seketika.
+            </p>
+          </div>
+
+          {/* App Root Directory (Custom Directory / Sandbox) */}
+          <div className="bg-[#1C0F0A] border border-[#3E2316] rounded-2xl p-4 sm:p-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-semibold text-[#DFCDB5]">
+                App Root Directory {isAdmin ? (
+                  <span className="text-[#C49767] font-normal">(Bisa Custom / Repositori Git)</span>
+                ) : (
+                  <span className="text-[#A47E65] font-normal">(Opsional)</span>
+                )}
+              </label>
+              {isAdmin && gitRepos.length > 0 && (
+                <span className="text-[10px] text-[#A47E65] font-mono">
+                  {gitRepos.length} Git™ Repositori Terdeteksi
+                </span>
+              )}
+            </div>
+
+            <input
+              type="text"
+              placeholder={
+                isAdmin
+                  ? 'contoh: public atau /home/admin/repositories/nama_repo (kosongkan untuk default root)'
+                  : 'contoh: public atau src (kosongkan jika kode berada di root project)'
+              }
+              value={appRoot}
+              onChange={(e) => setAppRoot(e.target.value)}
+              className="w-full bg-[#2B1810] border border-[#4D2D1E] rounded-xl px-4 py-2.5 text-xs text-[#FAF5EC] font-mono focus:outline-none focus:border-[#C49767] transition placeholder-[#553826]"
+            />
+
+            {/* Quick Pick Git Repositories for Admin */}
+            {isAdmin && gitRepos.length > 0 && (
+              <div className="pt-1">
+                <div className="text-[10px] text-[#A47E65] font-mono mb-1.5 flex items-center space-x-1">
+                  <span>Pilih Cepat dari Git™ Repositories:</span>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {gitRepos.map((repo) => (
+                    <button
+                      key={repo.id}
+                      type="button"
+                      onClick={() => setAppRoot(repo.path)}
+                      className={`text-[10px] font-mono px-2.5 py-1 rounded-lg border transition flex items-center space-x-1 ${
+                        appRoot === repo.path
+                          ? 'bg-[#C49767] text-[#2B1810] border-[#C49767] font-bold shadow-sm'
+                          : 'bg-[#2B1810] text-[#DFCDB5] border-[#4D2D1E] hover:border-[#C49767]'
+                      }`}
+                      title={repo.path}
+                    >
+                      <Folder className="h-3 w-3 shrink-0 text-[#C49767]" />
+                      <span>{repo.name}</span>
+                    </button>
+                  ))}
+                  {appRoot && (
+                    <button
+                      type="button"
+                      onClick={() => setAppRoot('')}
+                      className="text-[10px] font-mono px-2 py-1 text-rose-400 hover:underline"
+                    >
+                      Reset default
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Security Explanation / Helper Text */}
+            <p className="text-[11px] text-[#A47E65] font-sans leading-relaxed">
+              {isAdmin ? (
+                <span>
+                  <strong className="text-[#E8DCB8]">Akses Administrator:</strong> Anda bebas menentukan path direktori ke subfolder project (e.g. <code className="font-mono text-[#E8DCB8]">public</code>) maupun ke direktori lain di server seperti <code className="font-mono text-[#E8DCB8]">/home/admin/repositories/nama_repo</code>.
+                </span>
+              ) : (
+                <span>
+                  <strong className="text-[#E8DCB8]">Sandbox Mahasiswa:</strong> Tentukan subdirektori di dalam folder project Anda (misal <code className="font-mono text-[#E8DCB8]">public</code> atau <code className="font-mono text-[#E8DCB8]">src</code>). Sistem mengunci akses secara aman agar tidak dapat berpindah di luar ruang akun Anda.
+                </span>
+              )}
             </p>
           </div>
 

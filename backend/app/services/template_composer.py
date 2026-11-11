@@ -44,7 +44,8 @@ class TemplateComposer:
         app_config: Optional[Dict[str, Any]] = None,
         env_vars: Optional[Dict[str, str]] = None,
         mem_limit_mb: int = 256,
-        cpu_cores: float = 0.5
+        cpu_cores: float = 0.5,
+        pids_limit: int = 50
     ) -> str:
         container_name = f"app_{nim}_{project_name}"
         network_name = f"net_{nim}_{project_name}"
@@ -54,17 +55,28 @@ class TemplateComposer:
         security_config = {
             "restart": "unless-stopped",
             "security_opt": ["no-new-privileges:true"],
-            "cap_drop": ["ALL"],
+            "cap_drop": [
+                "SYS_ADMIN",
+                "NET_ADMIN",
+                "SYS_RAWIO",
+                "SYS_PTRACE",
+                "SYS_MODULE",
+                "SYS_BOOT",
+                "MAC_ADMIN",
+                "MAC_OVERRIDE",
+                "AUDIT_CONTROL",
+                "AUDIT_WRITE",
+            ],
             "deploy": {
                 "resources": {
                     "limits": {
                         "cpus": str(cpu_cores),
                         "memory": f"{mem_limit_mb}M",
-                        "pids": 100
+                        "pids": pids_limit
                     }
                 }
             },
-            "networks": [network_name],
+            "networks": [network_name, "database-center_db_network"],
             "ports": [f"{allocated_port}:80"]
         }
 
@@ -82,31 +94,66 @@ class TemplateComposer:
             **security_config
         }
 
+        # Subpath extraction for container execution
+        raw_root = str(cfg.get("app_root_subpath") or cfg.get("app_root") or "").strip()
+        app_subpath = ""
+        if raw_root and not raw_root.startswith("/"):
+            app_subpath = raw_root.strip("/")
+        elif cfg.get("app_root_subpath"):
+            app_subpath = str(cfg.get("app_root_subpath")).strip("/")
+
         # 1. PHP Engine (8.3, 8.2, 8.1, 8.0, 7.4)
         if language == "php":
-            v = version if version in ["8.3", "8.2", "8.1", "8.0", "7.4"] else "8.2"
+            v = version if version in ["8.3", "8.2", "8.1", "8.0", "7.4"] else "8.3"
+            # php:8.3-apache is built with ext-intl, ext-zip, pdo_mysql, pdo_pgsql, composer, etc.
             service_definition["image"] = f"php:{v}-apache"
-            volumes = [f"{project_src_dir}:/var/www/html"]
+            volumes = [
+                f"{project_src_dir}:/var/www/html",
+                "/usr/local/bin/composer:/usr/local/bin/composer:ro"
+            ]
             # Mount custom php.ini if exists
             php_ini_host_path = f"{project_src_dir}/.miraigrid_php.ini"
             volumes.append(f"{php_ini_host_path}:/usr/local/etc/php/conf.d/99-miraigrid.ini:ro")
             service_definition["volumes"] = volumes
+            if app_subpath:
+                service_definition["command"] = (
+                    f"sh -c 'mkdir -p /var/www/html/{app_subpath} 2>/dev/null; "
+                    f"if [ ! -f /var/www/html/{app_subpath}/index.php ] && [ ! -f /var/www/html/{app_subpath}/index.html ]; then "
+                    f"if [ -f /var/www/html/index.php ]; then cp /var/www/html/index.php /var/www/html/{app_subpath}/index.php 2>/dev/null; fi; "
+                    "fi; "
+                    f"sed -ri -e \"s!DocumentRoot /var/www/html.*!DocumentRoot /var/www/html/{app_subpath}!g\" /etc/apache2/sites-available/*.conf; "
+                    f"sed -ri -e \"s!<Directory /var/www/html.*>!<Directory /var/www/html/{app_subpath}>!g\" /etc/apache2/apache2.conf /etc/apache2/sites-available/*.conf /etc/apache2/conf-available/*.conf; "
+                    "a2enmod rewrite headers 2>/dev/null; "
+                    "sed -ri -e \"s!AllowOverride None!AllowOverride All!g\" /etc/apache2/apache2.conf 2>/dev/null; "
+                    "chown -R www-data:www-data /var/www/html 2>/dev/null; "
+                    "chmod -R 755 /var/www/html 2>/dev/null; "
+                    "exec apache2-foreground'"
+                )
+            else:
+                service_definition["command"] = (
+                    "sh -c 'a2enmod rewrite headers 2>/dev/null; "
+                    "sed -ri -e \"s!AllowOverride None!AllowOverride All!g\" /etc/apache2/apache2.conf 2>/dev/null; "
+                    "chown -R www-data:www-data /var/www/html 2>/dev/null; "
+                    "chmod -R 755 /var/www/html 2>/dev/null; "
+                    "exec apache2-foreground'"
+                )
 
         # 2. Python Engine (3.12, 3.11, 3.10, 3.9)
         elif language == "python":
             v = version if version in ["3.12", "3.11", "3.10", "3.9"] else "3.11"
             service_definition["image"] = f"python:{v}-slim"
-            app_root = cfg.get("app_root", "").strip().strip("/")
             startup_file = cfg.get("startup_file", "app.py").strip()
 
-            service_definition["working_dir"] = f"/app/{app_root}" if app_root else "/app"
+            service_definition["working_dir"] = f"/app/{app_subpath}" if app_subpath else "/app"
             service_definition["volumes"] = [f"{project_src_dir}:/app"]
 
-            # Starts immediately with python startup_file (zero delay)
+            # Starts with smart auto-installer and fallback chain
             command = (
-                f"sh -c 'if [ -f {startup_file} ]; then python {startup_file}; "
+                f"sh -c 'if [ -f requirements.txt ]; then pip install --no-cache-dir -r requirements.txt 2>/dev/null; fi; "
+                f"if [ -f {startup_file} ]; then python {startup_file}; "
                 "elif [ -f main.py ]; then python main.py; "
                 "elif [ -f passenger_wsgi.py ]; then python passenger_wsgi.py; "
+                "elif [ -f app.py ]; then python app.py; "
                 "else python -m http.server 80; fi'"
             )
             service_definition["command"] = command
@@ -115,19 +162,21 @@ class TemplateComposer:
         elif language == "node":
             v = version if version in ["22", "20", "18", "16"] else "20"
             service_definition["image"] = f"node:{v}-alpine"
-            app_root = cfg.get("app_root", "").strip().strip("/")
             startup_file = cfg.get("startup_file", "server.js").strip()
             app_mode = cfg.get("app_mode", "development")
 
             service_definition["environment"]["NODE_ENV"] = app_mode
-            service_definition["working_dir"] = f"/app/{app_root}" if app_root else "/app"
+            service_definition["working_dir"] = f"/app/{app_subpath}" if app_subpath else "/app"
             service_definition["volumes"] = [f"{project_src_dir}:/app"]
 
-            # Starts immediately with node startup_file (zero delay)
+            # Starts with smart package installer and build runner
             command = (
-                f"sh -c 'if [ -f {startup_file} ]; then node {startup_file}; "
+                f"sh -c 'if [ -f package.json ] && [ ! -d node_modules ]; then npm install --production=false 2>/dev/null; fi; "
+                f"if [ -f {startup_file} ]; then node {startup_file}; "
                 "elif [ -f index.js ]; then node index.js; "
                 "elif [ -f app.js ]; then node app.js; "
+                "elif [ -f server.js ]; then node server.js; "
+                "elif grep -q '\"start\":' package.json 2>/dev/null; then npm start; "
                 "else npx serve -l 80 .; fi'"
             )
             service_definition["command"] = command
@@ -143,6 +192,9 @@ class TemplateComposer:
             "networks": {
                 network_name: {
                     "driver": "bridge"
+                },
+                "database-center_db_network": {
+                    "external": True
                 }
             }
         }

@@ -48,3 +48,77 @@
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }
+
+/* Shimmer Skeleton effect tema terang / krim cerah */
+.skeleton-shimmer-light {
+  background: linear-gradient(90deg, #E6D7C3 25%, #F5EDE0 50%, #E6D7C3 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* Alpine.js Transition & Keyframes Animation */
+@keyframes alpine-enter {
+  0% {
+    opacity: 0;
+    transform: scale(0.96) translateY(14px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes alpine-fade-in {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes alpine-pop {
+  0% {
+    transform: scale(0.92);
+    opacity: 0.6;
+  }
+  60% {
+    transform: scale(1.03);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.alpine-transition {
+  animation: alpine-enter 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.alpine-fade {
+  animation: alpine-fade-in 0.25s ease-out forwards;
+}
+
+.alpine-pop-in {
+  animation: alpine-pop 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.alpine-hover-card {
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.alpine-hover-card:hover {
+  transform: translateY(-2px) scale(1.015);
+}
+
+@keyframes spin-reverse {
+  from {
+    transform: rotate(360deg);
+  }
+  to {
+    transform: rotate(0deg);
+  }
+}
+.animate-spin-reverse {
+  animation: spin-reverse 2s linear infinite;
+}

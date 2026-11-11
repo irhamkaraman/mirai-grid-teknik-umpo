@@ -9,10 +9,11 @@ class Settings(BaseSettings):
     APP_SECRET_KEY: str = Field(default="miraigrid-super-secret-key-change-in-production-32c", min_length=32)
     API_PORT: int = 8000
     FRONTEND_PORT: int = 3000
-    CORS_ORIGINS: str = "http://localhost:3000,http://76.76.76.189:3000"
+    CORS_ORIGINS: str = "http://localhost:3000,http://76.76.76.189:3000,http://100.122.201.18:3000,http://100.122.201.18,http://76.76.76.189,https://miraigrid.web.id,http://miraigrid.web.id,https://api.miraigrid.web.id,http://api.miraigrid.web.id"
 
     # Subdomain base
     BASE_DOMAIN: str = "76.76.76.189"
+    PUBLIC_BASE_DOMAIN: str = "miraigrid.web.id"
 
     # AES-256-GCM key (32 bytes base64 encoded)
     DATA_ENCRYPTION_KEY: str = "r3k1a9z7P0bQxW+V4sE9dF2gH1jK8lM5nO3pQ7rT6vU="
@@ -48,6 +49,10 @@ class Settings(BaseSettings):
     DEFAULT_MAX_MEMORY_MB: int = 256
     DEFAULT_MAX_CPU_CORES: float = 0.5
     DEFAULT_MAX_DISK_MB: int = 500
+
+    # JupyterHub SSO
+    JUPYTER_SSO_SECRET: str = Field(default="miraigrid-jupyter-sso-secret-key-32chars-minimum-labit-umpo", min_length=0)
+    JUPYTER_SSO_URL: str = "http://76.76.76.188:8090/hub/sso/miraigrid"
 
     @property
     def cors_origin_list(self) -> List[str]:

@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Database, Plus, Trash2, Copy, Check, Eye, EyeOff, Server, ExternalLink, AlertCircle, Wand2 } from 'lucide-react'
+import { Database, Plus, Trash2, Copy, Check, Eye, EyeOff, Server, ExternalLink, AlertCircle, Wand2, Search, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react'
 
 import { toast } from 'sonner'
 
@@ -42,10 +42,18 @@ function fallbackCopy(text) {
   }
 }
 
-export default function DatabasesView() {
+export default function DatabasesView({ user: propUser }) {
+  const currentUser = propUser || (() => {
+    try {
+      return JSON.parse(localStorage.getItem('miraigrid_user') || '{}')
+    } catch {
+      return {}
+    }
+  })()
+  const isAdmin = currentUser?.role === 'admin'
 
   const [databases, setDatabases] = useState([])
-
+  const [quota, setQuota] = useState(null)
   const [externalDbs, setExternalDbs] = useState([])
 
   const [loading, setLoading] = useState(true)
@@ -88,6 +96,12 @@ export default function DatabasesView() {
 
   const [extPass, setExtPass] = useState('')
 
+  // Search, Filter & Pagination for Databases
+  const [searchDb, setSearchDb] = useState('')
+  const [engineFilter, setEngineFilter] = useState('all') // 'all', 'postgres', 'mariadb'
+  const [dbPage, setDbPage] = useState(1)
+  const dbPageSize = 10
+
   useEffect(() => {
 
     fetchDatabases()
@@ -106,25 +120,19 @@ export default function DatabasesView() {
   }, [location.search, navigate])
 
   const fetchDatabases = async () => {
-
     try {
-
-      const res = await api.get('/databases/my-databases')
-
-      setDatabases(res.data)
-
+      const [res, qRes] = await Promise.allSettled([
+        api.get('/databases/my-databases'),
+        api.get('/quotas/my-quota')
+      ])
+      if (res.status === 'fulfilled') setDatabases(res.value.data)
+      if (qRes.status === 'fulfilled') setQuota(qRes.value.data)
     } catch (err) {
-
       console.error(err)
-
       toast.error('Gagal memuat database.')
-
     } finally {
-
       setLoading(false)
-
     }
-
   }
 
   const fetchExternalDbs = async () => {
@@ -138,6 +146,43 @@ export default function DatabasesView() {
     } catch (err) {}
 
   }
+
+  // Filter & Search Logic
+  const filteredDatabases = useMemo(() => {
+    return databases.filter((db) => {
+      const q = searchDb.toLowerCase().trim()
+      const matchesSearch =
+        !q ||
+        db.db_name?.toLowerCase().includes(q) ||
+        db.db_username?.toLowerCase().includes(q) ||
+        db.engine?.toLowerCase().includes(q)
+
+      if (!matchesSearch) return false
+
+      if (engineFilter === 'all') return true
+      if (engineFilter === 'postgres') return db.engine === 'postgres'
+      if (engineFilter === 'mariadb') return db.engine === 'mariadb' || db.engine === 'mysql'
+      return true
+    })
+  }, [databases, searchDb, engineFilter])
+
+  useEffect(() => {
+    setDbPage(1)
+  }, [searchDb, engineFilter])
+
+  const dbCounts = useMemo(() => {
+    return {
+      all: databases.length,
+      postgres: databases.filter((db) => db.engine === 'postgres').length,
+      mariadb: databases.filter((db) => db.engine === 'mariadb' || db.engine === 'mysql').length,
+    }
+  }, [databases])
+
+  const totalDbPages = Math.ceil(filteredDatabases.length / dbPageSize)
+  const paginatedDatabases = useMemo(() => {
+    const start = (dbPage - 1) * dbPageSize
+    return filteredDatabases.slice(start, start + dbPageSize)
+  }, [filteredDatabases, dbPage, dbPageSize])
 
   const handleCreateDatabase = async (e) => {
 
@@ -301,9 +346,14 @@ export default function DatabasesView() {
 
   }
 
+  const dbStorageMaxMb = quota?.max_database_disk_mb || 100
+  const dbStorageUsedMb = quota?.used_database_disk_mb ?? parseFloat((databases.length * 12.5).toFixed(1))
+  const dbStoragePercent = Math.min(100, Math.round((dbStorageUsedMb / dbStorageMaxMb) * 100))
+  const isDbStorageFull = (dbStorageUsedMb + 12.5) > dbStorageMaxMb
+
   return (
 
-    <div className="space-y-8">
+    <div className="space-y-8 w-full">
 
       {/* Header: Judul Coklat Gelap Tebal di atas Latar Krim */}
 
@@ -347,73 +397,141 @@ export default function DatabasesView() {
 
       </div>
 
+      {/* STORAGE DATABASE QUOTA BANNER */}
+      <div className="p-5 rounded-3xl bg-[#2B1810] border border-[#4D2D1E] shadow-xl text-[#FAF5EC] flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center space-x-3.5">
+          <div className="h-11 w-11 rounded-2xl bg-[#5A3521]/50 border border-[#7D492F] flex items-center justify-center text-[#E8C58D] shrink-0">
+            <Database className="h-5 w-5" />
+          </div>
+          <div>
+            <div className="flex items-center space-x-2">
+              <span className="text-xs font-semibold text-[#FAF5EC]">Storage Database Mandiri</span>
+            </div>
+            <p className="text-xs text-[#DFCDB5] mt-0.5 font-sans">
+              Alokasi database dibatasi berdasarkan kapasitas storage akun Anda. Anda bebas membuat dan mengelola beberapa database praktikum selama kuota penyimpanan mencukupi.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4 shrink-0">
+          <div className="min-w-[170px]">
+            <div className="flex items-center justify-between text-xs font-mono mb-1.5">
+              <span className="text-[#DFCDB5]">Terpakai:</span>
+              <span className="font-bold text-[#FAF5EC]">{dbStorageUsedMb} / {dbStorageMaxMb} MB</span>
+            </div>
+            <div className="w-full bg-[#1C0F0A] h-2 rounded-full overflow-hidden border border-[#3D2316]">
+              <div
+                className={`h-full rounded-full transition-all duration-500 ${
+                  dbStoragePercent >= 90 ? 'bg-rose-500' : dbStoragePercent >= 70 ? 'bg-amber-400' : 'bg-emerald-400'
+                }`}
+                style={{ width: `${dbStoragePercent}%` }}
+              ></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Internal Databases Table (Model ala Halaman Deploy/ProjectsView) */}
-
-      <div>
-
-        <div className="flex items-center justify-between mb-3.5">
-
+      <div className="space-y-3.5">
+        <div className="flex items-center justify-between">
           <h3 className="text-base font-serif font-bold text-[#26160F] flex items-center space-x-2">
-
             <Server className="h-4 w-4 text-[#5A3521]" />
-
             <span>Database Server Lab Anda</span>
-
           </h3>
-
           <span className="text-[11px] text-[#5C3B29] font-mono">
-
             {databases.length} Database Terdaftar • Terisolasi Penuh
-
           </span>
+        </div>
 
+        {/* Search, Filter & Control Toolbar */}
+        <div className="bg-[#2B1810] border border-[#4D2D1E] rounded-2xl p-4 flex flex-col md:flex-row items-center justify-between gap-3 shadow-md">
+          <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto flex-1">
+            {/* Search Box */}
+            <div className="relative w-full sm:w-72">
+              <Search className="h-4 w-4 text-[#A47E65] absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Cari nama database, user, engine..."
+                value={searchDb}
+                onChange={(e) => setSearchDb(e.target.value)}
+                className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl pl-9 pr-3 py-2 text-xs text-[#FAF5EC] placeholder-[#A47E65] focus:outline-none focus:border-[#C49767] transition font-sans"
+              />
+            </div>
+
+            {/* Filter Pills */}
+            <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
+              <button
+                onClick={() => setEngineFilter('all')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-medium transition shrink-0 ${
+                  engineFilter === 'all'
+                    ? 'bg-amber-600 text-amber-950 font-bold shadow'
+                    : 'bg-[#1C0F0A] text-[#DFCDB5] hover:bg-[#382115] border border-[#3E2316]'
+                }`}
+              >
+                Semua ({dbCounts.all})
+              </button>
+              <button
+                onClick={() => setEngineFilter('postgres')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-medium transition shrink-0 ${
+                  engineFilter === 'postgres'
+                    ? 'bg-indigo-600 text-indigo-950 font-bold shadow'
+                    : 'bg-[#1C0F0A] text-indigo-300 hover:bg-[#241B33] border border-indigo-900/40'
+                }`}
+              >
+                PostgreSQL ({dbCounts.postgres})
+              </button>
+              <button
+                onClick={() => setEngineFilter('mariadb')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-medium transition shrink-0 ${
+                  engineFilter === 'mariadb'
+                    ? 'bg-amber-600 text-amber-950 font-bold shadow'
+                    : 'bg-[#1C0F0A] text-amber-300 hover:bg-[#282116] border border-amber-900/40'
+                }`}
+              >
+                MariaDB / MySQL ({dbCounts.mariadb})
+              </button>
+            </div>
+          </div>
+
+          <button
+            onClick={() => fetchDatabases()}
+            title="Muat Ulang Database"
+            className="p-2 rounded-xl bg-[#1C0F0A] hover:bg-[#3A2216] text-[#DFCDB5] border border-[#3E2316] transition shrink-0"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+          </button>
         </div>
 
         {loading ? (
-
           <SkeletonTable rows={3} />
-
         ) : databases.length === 0 ? (
-
           <div className="text-center py-14 bg-[#2B1810] border border-[#4D2D1E] rounded-3xl p-6 text-[#FAF5EC] shadow-xl">
-
             <Database className="h-8 w-8 text-[#A47E65] mx-auto mb-2" />
-
             <p className="text-xs text-[#DFCDB5]">Belum ada database dibuat.</p>
-
           </div>
-
         ) : (
-
           <div className="bg-[#2B1810] border border-[#4D2D1E] rounded-3xl overflow-hidden shadow-2xl text-[#FAF5EC]">
-
             <div className="overflow-x-auto">
-
               <table className="w-full text-left text-xs">
-
                 <thead className="bg-[#1C0F0A] text-[#DFCDB5] uppercase text-[10px] tracking-wider border-b border-[#3E2316]">
-
                   <tr>
-
                     <th className="p-4 font-semibold">Database & Engine</th>
-
                     <th className="p-4 font-semibold">Kredensial User</th>
-
                     <th className="p-4 font-semibold">Host & Port</th>
-
                     <th className="p-4 font-semibold">Connection URI</th>
-
                     <th className="p-4 font-semibold">Web GUI (Isolasi)</th>
-
                     <th className="p-4 text-right font-semibold">Aksi</th>
-
                   </tr>
-
                 </thead>
-
                 <tbody className="divide-y divide-[#3E2316]">
-
-                  {databases.map((db) => {
+                  {filteredDatabases.length === 0 ? (
+                    <tr>
+                      <td colSpan="6" className="p-8 text-center text-[#A47E65]">
+                        Tidak ada database yang cocok dengan pencarian atau filter yang dipilih.
+                      </td>
+                    </tr>
+                  ) : (
+                    paginatedDatabases.map((db) => {
 
                     const isPg = db.engine === 'postgres'
 
@@ -448,14 +566,6 @@ export default function DatabasesView() {
                           <div className="font-bold text-sm text-[#FAF5EC] font-mono mt-1">
 
                             {db.db_name}
-
-                          </div>
-
-                          <div className="text-[10px] text-emerald-400 font-mono mt-0.5 flex items-center space-x-1">
-
-                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
-
-                            <span>Dedicated Isolated Role</span>
 
                           </div>
 
@@ -554,91 +664,59 @@ export default function DatabasesView() {
                         </td>
 
                         {/* 5. Web GUI (CloudBeaver Auto-Connect & phpPgAdmin/phpMyAdmin) */}
-
                         <td className="p-4">
-
                           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
-
-                            {/* CloudBeaver Auto-Connect */}
-
-                            <a
-
-                              href={`http://${window.location.hostname}:8978/#/`}
-
-                              target="_blank"
-
-                              rel="noreferrer"
-
-                              onClick={() => {
-
-                                safeCopy(db.db_password)
-
-                                toast.success(`Membuka CloudBeaver! Database '${db.db_name}' terhubung otomatis. Password disalin ke clipboard.`, { duration: 5000 })
-
-                              }}
-
-                              className="inline-flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl bg-[#2E1810] hover:bg-[#3E2216] border border-[#5A3521] text-xs text-[#E8DCB8] hover:text-white transition font-medium shadow-sm"
-
-                              title="Buka CloudBeaver (Database auto-connect & password tersalin)"
-
-                            >
-
-                              <Database className="h-3.5 w-3.5 text-[#C49767]" />
-
-                              <span>CloudBeaver</span>
-
-                              <ExternalLink className="h-3 w-3 text-[#A47E65]" />
-
-                            </a>
-
-                            {/* Dedicated Manager (phpPgAdmin / phpMyAdmin with Auto-Login SSO) */}
-
-                            {isPg ? (
-
-                              <button
-
-                                type="button"
-
-                                onClick={() => launchDatabaseSSO('postgres', db.id)}
-
-                                className="inline-flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl bg-[#3A2216] hover:bg-[#4D2E1F] border border-[#5E3926] text-xs text-[#E8DCB8] hover:text-white transition font-medium shadow-sm active:scale-95 cursor-pointer"
-
-                                title="Auto-Login ke phpPgAdmin (Sesi Terisolasi)"
-
+                            {/* CloudBeaver Auto-Connect (Hanya untuk Administrator - Isolasi Multi-Tenant) */}
+                            {isAdmin && (
+                              <a
+                                href={
+                                  window.location.hostname.includes('miraigrid.web.id')
+                                    ? 'https://cloudbeaver.miraigrid.web.id/#/'
+                                    : `http://${window.location.hostname}:8978/#/`
+                                }
+                                target="_blank"
+                                rel="noreferrer"
+                                onClick={() => {
+                                  safeCopy(db.db_password)
+                                  toast.success(`Membuka CloudBeaver! Database '${db.db_name}' terhubung otomatis. Password disalin ke clipboard.`, { duration: 5000 })
+                                }}
+                                className="inline-flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl bg-[#2E1810] hover:bg-[#3E2216] border border-[#5A3521] text-xs text-[#E8DCB8] hover:text-white transition font-medium shadow-sm"
+                                title="Buka CloudBeaver Admin Studio (Database auto-connect & password tersalin)"
                               >
-
-                                <span>phpPgAdmin</span>
-
+                                <Database className="h-3.5 w-3.5 text-[#C49767]" />
+                                <span>CloudBeaver</span>
                                 <ExternalLink className="h-3 w-3 text-[#A47E65]" />
-
-                              </button>
-
-                            ) : (
-
-                              <button
-
-                                type="button"
-
-                                onClick={() => launchDatabaseSSO('mariadb', db.id)}
-
-                                className="inline-flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl bg-[#3D2516] hover:bg-[#52331F] border border-[#633C24] text-xs text-[#E8C58D] hover:text-white transition font-medium shadow-sm active:scale-95 cursor-pointer"
-
-                                title="Auto-Login ke phpMyAdmin (Sesi Terisolasi)"
-
-                              >
-
-                                <Server className="h-3.5 w-3.5 text-[#E8C58D]" />
-
-                                <span>phpMyAdmin</span>
-
-                                <ExternalLink className="h-3 w-3 text-[#A47E65]" />
-
-                              </button>
-
+                              </a>
                             )}
 
+                            {/* Dedicated Manager (phpPgAdmin / phpMyAdmin with Auto-Login SSO - 100% Terisolasi Anti-Bocor) */}
+                            {isPg ? (
+                              <button
+                                type="button"
+                                onClick={() => launchDatabaseSSO('postgres', db.id)}
+                                className="inline-flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl bg-[#3A2216] hover:bg-[#4D2E1F] border border-[#5E3926] text-xs text-[#E8DCB8] hover:text-white transition font-medium shadow-sm active:scale-95 cursor-pointer"
+                                title="Auto-Login ke phpPgAdmin (Sesi Terisolasi & Anti-Bocor)"
+                              >
+                                {!isAdmin && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>}
+                                <span>phpPgAdmin</span>
+                                {!isAdmin && <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-950/60 text-emerald-400 border border-emerald-800/40 font-mono">Terisolasi</span>}
+                                <ExternalLink className="h-3 w-3 text-[#A47E65]" />
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => launchDatabaseSSO('mariadb', db.id)}
+                                className="inline-flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl bg-[#3D2516] hover:bg-[#52331F] border border-[#633C24] text-xs text-[#E8C58D] hover:text-white transition font-medium shadow-sm active:scale-95 cursor-pointer"
+                                title="Auto-Login ke phpMyAdmin (Sesi Terisolasi & Anti-Bocor)"
+                              >
+                                {!isAdmin && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>}
+                                <Server className="h-3.5 w-3.5 text-[#E8C58D]" />
+                                <span>phpMyAdmin</span>
+                                {!isAdmin && <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-950/60 text-emerald-400 border border-emerald-800/40 font-mono">Terisolasi</span>}
+                                <ExternalLink className="h-3 w-3 text-[#A47E65]" />
+                              </button>
+                            )}
                           </div>
-
                         </td>
 
                         {/* 6. Aksi */}
@@ -662,17 +740,53 @@ export default function DatabasesView() {
                         </td>
 
                       </tr>
-
                     )
-
-                  })}
-
+                  }))}
                 </tbody>
-
               </table>
-
             </div>
 
+            {/* Pagination Controls */}
+            {filteredDatabases.length > 0 && (
+              <div className="bg-[#1C0F0A] px-5 py-3.5 border-t border-[#3E2316] flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-[#DFCDB5]">
+                <span className="font-mono text-[11px] text-[#A47E65]">
+                  Menampilkan {(dbPage - 1) * dbPageSize + 1} - {Math.min(dbPage * dbPageSize, filteredDatabases.length)} dari {filteredDatabases.length} database
+                </span>
+                {totalDbPages > 1 && (
+                  <div className="flex items-center space-x-1.5">
+                    <button
+                      onClick={() => setDbPage((p) => Math.max(1, p - 1))}
+                      disabled={dbPage === 1}
+                      className="p-1.5 rounded-lg bg-[#2B1810] hover:bg-[#3D2317] border border-[#4D2D1E] text-[#DFCDB5] disabled:opacity-40 transition"
+                      title="Halaman Sebelumnya"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </button>
+                    {Array.from({ length: totalDbPages }, (_, i) => i + 1).map((page) => (
+                      <button
+                        key={page}
+                        onClick={() => setDbPage(page)}
+                        className={`px-2.5 py-1 rounded-lg font-mono text-xs transition ${
+                          dbPage === page
+                            ? 'bg-[#C49767] text-[#2B1810] font-bold shadow-sm'
+                            : 'bg-[#2B1810] hover:bg-[#3D2317] border border-[#4D2D1E] text-[#DFCDB5]'
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    ))}
+                    <button
+                      onClick={() => setDbPage((p) => Math.min(totalDbPages, p + 1))}
+                      disabled={dbPage === totalDbPages}
+                      className="p-1.5 rounded-lg bg-[#2B1810] hover:bg-[#3D2317] border border-[#4D2D1E] text-[#DFCDB5] disabled:opacity-40 transition"
+                      title="Halaman Selanjutnya"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
         )}
@@ -731,9 +845,15 @@ export default function DatabasesView() {
 
       <ModalPortal isOpen={showCreateModal}>
 
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-150">
+        <div
+          onClick={() => setShowCreateModal(false)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-in fade-in duration-150"
+        >
 
-          <div className="w-full max-w-md bg-[#2B1810] border border-[#4D2D1E] rounded-3xl shadow-2xl p-6 sm:p-7 text-[#FAF5EC]">
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md bg-[#2B1810] border border-[#4D2D1E] rounded-3xl shadow-2xl p-6 sm:p-7 text-[#FAF5EC] animate-in zoom-in-95 duration-150"
+          >
 
             <h3 className="text-lg font-serif font-bold text-[#FAF5EC] mb-1">Buat Database Praktikum</h3>
 
@@ -893,9 +1013,15 @@ export default function DatabasesView() {
 
       <ModalPortal isOpen={showExternalModal}>
 
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-150">
+        <div
+          onClick={() => setShowExternalModal(false)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-in fade-in duration-150"
+        >
 
-          <div className="w-full max-w-md bg-[#2B1810] border border-[#4D2D1E] rounded-3xl shadow-2xl p-6 sm:p-7 text-[#FAF5EC]">
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md bg-[#2B1810] border border-[#4D2D1E] rounded-3xl shadow-2xl p-6 sm:p-7 text-[#FAF5EC] animate-in zoom-in-95 duration-150"
+          >
 
             <h3 className="text-lg font-serif font-bold text-[#FAF5EC] mb-1">Simpan Database Eksternal</h3>
 

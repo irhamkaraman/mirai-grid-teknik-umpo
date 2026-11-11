@@ -16,10 +16,61 @@ export default function FilesView({ onNavigate, isStandalone = false }) {
 
   const fetchProjects = async () => {
     try {
-      const res = await api.get('/projects')
-      setProjects(res.data || [])
+      const [resProj, resGit] = await Promise.all([
+        api.get('/projects'),
+        api.get('/git/repositories').catch(() => ({ data: { repositories: [] } }))
+      ])
+      const projList = resProj.data || []
+      const repoList = resGit.data?.repositories || []
+      
+      const repos = repoList.map(r => {
+        const matchingProj = projList.find(p => 
+          (r.target_project_id && p.id === r.target_project_id) || 
+          p.name === r.name ||
+          (p.config_json && p.config_json.includes(r.name))
+        )
+        return {
+          id: r.id,
+          name: r.name,
+          owner_username: r.owner_username || 'user',
+          virtual_path: r.path || `/home/${r.owner_username || 'user'}/repositories/${r.name}`,
+          is_git: true,
+          is_deployed: !!matchingProj,
+          project_id: matchingProj?.id,
+          template_type: matchingProj?.template_type,
+          status: matchingProj?.status,
+          language: matchingProj?.template_type || 'git',
+          in_repositories: true
+        }
+      })
+
+      const standalones = []
+      projList.forEach(p => {
+        const isRepo = repos.some(r => 
+          r.name === p.name || 
+          (r.project_id && r.project_id === p.id) ||
+          (p.config_json && p.config_json.includes(r.name))
+        )
+        if (!isRepo) {
+          standalones.push({
+            id: p.id,
+            project_id: p.id,
+            name: p.name,
+            owner_username: p.owner_username || 'user',
+            virtual_path: `/home/${p.owner_username || 'user'}/${p.name}`,
+            is_git: false,
+            is_deployed: true,
+            template_type: p.template_type,
+            status: p.status,
+            language: p.template_type || 'web',
+            in_repositories: false
+          })
+        }
+      })
+
+      setProjects([...repos, ...standalones])
     } catch (err) {
-      toast.error('Gagal memuat daftar project.')
+      toast.error('Gagal memuat daftar workspace & repositori.')
     } finally {
       setLoading(false)
     }
@@ -27,31 +78,10 @@ export default function FilesView({ onNavigate, isStandalone = false }) {
 
   if (loading) {
     return (
-      <div className="h-screen w-full flex items-center justify-center bg-[#1C0F0A] text-[#FAF5EC]">
-        <div className="flex flex-col items-center space-y-3">
-          <Spinner className="h-8 w-8 text-[#C49767]" />
-          <p className="text-xs text-[#DFCDB5]">Memuat File Explorer...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (projects.length === 0) {
-    return (
-      <div className="h-screen w-full flex items-center justify-center bg-[#1C0F0A] p-6 text-[#FAF5EC]">
-        <div className="text-center max-w-md bg-[#24140C] border border-[#3E2316] rounded-2xl p-8 shadow-2xl">
-          <Layers className="h-12 w-12 text-[#A47E65] mx-auto mb-3" />
-          <h4 className="text-lg font-serif font-bold text-[#FAF5EC]">Belum Ada Workspace Project</h4>
-          <p className="text-xs text-[#DFCDB5] mt-1.5 mb-6">
-            Anda belum memiliki project aplikasi aktif. Silakan buat project terlebih dahulu di menu Deploy untuk mulai mengelola file praktikum.
-          </p>
-          <button
-            onClick={() => onNavigate('/deploy')}
-            className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-xl text-xs font-semibold bg-[#5A3521] hover:bg-[#6D4029] text-[#FAF5EC] transition"
-          >
-            <span>Buka Menu Deploy</span>
-            <ArrowRight className="h-4 w-4" />
-          </button>
+      <div className="h-screen w-full flex items-center justify-center bg-[#E6D7BE] text-[#26160F]">
+        <div className="flex flex-col items-center space-y-3 bg-[#FDFBF7] border border-[#D4C1AC] p-8 rounded-3xl shadow-xl text-[#26160F]">
+          <Spinner className="h-8 w-8 text-[#946132]" />
+          <p className="text-xs text-[#704D36]">Memuat File Explorer...</p>
         </div>
       </div>
     )
@@ -59,9 +89,10 @@ export default function FilesView({ onNavigate, isStandalone = false }) {
 
   return (
     <ErrorBoundary onReset={fetchProjects}>
-      <div className="h-full w-full">
+      <div className="h-full w-full flex flex-col overflow-hidden">
         <FileManager
           projects={projects}
+          isHomeRoot={true}
           onClose={() => {
             if (window.opener) {
               window.close()

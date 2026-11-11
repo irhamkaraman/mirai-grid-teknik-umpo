@@ -15,8 +15,13 @@ export default function ConsolePage({ project, onBack }) {
   const isPhpProject = project?.language === 'php' || (project?.template_type && project.template_type.startsWith('php'))
   const isStaticProject = project?.language === 'static' || (project?.template_type && project.template_type.startsWith('static'))
   const defaultProjectRoot = isPhpProject ? '/var/www/html' : isStaticProject ? '/usr/share/nginx/html' : '/app'
-  const projectRoot = project?.app_config?.app_root
-    ? `${defaultProjectRoot}/${String(project.app_config.app_root).replace(/^\/+|\/+$/g, '')}`
+  const rawSubpath = project?.app_config?.app_root_subpath || (
+    project?.app_config?.app_root && !String(project.app_config.app_root).startsWith('/')
+      ? project.app_config.app_root
+      : ''
+  )
+  const projectRoot = rawSubpath
+    ? `${defaultProjectRoot}/${String(rawSubpath).replace(/^\/+|\/+$/g, '')}`
     : defaultProjectRoot
 
   // Connection settings

@@ -1,15 +1,23 @@
+import asyncio
 import secrets
 import string
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
 import aiosqlite
 from app.core.database import get_db
-from app.core.security import hash_password
+from app.core.security import hash_password, encrypt_secret, decrypt_secret
 from app.models.schemas import (
     CohortCreate, ClassCreate, BulkAccountGenerateRequest,
     BulkCsvImportRequest, UserResponse, AuditLogResponse, UserCreateManual,
-    BulkDeleteUsersRequest, UserQuotaUpdateRequest, BulkQuotaUpdateRequest
+    BulkDeleteUsersRequest, UserQuotaUpdateRequest, BulkQuotaUpdateRequest,
+    StudentDatabaseCreate
 )
+from app.services.db_provisioner import DatabaseProvisioner
+from app.services.disk_usage import calculate_account_disk_usage
+from app.services.cloudbeaver_sync import sync_cloudbeaver_datasources
+from app.services.user_purge import UserPurgeService
+from app.services.user_home import ensure_user_home
+from app.services.portainer import portainer
 from app.api.deps import require_admin, get_client_ip
 
 router = APIRouter(prefix="/admin", tags=["Administrator"])
@@ -118,19 +126,25 @@ async def create_manual_user(
     pass_hash = hash_password(body.password)
     must_change = 1 if body.must_change_password else 0
 
+    onboarding_step = 4 if body.role == "admin" else 1
+    onboarding_completed = 1 if body.role == "admin" else 0
+
     cursor = await db.execute("""
-        INSERT INTO users (username, name, email, password_hash, role, class_id, must_change_password, is_active)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 1)
-    """, (clean_username, clean_name, body.email, pass_hash, body.role, body.class_id, must_change))
+        INSERT INTO users (username, name, email, password_hash, role, class_id, must_change_password, is_active, onboarding_step, onboarding_completed)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+    """, (clean_username, clean_name, body.email or f"{clean_username}@umpo.ac.id", pass_hash, body.role, body.class_id, must_change, onboarding_step, onboarding_completed))
     user_id = cursor.lastrowid
 
-    # Create quota (admin has larger quota)
+    # Create quota (admin has larger quota, student standard sandbox)
     max_proj = 999 if body.role == "admin" else 2
     max_db = 999 if body.role == "admin" else 2
+    max_mem = 1024 if body.role == "admin" else 256
+    max_cpu = 2.0 if body.role == "admin" else 0.5
+    max_disk = 5000 if body.role == "admin" else 500
     await db.execute("""
         INSERT INTO quotas (user_id, max_projects, max_databases, max_memory_mb, max_cpu_cores, max_disk_mb)
-        VALUES (?, ?, ?, 512, 1.0, 1000)
-    """, (user_id, max_proj, max_db))
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, (user_id, max_proj, max_db, max_mem, max_cpu, max_disk))
 
     ip = get_client_ip(request)
     await db.execute("""
@@ -138,6 +152,11 @@ async def create_manual_user(
         VALUES (?, 'CREATE_USER_MANUAL', ?, ?, ?)
     """, (admin["id"], clean_username, ip, f"Created {body.role} user '{clean_username}'"))
     await db.commit()
+
+    try:
+        ensure_user_home(clean_username, clean_name, body.email)
+    except Exception as e:
+        print(f"[Warn] User home provisioning in admin create failed: {e}")
 
     return {
         "success": True,
@@ -162,14 +181,25 @@ async def delete_user(
     if not u:
         raise HTTPException(status_code=404, detail="User tidak ditemukan.")
 
-    await db.execute("DELETE FROM users WHERE id = ?", (user_id,))
+    if u["role"] == "admin":
+        raise HTTPException(status_code=400, detail="Akun dengan role admin dilindungi dari penghapusan.")
+
+    # 1. Completely purge user and ALL underlying resources (containers, databases, files, configs)
+    purge_report = await UserPurgeService.purge_user(db, user_id, u["username"])
+
+    # 2. Record audit log
     ip = get_client_ip(request)
     await db.execute("""
         INSERT INTO audit_logs (actor_id, action, target_resource, ip_address, details)
         VALUES (?, 'DELETE_USER', ?, ?, ?)
-    """, (admin["id"], u["username"], ip, f"Deleted user '{u['username']}'"))
+    """, (admin["id"], u["username"], ip, f"Purged user '{u['username']}' completely (databases, containers, files, records)"))
     await db.commit()
-    return {"success": True, "message": f"Akun '{u['username']}' berhasil dihapus."}
+
+    return {
+        "success": True,
+        "message": f"Akun '{u['username']}' beserta seluruh database, file, container, dan konfigurasinya berhasil dihapus bersih.",
+        "purge_report": purge_report
+    }
 
 @router.post("/users/bulk-delete")
 async def bulk_delete_users(
@@ -191,29 +221,93 @@ async def bulk_delete_users(
     rows = await cursor.fetchall()
 
     # Filter out admin role users
-    valid_delete_ids = [r["id"] for r in rows if r["role"] != "admin"]
-    deleted_usernames = [r["username"] for r in rows if r["role"] != "admin"]
+    valid_delete_rows = [r for r in rows if r["role"] != "admin"]
+    deleted_usernames = [r["username"] for r in valid_delete_rows]
 
-    if not valid_delete_ids:
+    if not valid_delete_rows:
         raise HTTPException(status_code=400, detail="Tidak ada akun mahasiswa yang dapat dihapus (akun admin dilindungi).")
 
-    v_placeholders = ",".join("?" for _ in valid_delete_ids)
-    await db.execute(f"DELETE FROM users WHERE id IN ({v_placeholders})", valid_delete_ids)
+    # Purge each user completely
+    purge_reports = []
+    for r in valid_delete_rows:
+        rep = await UserPurgeService.purge_user(db, r["id"], r["username"])
+        purge_reports.append(rep)
 
     ip = get_client_ip(request)
     summary_usernames = ", ".join(deleted_usernames[:10]) + ("..." if len(deleted_usernames) > 10 else "")
     await db.execute("""
         INSERT INTO audit_logs (actor_id, action, target_resource, ip_address, details)
         VALUES (?, 'BULK_DELETE_USERS', 'users', ?, ?)
-    """, (admin["id"], ip, f"Bulk deleted {len(deleted_usernames)} accounts: {summary_usernames}"))
+    """, (admin["id"], ip, f"Bulk purged {len(deleted_usernames)} accounts cleanly: {summary_usernames}"))
     await db.commit()
 
     return {
         "success": True,
         "deleted_count": len(deleted_usernames),
         "deleted_usernames": deleted_usernames,
-        "message": f"Berhasil menghapus massal {len(deleted_usernames)} akun mahasiswa."
+        "message": f"Berhasil menghapus massal {len(deleted_usernames)} akun mahasiswa beserta seluruh resource-nya.",
+        "purge_reports": purge_reports
     }
+
+@router.get("/users/{user_id}/detail")
+async def get_user_detail(
+    user_id: int,
+    admin: dict = Depends(require_admin),
+    db: aiosqlite.Connection = Depends(get_db)
+):
+    cursor = await db.execute("""
+        SELECT u.*, c.name as class_name, co.year as cohort_year,
+               COALESCE(q.max_disk_mb, 1000) as max_disk_mb,
+               COALESCE(q.max_memory_mb, 512) as max_memory_mb,
+               COALESCE(q.max_cpu_cores, 1.0) as max_cpu_cores,
+               COALESCE(q.max_processes, 50) as max_processes,
+               COALESCE(q.max_projects, 2) as max_projects,
+               COALESCE(q.max_databases, 99) as max_databases,
+               COALESCE(q.max_database_disk_mb, 100) as max_database_disk_mb,
+               COALESCE(q.allow_postgres, 1) as allow_postgres,
+               COALESCE(q.allow_mariadb, 1) as allow_mariadb,
+               COALESCE(q.allow_remote_db, 1) as allow_remote_db
+        FROM users u
+        LEFT JOIN classes c ON u.class_id = c.id
+        LEFT JOIN cohorts co ON c.cohort_id = co.id
+        LEFT JOIN quotas q ON u.id = q.user_id
+        WHERE u.id = ?
+    """, (user_id,))
+    u = await cursor.fetchone()
+    if not u:
+        raise HTTPException(status_code=404, detail="Akun pengguna tidak ditemukan.")
+
+    user_data = dict(u)
+
+    # Databases
+    dbs_cur = await db.execute("""
+        SELECT * FROM student_databases
+        WHERE user_id = ?
+        ORDER BY created_at DESC
+    """, (user_id,))
+    dbs = await dbs_cur.fetchall()
+    db_list = []
+    for r in dbs:
+        decrypted_pass = decrypt_secret(r["db_password_enc"])
+        uri_scheme = "postgresql" if r["engine"] == "postgres" else "mysql"
+        db_list.append({
+            "id": r["id"],
+            "engine": r["engine"],
+            "db_name": r["db_name"],
+            "db_username": r["db_username"],
+            "db_password": decrypted_pass,
+            "host": r["host"],
+            "port": r["port"],
+            "connection_uri": f"{uri_scheme}://{r['db_username']}:{decrypted_pass}@{r['host']}:{r['port']}/{r['db_name']}",
+            "created_at": r["created_at"]
+        })
+    user_data["databases"] = db_list
+
+    # Projects count
+    p_cur = await db.execute("SELECT COUNT(*) FROM projects WHERE user_id = ?", (user_id,))
+    user_data["projects_count"] = (await p_cur.fetchone())[0]
+
+    return {"success": True, "user": user_data}
 
 @router.put("/users/{user_id}/quota")
 async def update_user_quota(
@@ -234,22 +328,55 @@ async def update_user_quota(
         await db.execute("""
             UPDATE quotas
             SET max_disk_mb = ?, max_memory_mb = ?, max_cpu_cores = ?,
+                max_processes = COALESCE(?, max_processes),
                 max_projects = COALESCE(?, max_projects),
                 max_databases = COALESCE(?, max_databases),
+                max_database_disk_mb = COALESCE(?, max_database_disk_mb),
+                allow_postgres = COALESCE(?, allow_postgres),
+                allow_mariadb = COALESCE(?, allow_mariadb),
+                allow_remote_db = COALESCE(?, allow_remote_db),
                 updated_at = CURRENT_TIMESTAMP
             WHERE user_id = ?
-        """, (body.max_disk_mb, body.max_memory_mb, body.max_cpu_cores, body.max_projects, body.max_databases, user_id))
+        """, (
+            body.max_disk_mb, body.max_memory_mb, body.max_cpu_cores,
+            body.max_processes,
+            body.max_projects, body.max_databases, body.max_database_disk_mb,
+            body.allow_postgres, body.allow_mariadb, body.allow_remote_db,
+            user_id
+        ))
     else:
         await db.execute("""
-            INSERT INTO quotas (user_id, max_disk_mb, max_memory_mb, max_cpu_cores, max_projects, max_databases)
-            VALUES (?, ?, ?, ?, COALESCE(?, 2), COALESCE(?, 2))
-        """, (user_id, body.max_disk_mb, body.max_memory_mb, body.max_cpu_cores, body.max_projects, body.max_databases))
+            INSERT INTO quotas (
+                user_id, max_disk_mb, max_memory_mb, max_cpu_cores, max_processes,
+                max_projects, max_databases, max_database_disk_mb, allow_postgres, allow_mariadb, allow_remote_db
+            )
+            VALUES (?, ?, ?, ?, COALESCE(?, 50), COALESCE(?, 2), COALESCE(?, 99), COALESCE(?, 100), COALESCE(?, 1), COALESCE(?, 1), COALESCE(?, 1))
+        """, (
+            user_id, body.max_disk_mb, body.max_memory_mb, body.max_cpu_cores, body.max_processes,
+            body.max_projects, body.max_databases, body.max_database_disk_mb,
+            body.allow_postgres, body.allow_mariadb, body.allow_remote_db
+        ))
+
+    # Synchronize live docker resources & pids-limit to running containers if quota changed
+    try:
+        p_cur = await db.execute("SELECT name FROM projects WHERE user_id = ? AND status = 'running'", (user_id,))
+        running_projs = await p_cur.fetchall()
+        for rp in running_projs:
+            c_name = f"app_{u['username']}_{rp['name']}"
+            await portainer.update_container_resources(
+                container_name=c_name,
+                pids_limit=body.max_processes,
+                mem_limit_mb=body.max_memory_mb,
+                cpu_cores=body.max_cpu_cores
+            )
+    except Exception as e:
+        print(f"[Warn] Failed to live update container resources for {u['username']}: {e}")
 
     ip = get_client_ip(request)
     await db.execute("""
         INSERT INTO audit_logs (actor_id, action, target_resource, ip_address, details)
         VALUES (?, 'UPDATE_USER_QUOTA', ?, ?, ?)
-    """, (admin["id"], u["username"], ip, f"Updated resource limits for '{u['username']}': Storage {body.max_disk_mb}MB, RAM {body.max_memory_mb}MB, CPU {body.max_cpu_cores} Cores"))
+    """, (admin["id"], u["username"], ip, f"Updated resource & DB limits for '{u['username']}': Files {body.max_disk_mb}MB, DB Storage {body.max_database_disk_mb}MB, RAM {body.max_memory_mb}MB, CPU {body.max_cpu_cores}C, NPROC {body.max_processes or 50}"))
     await db.commit()
 
     return {
@@ -257,10 +384,110 @@ async def update_user_quota(
         "user_id": user_id,
         "username": u["username"],
         "max_disk_mb": body.max_disk_mb,
+        "max_database_disk_mb": body.max_database_disk_mb,
         "max_memory_mb": body.max_memory_mb,
         "max_cpu_cores": body.max_cpu_cores,
-        "message": f"Limit resource akun '{u['username']}' berhasil diperbarui."
+        "max_processes": body.max_processes or 50,
+        "max_projects": body.max_projects,
+        "max_databases": body.max_databases,
+        "allow_postgres": body.allow_postgres,
+        "allow_mariadb": body.allow_mariadb,
+        "allow_remote_db": body.allow_remote_db,
+        "message": f"Konfigurasi resource & database akun '{u['username']}' berhasil diperbarui."
     }
+
+@router.post("/users/{user_id}/databases")
+async def admin_create_user_database(
+    user_id: int,
+    body: StudentDatabaseCreate,
+    request: Request,
+    admin: dict = Depends(require_admin),
+    db: aiosqlite.Connection = Depends(get_db)
+):
+    cursor = await db.execute("SELECT id, username FROM users WHERE id = ?", (user_id,))
+    u = await cursor.fetchone()
+    if not u:
+        raise HTTPException(status_code=404, detail="Akun pengguna tidak ditemukan.")
+
+    nim = u["username"]
+    try:
+        if body.engine == "postgres":
+            prov = await DatabaseProvisioner.create_postgres_db(nim, body.db_name)
+        elif body.engine == "mariadb":
+            prov = await DatabaseProvisioner.create_mariadb_db(nim, body.db_name)
+        else:
+            raise HTTPException(status_code=400, detail="Database engine tidak didukung.")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Gagal membuat database: {str(e)}")
+
+    encrypted_pass = encrypt_secret(prov["db_password"])
+    cursor = await db.execute("""
+        INSERT INTO student_databases (user_id, engine, db_name, db_username, db_password_enc, host, port)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, (user_id, prov["engine"], prov["db_name"], prov["db_username"], encrypted_pass, prov["host"], prov["port"]))
+    db_id = cursor.lastrowid
+
+    ip = get_client_ip(request)
+    await db.execute("""
+        INSERT INTO audit_logs (actor_id, action, target_resource, ip_address, details)
+        VALUES (?, 'ADMIN_CREATE_DB', ?, ?, ?)
+    """, (admin["id"], prov["db_name"], ip, f"Admin created {body.engine} database for '{nim}'"))
+    await db.commit()
+
+    try:
+        await sync_cloudbeaver_datasources(db)
+    except Exception as e:
+        print(f"[Warn] CloudBeaver sync failed: {e}")
+
+    return {
+        "success": True,
+        "id": db_id,
+        "db_name": prov["db_name"],
+        "engine": prov["engine"],
+        "message": f"Database '{prov['db_name']}' berhasil dibuat untuk akun '{nim}'."
+    }
+
+@router.delete("/users/{user_id}/databases/{db_id}")
+async def admin_delete_user_database(
+    user_id: int,
+    db_id: int,
+    request: Request,
+    admin: dict = Depends(require_admin),
+    db: aiosqlite.Connection = Depends(get_db)
+):
+    cursor = await db.execute("SELECT * FROM student_databases WHERE id = ? AND user_id = ?", (db_id, user_id))
+    row = await cursor.fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="Database tidak ditemukan.")
+
+    cursor_u = await db.execute("SELECT username FROM users WHERE id = ?", (user_id,))
+    u = await cursor_u.fetchone()
+    nim = u["username"]
+    raw_name = row["db_name"].replace(f"s{nim}_", "", 1)
+
+    try:
+        if row["engine"] == "postgres":
+            await DatabaseProvisioner.delete_postgres_db(nim, raw_name)
+        elif row["engine"] == "mariadb":
+            await DatabaseProvisioner.delete_mariadb_db(nim, raw_name)
+    except Exception:
+        pass
+
+    await db.execute("DELETE FROM student_databases WHERE id = ?", (db_id,))
+
+    ip = get_client_ip(request)
+    await db.execute("""
+        INSERT INTO audit_logs (actor_id, action, target_resource, ip_address, details)
+        VALUES (?, 'ADMIN_DELETE_DB', ?, ?, ?)
+    """, (admin["id"], row["db_name"], ip, f"Admin deleted database for '{nim}'"))
+    await db.commit()
+
+    try:
+        await sync_cloudbeaver_datasources(db)
+    except Exception as e:
+        print(f"[Warn] CloudBeaver sync failed: {e}")
+
+    return {"success": True, "message": f"Database '{row['db_name']}' berhasil dihapus."}
 
 @router.post("/users/bulk-quota")
 async def bulk_update_user_quota(
@@ -282,14 +509,17 @@ async def bulk_update_user_quota(
         if q:
             await db.execute("""
                 UPDATE quotas
-                SET max_disk_mb = ?, max_memory_mb = ?, max_cpu_cores = ?, updated_at = CURRENT_TIMESTAMP
+                SET max_disk_mb = ?, max_memory_mb = ?, max_cpu_cores = ?,
+                    max_processes = COALESCE(?, max_processes),
+                    max_database_disk_mb = COALESCE(?, max_database_disk_mb),
+                    updated_at = CURRENT_TIMESTAMP
                 WHERE user_id = ?
-            """, (body.max_disk_mb, body.max_memory_mb, body.max_cpu_cores, uid))
+            """, (body.max_disk_mb, body.max_memory_mb, body.max_cpu_cores, body.max_processes, body.max_database_disk_mb, uid))
         else:
             await db.execute("""
-                INSERT INTO quotas (user_id, max_disk_mb, max_memory_mb, max_cpu_cores, max_projects, max_databases)
-                VALUES (?, ?, ?, ?, 2, 2)
-            """, (uid, body.max_disk_mb, body.max_memory_mb, body.max_cpu_cores))
+                INSERT INTO quotas (user_id, max_disk_mb, max_memory_mb, max_cpu_cores, max_processes, max_projects, max_databases, max_database_disk_mb)
+                VALUES (?, ?, ?, ?, COALESCE(?, 50), 2, 99, COALESCE(?, 100))
+            """, (uid, body.max_disk_mb, body.max_memory_mb, body.max_cpu_cores, body.max_processes, body.max_database_disk_mb))
 
     ip = get_client_ip(request)
     await db.execute("""
@@ -399,11 +629,12 @@ async def list_users(
 ):
     query = """
         SELECT u.*, c.name as class_name, co.year as cohort_year,
-               COALESCE(q.max_disk_mb, 1000) as max_disk_mb,
-               COALESCE(q.max_memory_mb, 512) as max_memory_mb,
-               COALESCE(q.max_cpu_cores, 1.0) as max_cpu_cores,
-               COALESCE(q.max_projects, 2) as max_projects,
-               COALESCE(q.max_databases, 2) as max_databases
+               COALESCE(q.max_disk_mb, CASE WHEN u.role = 'admin' THEN 2000 ELSE 5000 END) as max_disk_mb,
+               COALESCE(q.max_memory_mb, CASE WHEN u.role = 'admin' THEN 1024 ELSE 512 END) as max_memory_mb,
+               COALESCE(q.max_cpu_cores, CASE WHEN u.role = 'admin' THEN 2.0 ELSE 0.5 END) as max_cpu_cores,
+               COALESCE(q.max_projects, CASE WHEN u.role = 'admin' THEN 99 ELSE 2 END) as max_projects,
+               COALESCE(q.max_databases, CASE WHEN u.role = 'admin' THEN 99 ELSE 2 END) as max_databases,
+               COALESCE(q.max_database_disk_mb, CASE WHEN u.role = 'admin' THEN 1000 ELSE 100 END) as max_database_disk_mb
         FROM users u
         LEFT JOIN classes c ON u.class_id = c.id
         LEFT JOIN cohorts co ON c.cohort_id = co.id
@@ -477,15 +708,15 @@ async def get_system_stats(
     db: aiosqlite.Connection = Depends(get_db)
 ):
     c_users = await (await db.execute("SELECT COUNT(*) FROM users WHERE role = 'student'")).fetchone()
+    c_admins = await (await db.execute("SELECT COUNT(*) FROM users WHERE role = 'admin'")).fetchone()
     c_projects = await (await db.execute("SELECT COUNT(*) FROM projects")).fetchone()
     c_dbs = await (await db.execute("SELECT COUNT(*) FROM student_databases")).fetchone()
-    c_classes = await (await db.execute("SELECT COUNT(*) FROM classes")).fetchone()
 
     return {
         "total_students": c_users[0],
+        "total_admins": c_admins[0],
         "total_projects": c_projects[0],
-        "total_databases": c_dbs[0],
-        "total_classes": c_classes[0]
+        "total_databases": c_dbs[0]
     }
 
 # 5. Global Capacity & Per-Account Distribution Monitor
@@ -499,7 +730,7 @@ async def get_system_capacity(
 
     # 1. Host Disk Usage (shutil.disk_usage)
     try:
-        disk_path = "/home/student/lab" if os.path.exists("/home/student/lab") else "/"
+        disk_path = settings.DATA_DIR if os.path.exists(settings.DATA_DIR) else "/"
         total_b, used_b, free_b = shutil.disk_usage(disk_path)
         disk_total_gb = round(total_b / (1024**3), 1)
         disk_used_gb = round(used_b / (1024**3), 1)
@@ -542,9 +773,10 @@ async def get_system_capacity(
         SELECT 
             u.id, u.username, u.name, u.role, u.is_active, u.created_at,
             c.name as class_name, co.year as cohort_year,
-            COALESCE(q.max_projects, 2) as max_projects,
-            COALESCE(q.max_databases, 2) as max_databases,
-            COALESCE(q.max_disk_mb, 500) as max_disk_mb,
+            COALESCE(q.max_projects, CASE WHEN u.role = 'admin' THEN 99 ELSE 2 END) as max_projects,
+            COALESCE(q.max_databases, CASE WHEN u.role = 'admin' THEN 99 ELSE 2 END) as max_databases,
+            COALESCE(q.max_disk_mb, CASE WHEN u.role = 'admin' THEN 2000 ELSE 5000 END) as max_disk_mb,
+            COALESCE(q.max_database_disk_mb, CASE WHEN u.role = 'admin' THEN 1000 ELSE 100 END) as max_database_disk_mb,
             COUNT(DISTINCT p.id) as project_count,
             COUNT(DISTINCT d.id) as database_count,
             GROUP_CONCAT(DISTINCT p.name) as project_names,
@@ -568,13 +800,13 @@ async def get_system_capacity(
         p_cnt = d.get("project_count", 0) or 0
         db_cnt = d.get("database_count", 0) or 0
         
-        if d.get("role") == "admin":
-            est_disk_mb = round(p_cnt * 12.8 + db_cnt * 16.4 + 24.5, 1)
-        else:
-            est_disk_mb = round(p_cnt * 12.8 + db_cnt * 16.4 + (4.2 if p_cnt > 0 else 0), 1)
+        u_name = d.get("username", "")
+        est_disk_mb, est_db_storage_mb = calculate_account_disk_usage(u_name, db_cnt)
 
         total_allocated_disk_mb += est_disk_mb
         d["estimated_disk_mb"] = est_disk_mb
+        d["estimated_db_storage_mb"] = est_db_storage_mb
+        d["max_database_disk_mb"] = d.get("max_database_disk_mb") or 100
         d["projects_list"] = [x.strip() for x in (d.get("project_names") or "").split(",") if x.strip()]
         d["databases_list"] = [x.strip() for x in (d.get("db_names") or "").split(",") if x.strip()]
         accounts.append(d)

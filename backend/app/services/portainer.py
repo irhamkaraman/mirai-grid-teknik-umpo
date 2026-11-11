@@ -1,4 +1,7 @@
 import httpx
+import http.client
+import socket
+import json
 from typing import Optional, Dict, Any, List
 from app.core.config import settings
 
@@ -85,6 +88,67 @@ class PortainerClient:
             res = await client.delete(url, headers=headers)
             return res.status_code in [200, 204]
 
+    async def list_containers(self, all_containers: bool = True) -> List[Dict[str, Any]]:
+        headers = await self._get_headers()
+        async with httpx.AsyncClient(verify=self.ssl_verify, timeout=15.0) as client:
+            url = f"{self.base_url}/api/endpoints/{self.endpoint_id}/docker/containers/json?all={'true' if all_containers else 'false'}"
+            res = await client.get(url, headers=headers)
+            if res.status_code == 200:
+                return res.json()
+            return []
+
+    async def delete_container(self, container_name_or_id: str, force: bool = True) -> bool:
+        clean_name = container_name_or_id.lstrip("/")
+        headers = await self._get_headers()
+        async with httpx.AsyncClient(verify=self.ssl_verify, timeout=30.0) as client:
+            url = f"{self.base_url}/api/endpoints/{self.endpoint_id}/docker/containers/{clean_name}?force={'true' if force else 'false'}&v=true"
+            res = await client.delete(url, headers=headers)
+            return res.status_code in [200, 204, 404]
+
+    async def delete_user_stacks_and_containers(self, username: str) -> Dict[str, Any]:
+        """
+        Force-removes all stacks and containers belonging to a specific student username.
+        Matches miraigrid_{username}_*, app_{username}_*, vscode_{username}, etc.
+        """
+        deleted_stacks = []
+        deleted_containers = []
+
+        # 1. Delete Portainer Stacks
+        try:
+            stacks = await self.list_stacks()
+            for s in stacks:
+                s_name = s.get("Name", "")
+                if s_name.startswith(f"miraigrid_{username}_") or s_name == f"miraigrid_{username}":
+                    s_id = s.get("Id")
+                    if s_id:
+                        ok = await self.delete_stack(s_id)
+                        if ok:
+                            deleted_stacks.append(s_name)
+        except Exception as e:
+            print(f"[Portainer] Error deleting user stacks: {e}")
+
+        # 2. Delete Docker Containers
+        try:
+            conts = await self.list_containers(all_containers=True)
+            for c in conts:
+                names = [n.lstrip("/") for n in c.get("Names", [])]
+                for name in names:
+                    if (
+                        name.startswith(f"app_{username}_") or
+                        name.startswith(f"miraigrid_{username}_") or
+                        name == f"vscode_{username}" or
+                        f"_{username}_" in name or
+                        name.endswith(f"_{username}")
+                    ):
+                        c_id = c.get("Id") or name
+                        ok = await self.delete_container(c_id, force=True)
+                        if ok:
+                            deleted_containers.append(name)
+        except Exception as e:
+            print(f"[Portainer] Error deleting user containers: {e}")
+
+        return {"deleted_stacks": deleted_stacks, "deleted_containers": deleted_containers}
+
     async def get_container_logs(self, container_name: str, tail: int = 100) -> str:
         """
         Query container logs via Portainer Docker Proxy API
@@ -112,14 +176,15 @@ class PortainerClient:
         container_name: str,
         cmd: List[str],
         user: str = "root",
-        working_dir: Optional[str] = None
+        working_dir: Optional[str] = None,
+        timeout: float = 300.0
     ) -> Dict[str, Any]:
         """
         Executes a command inside container via Portainer Docker Proxy API
         and returns stdout/stderr output.
         """
         headers = await self._get_headers()
-        async with httpx.AsyncClient(verify=self.ssl_verify, timeout=30.0) as client:
+        async with httpx.AsyncClient(verify=self.ssl_verify, timeout=timeout) as client:
             # 1. Create exec instance
             create_url = f"{self.base_url}/api/endpoints/{self.endpoint_id}/docker/containers/{container_name}/exec"
             create_payload = {
@@ -146,5 +211,95 @@ class PortainerClient:
             start_res = await client.post(start_url, json=start_payload, headers=headers)
             output = start_res.text if start_res.status_code == 200 else f"Exec start error: {start_res.text}"
             return {"success": True, "output": output}
+
+    @staticmethod
+    def _docker_socket_request(method: str, path: str, body_bytes: bytes = b"") -> tuple[int, str]:
+        """Direct, synchronous communication with Docker Daemon via unix socket."""
+        class UnixSocketHTTPConnection(http.client.HTTPConnection):
+            def __init__(self, socket_path):
+                super().__init__('localhost')
+                self.socket_path = socket_path
+            def connect(self):
+                self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+                self.sock.connect(self.socket_path)
+
+        try:
+            conn = UnixSocketHTTPConnection('/var/run/docker.sock')
+            headers = {"Host": "localhost"}
+            if body_bytes:
+                headers["Content-Type"] = "application/json"
+            conn.request(method, path, body=body_bytes if body_bytes else None, headers=headers)
+            res = conn.getresponse()
+            content = res.read().decode('utf-8', errors='replace')
+            conn.close()
+            return res.status, content
+        except Exception as e:
+            return 500, str(e)
+
+    async def stop_container(self, container_name: str) -> bool:
+        """Stops a container reliably via Docker socket or Portainer proxy."""
+        status_code, _ = self._docker_socket_request("POST", f"/containers/{container_name}/stop?t=5")
+        if status_code in [204, 304, 404]:
+            return True
+        try:
+            headers = await self._get_headers()
+            async with httpx.AsyncClient(verify=self.ssl_verify, timeout=15.0) as client:
+                url = f"{self.base_url}/api/endpoints/{self.endpoint_id}/docker/containers/{container_name}/stop?t=5"
+                res = await client.post(url, headers=headers)
+                return res.status_code in [200, 204, 304, 404]
+        except Exception:
+            return False
+
+    async def start_container(self, container_name: str) -> bool:
+        """Starts a container reliably via Docker socket or Portainer proxy."""
+        status_code, _ = self._docker_socket_request("POST", f"/containers/{container_name}/start")
+        if status_code in [204, 304]:
+            return True
+        try:
+            headers = await self._get_headers()
+            async with httpx.AsyncClient(verify=self.ssl_verify, timeout=15.0) as client:
+                url = f"{self.base_url}/api/endpoints/{self.endpoint_id}/docker/containers/{container_name}/start"
+                res = await client.post(url, headers=headers)
+                return res.status_code in [200, 204, 304]
+        except Exception:
+            return False
+
+    async def restart_container(self, container_name: str) -> bool:
+        """Restarts a container reliably via Docker socket or Portainer proxy."""
+        status_code, _ = self._docker_socket_request("POST", f"/containers/{container_name}/restart?t=5")
+        if status_code in [204, 304]:
+            return True
+        try:
+            headers = await self._get_headers()
+            async with httpx.AsyncClient(verify=self.ssl_verify, timeout=20.0) as client:
+                url = f"{self.base_url}/api/endpoints/{self.endpoint_id}/docker/containers/{container_name}/restart?t=5"
+                res = await client.post(url, headers=headers)
+                return res.status_code in [200, 204]
+        except Exception:
+            return False
+
+    async def update_container_resources(
+        self,
+        container_name: str,
+        pids_limit: Optional[int] = None,
+        mem_limit_mb: Optional[int] = None,
+        cpu_cores: Optional[float] = None
+    ) -> bool:
+        """
+        Dynamically updates container resources (pids limit, memory, CPU) with zero downtime
+        via Portainer Docker proxy.
+        """
+        headers = await self._get_headers()
+        payload = {}
+        if pids_limit is not None:
+            payload["PidsLimit"] = int(pids_limit)
+        if mem_limit_mb is not None:
+            payload["Memory"] = int(mem_limit_mb) * 1024 * 1024
+        if cpu_cores is not None:
+            payload["NanoCPUs"] = int(float(cpu_cores) * 1e9)
+        async with httpx.AsyncClient(verify=self.ssl_verify, timeout=15.0) as client:
+            url = f"{self.base_url}/api/endpoints/{self.endpoint_id}/docker/containers/{container_name}/update"
+            res = await client.post(url, json=payload, headers=headers)
+            return res.status_code in [200, 204]
 
 portainer = PortainerClient()

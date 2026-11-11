@@ -14,7 +14,17 @@ import AdminView from './pages/AdminView'
 import DiskUsagePage from './pages/DiskUsagePage'
 import RemoteDatabasePage from './pages/RemoteDatabasePage'
 import DatabaseWizardPage from './pages/DatabaseWizardPage'
+import GitVersionControlView from './pages/GitVersionControlView'
+import AccountConfigPage from './pages/AccountConfigPage'
+import AboutPage from './pages/AboutPage'
+import TerminalPage from './pages/TerminalPage'
+import CronJobsPage from './pages/CronJobsPage'
+import RedisView from './pages/RedisView'
+import VSCodeView from './pages/VSCodeView'
+import OnboardingWizardPage from './pages/OnboardingWizardPage'
 import ErrorBoundary from './components/ErrorBoundary'
+import { syncPageRoute, checkUrlTampering, triggerRouteSecurityAlarm } from './utils/securityRoute'
+import SecurityLockModal from './components/SecurityLockModal'
 
 export default function App() {
   const navigate = useNavigate()
@@ -26,6 +36,38 @@ export default function App() {
   const [isCollapsed, setIsCollapsed] = useState(() => {
     return localStorage.getItem('miraigrid_sidebar_collapsed') === 'true'
   })
+  const [securityBreach, setSecurityBreach] = useState(null)
+
+  useEffect(() => {
+    const onBreach = (e) => setSecurityBreach(e.detail?.reason || 'Manipulasi rute terdeteksi')
+    window.addEventListener('miraigrid:security_breach', onBreach)
+    return () => window.removeEventListener('miraigrid:security_breach', onBreach)
+  }, [])
+
+  // Route integrity check & dynamic session hash sync
+  useEffect(() => {
+    const check = checkUrlTampering(window.location.href)
+    if (check.isTampered) {
+      triggerRouteSecurityAlarm(check.reason)
+      return
+    }
+
+    if (user && !location.pathname.startsWith('/files') && !location.pathname.startsWith('/vscode')) {
+      syncPageRoute(location.pathname)
+    }
+  }, [location.pathname, location.search, user])
+
+  // Global hashchange security watchdog
+  useEffect(() => {
+    const onHashChange = () => {
+      const check = checkUrlTampering(window.location.href)
+      if (check.isTampered) {
+        triggerRouteSecurityAlarm(check.reason)
+      }
+    }
+    window.addEventListener('hashchange', onHashChange)
+    return () => window.removeEventListener('hashchange', onHashChange)
+  }, [])
 
   useEffect(() => {
     const savedUser = localStorage.getItem('miraigrid_user')
@@ -50,16 +92,36 @@ export default function App() {
   }
 
   const handleLoginSuccess = (data) => {
-    setUser({
+    const userData = {
       username: data.username,
       name: data.name,
       role: data.role,
       must_change_password: data.must_change_password,
-    })
+      onboarding_step: data.onboarding_step ?? 1,
+      onboarding_completed: Boolean(data.onboarding_completed),
+    }
+    setUser(userData)
+    localStorage.setItem('miraigrid_user', JSON.stringify(userData))
     if (data.must_change_password) {
       setIsMandatoryPasswordChange(true)
       setShowPasswordModal(true)
     }
+    if (userData.role !== 'admin' && !userData.onboarding_completed) {
+      navigate('/onboarding')
+    } else {
+      navigate('/dashboard')
+    }
+  }
+
+  const handleOnboardingComplete = (updatedUser) => {
+    const nextUser = {
+      ...user,
+      ...updatedUser,
+      onboarding_completed: true,
+      onboarding_step: 4,
+    }
+    setUser(nextUser)
+    localStorage.setItem('miraigrid_user', JSON.stringify(nextUser))
     navigate('/dashboard')
   }
 
@@ -79,6 +141,10 @@ export default function App() {
     }
   }
 
+  if (securityBreach) {
+    return <SecurityLockModal reason={securityBreach} onReset={() => window.location.href = '/login'} />
+  }
+
   if (!user) {
     return (
       <div className="bg-[#E6D7BE] min-h-screen">
@@ -91,11 +157,11 @@ export default function App() {
     )
   }
 
-  // 1. STANDALONE LAYOUT FOR FILE MANAGER (Wajib Terpisah dari Layout Utama Sesuai Instruksi!)
-  const isStandaloneFilesView = location.pathname.startsWith('/files')
-  if (isStandaloneFilesView) {
+  // 0. GATED ONBOARDING WIZARD (Pengguna baru wajib menyelesaikan onboarding sebelum bisa mengakses Dashboard & Fitur)
+  const isOnboardingGated = user && user.role !== 'admin' && !user.onboarding_completed
+  if (isOnboardingGated) {
     return (
-      <div className="h-screen w-screen bg-[#1C0F0A] text-[#FAF5EC] font-sans overflow-hidden select-none m-0 p-0">
+      <div className="min-h-screen w-screen bg-[#E6D7BE] flex flex-col font-sans select-none m-0 p-0">
         <Toaster
           richColors
           position="top-right"
@@ -104,12 +170,58 @@ export default function App() {
               background: '#2B1810',
               border: '1px solid #5A3521',
               color: '#FAF5EC',
-              borderRadius: '12px',
+              borderRadius: '18px',
+              fontFamily: 'Plus Jakarta Sans, sans-serif',
+            },
+          }}
+        />
+        <OnboardingWizardPage user={user} onComplete={handleOnboardingComplete} />
+      </div>
+    )
+  }
+
+  // 1. STANDALONE LAYOUT FOR FILE MANAGER (Latar Belakang Krim Cerah Sesuai Dasbor)
+  const isStandaloneFilesView = location.pathname.startsWith('/files')
+  if (isStandaloneFilesView) {
+    return (
+      <div className="h-screen w-screen bg-[#E6D7BE] p-2.5 sm:p-4 md:p-6 flex flex-col font-sans overflow-hidden select-none m-0">
+        <Toaster
+          richColors
+          position="top-right"
+          toastOptions={{
+            style: {
+              background: '#2B1810',
+              border: '1px solid #5A3521',
+              color: '#FAF5EC',
+              borderRadius: '18px',
               fontFamily: 'Plus Jakarta Sans, sans-serif',
             },
           }}
         />
         <FilesView onNavigate={(path) => navigate(path.startsWith('/') ? path : '/' + path)} isStandalone={true} />
+      </div>
+    )
+  }
+
+  // 2. STANDALONE LAYOUT FOR WEB IDE (VS CODE SERVER) (Tampilan Terpisah Bebas Distraksi Tanpa Sidebar & Header Utama)
+  const isStandaloneIDE = location.pathname.startsWith('/vscode')
+  if (isStandaloneIDE) {
+    return (
+      <div className="h-screen w-screen bg-[#1E110A] flex flex-col font-sans overflow-hidden select-none m-0 p-0">
+        <Toaster
+          richColors
+          position="top-right"
+          toastOptions={{
+            style: {
+              background: '#2B1810',
+              border: '1px solid #5A3521',
+              color: '#FAF5EC',
+              borderRadius: '18px',
+              fontFamily: 'Plus Jakarta Sans, sans-serif',
+            },
+          }}
+        />
+        <VSCodeView user={user} onNavigate={(path) => navigate(path.startsWith('/') ? path : '/' + path)} isStandalone={true} />
       </div>
     )
   }
@@ -143,7 +255,7 @@ export default function App() {
           isCollapsed ? 'md:ml-[110px]' : 'md:ml-[290px]'
         }`}
       >
-        <div className="max-w-6xl mx-auto">
+        <div className="w-full">
           {/* Header Navbar: Input Pencarian di samping Icon Profil */}
           <header className="flex items-center justify-between gap-4 pb-5 pt-1">
             {/* Live Search Bar Tools */}
@@ -186,6 +298,7 @@ export default function App() {
           {/* Declarative URL Routes */}
           <Routes>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/onboarding" element={<Navigate to="/dashboard" replace />} />
             <Route
               path="/dashboard"
               element={
@@ -197,7 +310,7 @@ export default function App() {
                 />
               }
             />
-            <Route path="/deploy/*" element={<ProjectsView />} />
+            <Route path="/deploy/*" element={<ProjectsView user={user} />} />
             <Route path="/databases" element={<DatabasesView />} />
             <Route
               path="/disk-usage"
@@ -212,10 +325,44 @@ export default function App() {
               element={<DatabaseWizardPage user={user} onNavigate={(path) => navigate(path.startsWith('/') ? path : '/' + path)} />}
             />
             <Route
+              path="/git/*"
+              element={<GitVersionControlView user={user} onNavigate={(path) => navigate(path.startsWith('/') ? path : '/' + path)} />}
+            />
+            <Route
+              path="/terminal"
+              element={<TerminalPage user={user} onNavigate={(path) => navigate(path.startsWith('/') ? path : '/' + path)} />}
+            />
+            <Route
+              path="/cron"
+              element={<CronJobsPage user={user} onNavigate={(path) => navigate(path.startsWith('/') ? path : '/' + path)} />}
+            />
+            <Route
+              path="/redis"
+              element={<RedisView user={user} onNavigate={(path) => navigate(path.startsWith('/') ? path : '/' + path)} />}
+            />
+            <Route
+              path="/cron-jobs"
+              element={<Navigate to="/cron" replace />}
+            />
+            <Route
+              path="/about"
+              element={<AboutPage user={user} onNavigate={(path) => navigate(path.startsWith('/') ? path : '/' + path)} />}
+            />
+            <Route
               path="/admin"
               element={user.role === 'admin' ? (
                 <ErrorBoundary>
-                  <AdminView />
+                  <AdminView onNavigate={(path) => navigate(path.startsWith('/') ? path : '/' + path)} />
+                </ErrorBoundary>
+              ) : (
+                <Navigate to="/dashboard" replace />
+              )}
+            />
+            <Route
+              path="/admin/users/:userId/config"
+              element={user.role === 'admin' ? (
+                <ErrorBoundary>
+                  <AccountConfigPage user={user} onNavigate={(path) => navigate(path.startsWith('/') ? path : '/' + path)} />
                 </ErrorBoundary>
               ) : (
                 <Navigate to="/dashboard" replace />

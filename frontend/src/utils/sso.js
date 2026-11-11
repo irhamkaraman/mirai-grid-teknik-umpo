@@ -85,7 +85,20 @@ export async function launchDatabaseSSO(engine, dbId = null) {
 
     const { port, path, fields, db_username } = res.data
     const host = window.location.hostname
-    const actionUrl = `http://${host}:${port}${path}`
+    const isHttps = window.location.protocol === 'https:'
+    const isDomain = host.includes('miraigrid.web.id')
+    const sub = isPg ? 'ppa.miraigrid.web.id' : 'pma.miraigrid.web.id'
+
+    // Strict Zero-Port HTTPS routing for official domain & secure context
+    let actionUrl = `https://${sub}${path}`
+    if (!isDomain) {
+      if (res.data?.action_url && isHttps) {
+        actionUrl = res.data.action_url
+      } else {
+        const proto = isHttps ? 'https:' : 'http:'
+        actionUrl = `${proto}//${host}:${port}${path}`
+      }
+    }
 
     // Create form and submit into the opened window
     const form = document.createElement('form')

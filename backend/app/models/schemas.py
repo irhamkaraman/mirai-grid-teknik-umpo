@@ -9,13 +9,15 @@ class Token(BaseModel):
     role: str
     username: str
     name: str
+    onboarding_step: Optional[int] = 1
+    onboarding_completed: Optional[bool] = False
 
 class LoginRequest(BaseModel):
     username: str
     password: str
 
 class ChangePasswordRequest(BaseModel):
-    old_password: str
+    old_password: Optional[str] = None
     new_password: str = Field(min_length=8)
 
 # User & Cohorts
@@ -52,14 +54,21 @@ class UserQuotaUpdateRequest(BaseModel):
     max_disk_mb: int = Field(default=1000, ge=50, le=100000, description="Storage limit in MB")
     max_memory_mb: int = Field(default=512, ge=64, le=64000, description="RAM limit in MB")
     max_cpu_cores: float = Field(default=1.0, ge=0.1, le=32.0, description="CPU cores limit")
+    max_processes: Optional[int] = Field(default=50, ge=10, le=2000, description="Number of processes (NPROC) limit")
     max_projects: Optional[int] = Field(default=None, ge=1, le=100)
     max_databases: Optional[int] = Field(default=None, ge=1, le=100)
+    max_database_disk_mb: Optional[int] = Field(default=100, ge=10, le=100000, description="Database storage limit in MB")
+    allow_postgres: Optional[int] = Field(default=1, ge=0, le=1)
+    allow_mariadb: Optional[int] = Field(default=1, ge=0, le=1)
+    allow_remote_db: Optional[int] = Field(default=1, ge=0, le=1)
 
 class BulkQuotaUpdateRequest(BaseModel):
     user_ids: List[int]
     max_disk_mb: int = Field(default=1000, ge=50, le=100000)
     max_memory_mb: int = Field(default=512, ge=64, le=64000)
     max_cpu_cores: float = Field(default=1.0, ge=0.1, le=32.0)
+    max_processes: Optional[int] = Field(default=50, ge=10, le=2000)
+    max_database_disk_mb: Optional[int] = Field(default=100, ge=10, le=100000)
 
 class UserCreateManual(BaseModel):
     username: str = Field(min_length=3, max_length=50)
@@ -81,11 +90,14 @@ class UserResponse(BaseModel):
     cohort_year: Optional[int] = None
     must_change_password: bool
     is_active: bool
+    onboarding_step: Optional[int] = 1
+    onboarding_completed: Optional[bool] = False
     max_disk_mb: Optional[int] = None
     max_memory_mb: Optional[int] = None
     max_cpu_cores: Optional[float] = None
     max_projects: Optional[int] = None
     max_databases: Optional[int] = None
+    max_database_disk_mb: Optional[int] = None
 
 # Databases
 class StudentDatabaseCreate(BaseModel):
@@ -147,7 +159,14 @@ class ProjectResponse(BaseModel):
     git_url: Optional[str] = None
     access_url: str
     last_deployed_at: Optional[str] = None
+    owner_username: Optional[str] = None
+    owner_name: Optional[str] = None
     created_at: str
+    public_subdomain: Optional[str] = None
+    public_url: Optional[str] = None
+    is_published: Optional[bool] = False
+    deployment_id: Optional[int] = None
+    deployment_status: Optional[str] = None
 
 # Quota
 class QuotaResponse(BaseModel):
@@ -155,9 +174,13 @@ class QuotaResponse(BaseModel):
     max_databases: int
     max_memory_mb: int
     max_cpu_cores: float
+    max_processes: int = 50
     max_disk_mb: int
+    disk_used_mb: float = 0.0
     used_projects: int
     used_databases: int
+    max_database_disk_mb: int = 100
+    used_database_disk_mb: float = 0.0
 
 # Audit Log
 class AuditLogResponse(BaseModel):
@@ -169,3 +192,23 @@ class AuditLogResponse(BaseModel):
     ip_address: Optional[str]
     details: Optional[str]
     created_at: str
+
+# Public Web Deployments & Subdomain Generator
+class DeploymentPublishRequest(BaseModel):
+    project_id: int
+
+class DeploymentResponse(BaseModel):
+    id: int
+    user_id: int
+    project_id: Optional[int] = None
+    project_name: Optional[str] = None
+    subdomain: str
+    public_url: str
+    target_port: int
+    container_name: str
+    status: str
+    language: Optional[str] = None
+    version: Optional[str] = None
+    created_at: str
+    updated_at: str
+

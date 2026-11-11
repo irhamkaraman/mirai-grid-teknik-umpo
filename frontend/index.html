@@ -2,13 +2,123 @@
 <html lang="id" class="h-full bg-[#E6D7BE]">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MiraiGrid — Platform Hosting Lab Teknik Informatika UMPO</title>
-    <!-- Anthropic-style Typography: Newsreader (Serif) & Plus Jakarta Sans (Sans) -->
+    <title>Infrastruktur Cloud Laboratorium Teknik Informatika UMPO — MiraiGrid</title>
+    
+    <!-- Primary Meta SEO Tags -->
+    <meta name="title" content="Infrastruktur Cloud Laboratorium Teknik Informatika UMPO — MiraiGrid" />
+    <meta name="description" content="MiraiGrid adalah platform komputasi awan mandiri dan laboratorium modern untuk deployment aplikasi berbasis container terisolasi, manajemen multi-database (MariaDB &amp; PostgreSQL), serta kontrol versi kode bagi mahasiswa Teknik Informatika Universitas Muhammadiyah Ponorogo." />
+    <meta name="keywords" content="MiraiGrid, Cloud Laboratorium, Teknik Informatika UMPO, Universitas Muhammadiyah Ponorogo, Praktikum Mandiri, PaaS Mahasiswa, Cloud Hosting Kampus, Docker Container, LXC Sandbox, MariaDB, PostgreSQL, Python, PHP, Node.js, Web Deployment, Subdomain Generator, Cloud Server Indonesia, Belajar Cloud Computing" />
+    <meta name="author" content="Laboratorium Teknik Informatika UMPO &amp; Komunitas Split" />
+    <meta name="publisher" content="Fakultas Teknik Universitas Muhammadiyah Ponorogo" />
+    <meta name="copyright" content="Laboratorium Komputer Teknik Informatika UMPO 2026" />
+    <meta name="theme-color" content="#2B1810" />
+    <link rel="canonical" href="https://miraigrid.web.id/" />
+
+    <!-- Robots & Crawler Directives (Google, Yahoo, Bing, DuckDuckGo & AI Bots) -->
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <meta name="googlebot" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
+    <meta name="bingbot" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
+    <meta name="slurp" content="index, follow, max-snippet:-1, max-image-preview:large" />
+    <meta name="revisit-after" content="2 days" />
+    <meta name="classification" content="Education, Cloud Computing, PaaS, University Laboratory" />
+    <meta name="ai-content-declaration" content="educational-cloud-platform" />
+
+    <!-- Open Graph / Facebook / WhatsApp / LinkedIn / Discord -->
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="id_ID" />
+    <meta property="og:url" content="https://miraigrid.web.id/" />
+    <meta property="og:site_name" content="MiraiGrid UMPO" />
+    <meta property="og:title" content="Infrastruktur Cloud Laboratorium Teknik Informatika UMPO — MiraiGrid" />
+    <meta property="og:description" content="Platform laboratorium modern untuk deployment aplikasi berbasis container terisolasi, manajemen multi-database, dan kontrol versi kode bagi mahasiswa Teknik Informatika Universitas Muhammadiyah Ponorogo." />
+    <meta property="og:image" content="https://miraigrid.web.id/og-image.jpg" />
+    <meta property="og:image:secure_url" content="https://miraigrid.web.id/og-image.jpg" />
+    <meta property="og:image:type" content="image/jpeg" />
+    <meta property="og:image:width" content="1280" />
+    <meta property="og:image:height" content="720" />
+    <meta property="og:image:alt" content="Infrastruktur Cloud Hosting &amp; Praktikum Mandiri MiraiGrid Lab TI UMPO" />
+
+    <!-- Twitter Cards -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="https://miraigrid.web.id/" />
+    <meta name="twitter:title" content="Infrastruktur Cloud Laboratorium Teknik Informatika UMPO — MiraiGrid" />
+    <meta name="twitter:description" content="Platform laboratorium modern untuk deployment aplikasi berbasis container terisolasi, manajemen multi-database, dan kontrol versi kode bagi mahasiswa Teknik Informatika UMPO." />
+    <meta name="twitter:image" content="https://miraigrid.web.id/og-image.jpg" />
+    <meta name="twitter:image:alt" content="Infrastruktur Cloud Hosting &amp; Praktikum Mandiri MiraiGrid Lab TI UMPO" />
+
+    <!-- Icons & Favicons -->
+    <link rel="icon" type="image/svg+xml" href="/logos/miraigrid-logo.svg" />
+    <link rel="alternate icon" type="image/png" href="/logos/miraigrid-logo.png" />
+    <link rel="shortcut icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" href="/logos/miraigrid-logo.png" />
+
+    <!-- Typography: Newsreader (Serif), Plus Jakarta Sans (Sans), JetBrains Mono -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400..700;1,6..72,400..700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <!-- Schema.org JSON-LD Structured Data for AI Bots, Google & Yahoo -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "EducationalOrganization",
+          "@id": "https://miraigrid.web.id/#organization",
+          "name": "Laboratorium Komputer Teknik Informatika Universitas Muhammadiyah Ponorogo",
+          "alternateName": "Lab TI UMPO",
+          "url": "https://miraigrid.web.id/",
+          "logo": "https://miraigrid.web.id/logos/miraigrid-logo.png",
+          "image": "https://miraigrid.web.id/og-image.jpg",
+          "description": "Infrastruktur Cloud dan Laboratorium Riset Teknik Informatika Universitas Muhammadiyah Ponorogo untuk praktikum komputasi awan, pemrograman, dan basis data mandiri.",
+          "address": {
+            "@type": "PostalAddress",
+            "addressLocality": "Ponorogo",
+            "addressRegion": "Jawa Timur",
+            "addressCountry": "ID"
+          }
+        },
+        {
+          "@type": "WebApplication",
+          "@id": "https://miraigrid.web.id/#software",
+          "name": "MiraiGrid Cloud Platform",
+          "url": "https://miraigrid.web.id/",
+          "applicationCategory": "EducationalApplication",
+          "operatingSystem": "Linux, Cloud, Web",
+          "inLanguage": "id",
+          "browserRequirements": "Requires JavaScript. Requires HTML5.",
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "IDR",
+            "availability": "https://schema.org/InStock"
+          },
+          "screenshot": "https://miraigrid.web.id/og-image.jpg",
+          "featureList": [
+            "Isolated Application Runtimes (PHP 8.x, Python 3.11, Node.js)",
+            "Multi-Database Enterprise Clusters (MariaDB & PostgreSQL)",
+            "Integrated Git Version Control & Web Terminal",
+            "Automated Public Web Deployment & Subdomain Generator (*.miraigrid.web.id)",
+            "Cron Jobs Automated Scheduler & Postman-style Webhook Engine",
+            "Reverse Login SSO Integration with SIMTIK UMPO"
+          ],
+          "provider": {
+            "@id": "https://miraigrid.web.id/#organization"
+          }
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://miraigrid.web.id/#website",
+          "url": "https://miraigrid.web.id/",
+          "name": "MiraiGrid",
+          "description": "Platform PaaS & Cloud Laboratorium Teknik Informatika UMPO",
+          "publisher": {
+            "@id": "https://miraigrid.web.id/#organization"
+          }
+        }
+      ]
+    }
+    </script>
   </head>
   <body class="min-h-full bg-[#E6D7BE] text-[#26160F] m-0 p-0 antialiased selection:bg-[#5A3521] selection:text-[#FAF5EC] font-sans">
     <div id="root" class="min-h-full bg-[#E6D7BE]"></div>

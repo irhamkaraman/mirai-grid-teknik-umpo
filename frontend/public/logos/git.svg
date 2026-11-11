@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <!-- Git Official Diamond Logo in high resolution -->
+  <g transform="translate(50, 50) rotate(45) translate(-50, -50)">
+    <rect x="15" y="15" width="70" height="70" rx="14" fill="#F05032"/>
+  </g>
+  <!-- Git Branch Lines & Nodes (White) -->
+  <g fill="none" stroke="#FFFFFF" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="32" y1="35" x2="32" y2="72" />
+    <path d="M32 50 C44 50, 48 42, 60 42 L68 42" />
+  </g>
+  <circle cx="32" cy="35" r="7.5" fill="#FFFFFF"/>
+  <circle cx="32" cy="72" r="7.5" fill="#FFFFFF"/>
+  <circle cx="68" cy="42" r="7.5" fill="#FFFFFF"/>
+</svg>

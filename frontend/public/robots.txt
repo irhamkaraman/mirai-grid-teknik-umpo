@@ -1,0 +1,110 @@
+# ==========================================
+# Robots.txt for MiraiGrid Cloud Platform
+# Domain: https://miraigrid.web.id
+# Laboratorium Teknik Informatika UMPO
+# ==========================================
+
+# Standard Search Engines (Google, Yahoo/Slurp, Bing, DuckDuckGo, etc.)
+User-agent: *
+Allow: /
+Allow: /about
+Allow: /login
+Allow: /og-image.jpg
+Allow: /og-preview.jpg
+Allow: /images/
+Allow: /logos/
+Allow: /favicon.ico
+Allow: /sitemap.xml
+Disallow: /api/
+Disallow: /terminal
+Disallow: /file-manager
+Disallow: /cron
+Disallow: /dashboard
+
+# Googlebot Specific Rules
+User-agent: Googlebot
+User-agent: Googlebot-Image
+User-agent: Googlebot-News
+Allow: /
+Allow: /about
+Allow: /login
+Allow: /og-image.jpg
+Allow: /images/
+Disallow: /api/
+Disallow: /terminal
+
+# Yahoo! (Slurp) & Bing Specific Rules
+User-agent: Slurp
+User-agent: Bingbot
+User-agent: msnbot
+Allow: /
+Allow: /about
+Allow: /login
+Allow: /og-image.jpg
+Disallow: /api/
+Disallow: /terminal
+
+# DuckDuckGo & Yandex
+User-agent: DuckDuckBot
+User-agent: YandexBot
+Allow: /
+Allow: /about
+Allow: /login
+Disallow: /api/
+
+# ==========================================
+# AI Search Engines & LLM Web Crawlers
+# (Explicitly Allowed for Full AI Knowledge Indexing)
+# ==========================================
+
+# OpenAI (ChatGPT & SearchGPT)
+User-agent: GPTBot
+User-agent: ChatGPT-User
+Allow: /
+Allow: /about
+Allow: /login
+Allow: /og-image.jpg
+
+# Anthropic (Claude)
+User-agent: ClaudeBot
+User-agent: anthropic-ai
+Allow: /
+Allow: /about
+Allow: /login
+Allow: /og-image.jpg
+
+# Google AI & Gemini
+User-agent: Google-Extended
+Allow: /
+Allow: /about
+Allow: /login
+Allow: /og-image.jpg
+
+# Perplexity AI
+User-agent: PerplexityBot
+Allow: /
+Allow: /about
+Allow: /login
+Allow: /og-image.jpg
+
+# Apple Intelligence
+User-agent: Applebot-Extended
+Allow: /
+Allow: /about
+Allow: /login
+
+# Cohere & Common Crawl
+User-agent: cohere-ai
+User-agent: CCBot
+Allow: /
+Allow: /about
+Allow: /login
+
+# ByteDance
+User-agent: Bytespider
+Allow: /
+Allow: /about
+Allow: /login
+
+# XML Sitemap Link
+Sitemap: https://miraigrid.web.id/sitemap.xml

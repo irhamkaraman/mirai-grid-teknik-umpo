@@ -65,24 +65,52 @@ def get_mime_type_description(entry: os.DirEntry) -> str:
 
 def list_directory_contents(dir_path: str, project_root: str) -> List[Dict[str, Any]]:
     items = []
+    username = os.path.basename(project_root)
+    data_base = os.path.dirname(os.path.dirname(project_root))
+    user_repo_dir = os.path.realpath(os.path.join(data_base, "repositories", username))
+    allowed_roots = [project_root]
+    if os.path.exists(user_repo_dir):
+        allowed_roots.append(user_repo_dir)
+
     try:
         entries = sorted(os.scandir(dir_path), key=lambda e: (not e.is_dir(), e.name.lower()))
         for entry in entries:
             real_entry_path = os.path.realpath(entry.path)
-            if os.path.commonpath([project_root, real_entry_path]) != project_root:
+            is_valid = False
+            for root in allowed_roots:
+                try:
+                    if os.path.commonpath([root, real_entry_path]) == root:
+                        is_valid = True
+                        break
+                except ValueError:
+                    pass
+
+            if not is_valid:
                 continue
 
             rel_path = os.path.relpath(entry.path, project_root).replace("\\", "/")
-            stat_res = entry.stat()
+            try:
+                stat_res = entry.stat(follow_symlinks=True)
+            except Exception:
+                stat_res = entry.stat(follow_symlinks=False)
+
+            is_directory = False
+            try:
+                is_directory = entry.is_dir(follow_symlinks=True)
+            except Exception:
+                is_directory = entry.is_dir(follow_symlinks=False)
+
             items.append({
                 "name": entry.name,
                 "path": rel_path,
-                "is_dir": entry.is_dir(),
-                "size": stat_res.st_size if not entry.is_dir() else 4096,
+                "is_dir": is_directory,
+                "size": stat_res.st_size if not is_directory else 4096,
                 "modified": int(stat_res.st_mtime),
+                "last_modified": int(stat_res.st_mtime),
                 "type": get_mime_type_description(entry),
                 "permissions": get_octal_permissions(stat_res.st_mode),
-                "extension": pathlib.Path(entry.name).suffix.lower() if not entry.is_dir() else ""
+                "extension": pathlib.Path(entry.name).suffix.lower() if not is_directory else "",
+                "is_link": entry.is_symlink()
             })
     except Exception as e:
         print(f"[FileManager Error]: {e}")

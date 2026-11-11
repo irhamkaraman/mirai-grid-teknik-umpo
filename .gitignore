@@ -53,9 +53,10 @@ dist-ssr/
 *.swp
 *.swo
 scratch/
-.idea/
-.vscode/
-*.swp
-*.swo
 .DS_Store
 Thumbs.db
+
+# Archives & Temporary files
+*.tar.gz
+*.bak
+*.zip

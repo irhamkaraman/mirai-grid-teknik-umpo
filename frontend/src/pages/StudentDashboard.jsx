@@ -10,9 +10,12 @@ import {
   Sparkles,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   Search,
   Rocket,
   FileCode,
+  Code,
   Terminal,
   Wand2,
   Globe,
@@ -31,12 +34,16 @@ import {
   Activity,
   CheckCircle2,
   Sliders,
-  Settings
+  Settings,
+  AlertCircle,
+  Filter,
+  Clock
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { api } from '../api/client'
 import { SkeletonCard } from '../components/Skeletons'
 import { launchDatabaseSSO } from '../utils/sso'
+import CpanelSidepanel from '../components/CpanelSidepanel'
 
 export default function StudentDashboard({
   user,
@@ -50,6 +57,9 @@ export default function StudentDashboard({
   const [databases, setDatabases] = useState([])
   const [systemCapacity, setSystemCapacity] = useState(null)
   const [accountSearchQuery, setAccountSearchQuery] = useState('')
+  const [accountPage, setAccountPage] = useState(1)
+  const [accountPageSize, setAccountPageSize] = useState(10)
+  const [accountFilterTab, setAccountFilterTab] = useState('all') // 'all', 'filled', 'near_full'
   const [loading, setLoading] = useState(true)
 
   // Section collapse state (persisted in localStorage or default all open)
@@ -57,6 +67,7 @@ export default function StudentDashboard({
     files: false,
     deployment: false,
     databases: false,
+    advanced: false,
   })
 
   useEffect(() => {
@@ -126,6 +137,37 @@ export default function StudentDashboard({
           iconColor: 'text-[#E8C58D]',
           bgGradient: 'from-[#422718] to-[#2D1A10]',
           action: () => onNavigate('/disk-usage'),
+        },
+        {
+          id: 'git-version-control',
+          title: 'Git™ Version Control',
+          description: 'Kelola repositori Git mandiri: cloning repository remote, pull update, checkout branch, dan riwayat commit.',
+          logo: '/logos/git.svg',
+          iconColor: 'text-[#F05032]',
+          bgGradient: 'from-[#422216] to-[#2D160E]',
+          action: () => onNavigate('/git'),
+        },
+        {
+          id: 'redis-manager',
+          title: 'Redis™ Manager',
+          description: 'Kelola in-memory data store, high-performance object cache, dan session broker dengan socket terisolasi.',
+          badge: 'In-Memory Cache',
+          badgeColor: 'bg-red-950/80 text-red-300 border-red-700/60',
+          logo: '/logos/redis.svg',
+          iconColor: 'text-[#D82C20]',
+          bgGradient: 'from-[#421A1A] to-[#2B1010]',
+          action: () => onNavigate('/redis'),
+        },
+        {
+          id: 'web-ide-vscode',
+          title: 'Web IDE (VS Code)',
+          description: 'Ngoding langsung di browser dengan Visual Studio Code lengkap dengan terminal, extensions, dan live preview.',
+          badge: 'Baru • Code Server',
+          badgeColor: 'bg-blue-950/80 text-blue-300 border-blue-700/60',
+          icon: Code,
+          iconColor: 'text-[#007ACC]',
+          bgGradient: 'from-[#1A2E40] to-[#121E2B]',
+          action: () => onNavigate('/vscode'),
         },
       ],
     },
@@ -202,7 +244,13 @@ export default function StudentDashboard({
           icon: Layers,
           iconColor: 'text-cyan-300',
           bgGradient: 'from-[#1B363E] to-[#122328]',
-          action: () => window.open(`http://${window.location.hostname}:8978/#/`, '_blank', 'noopener,noreferrer'),
+          action: () => {
+            const isDomain = window.location.hostname.includes('miraigrid.web.id')
+            const target = isDomain
+              ? 'https://cloudbeaver.miraigrid.web.id/#/'
+              : `http://${window.location.hostname}:8978/#/`
+            window.open(target, '_blank', 'noopener,noreferrer')
+          },
           isExternal: true,
         },
         {
@@ -242,7 +290,7 @@ export default function StudentDashboard({
           id: 'phpmyadmin',
           title: 'phpMyAdmin',
           description: 'Web GUI resmi pengelolaan database MySQL / MariaDB 11 dengan auto-login & struktur tabel lengkap.',
-          badge: 'Port 8080',
+          badge: 'MySQL / MariaDB',
           badgeColor: 'bg-[#402616] text-[#E8C58D] border-[#683E24]',
           logo: '/logos/phpmyadmin.png',
           icon: Server,
@@ -255,7 +303,7 @@ export default function StudentDashboard({
           id: 'phppgadmin',
           title: 'phpPgAdmin',
           description: 'Web GUI resmi pengelolaan database PostgreSQL 16 terisolasi dengan akses schema & query lengkap.',
-          badge: 'Port 8088',
+          badge: 'PostgreSQL 16',
           badgeColor: 'bg-sky-950/80 text-sky-300 border-sky-700/60',
           logo: '/logos/postgres.svg',
           icon: Database,
@@ -263,6 +311,33 @@ export default function StudentDashboard({
           bgGradient: 'from-[#1E3342] to-[#14232E]',
           action: () => launchDatabaseSSO('postgres'),
           isExternal: true,
+        },
+      ],
+    },
+    {
+      id: 'advanced',
+      title: 'Advanced',
+      subtitle: 'Pusat konfigurasi lanjutan: Web Terminal terisolasi dan penjadwalan otomatisasi Cron Jobs',
+      icon: Settings,
+      color: 'from-amber-600/20 to-orange-700/10 border-amber-500/30 text-amber-300',
+      tools: [
+        {
+          id: 'terminal',
+          title: 'Terminal',
+          description: 'Akses command line interface (CLI) terisolasi sandbox per akun untuk eksekusi perintah dan skrip.',
+          icon: Terminal,
+          iconColor: 'text-[#E8DCB8]',
+          bgGradient: 'from-[#422216] to-[#2D160E]',
+          action: () => onNavigate('/terminal'),
+        },
+        {
+          id: 'cron-jobs',
+          title: 'Cron Jobs',
+          description: 'Jadwalkan eksekusi script atau perintah otomatis secara berkala sesuai interval waktu tertentu.',
+          icon: Clock,
+          iconColor: 'text-amber-300',
+          bgGradient: 'from-[#3A2216] to-[#24150E]',
+          action: () => onNavigate('/cron'),
         },
       ],
     },
@@ -288,33 +363,113 @@ export default function StudentDashboard({
       .filter(Boolean)
   }, [toolGroups, searchQuery])
 
-  // Filter accounts based on accountSearchQuery for Admin
-  const filteredAccounts = useMemo(() => {
+  // Calculate counts for filters
+  const accountCounts = useMemo(() => {
+    const list = systemCapacity?.accounts || []
+    const filled = list.filter(
+      (a) => (a.project_count || 0) > 0 || (a.database_count || 0) > 0 || (a.estimated_disk_mb || 0) > 0
+    ).length
+    const nearFull = list.filter((a) => {
+      const projFull = (a.project_count || 0) >= (a.max_projects || 2) && (a.project_count || 0) > 0
+      const dbStorageMb = a.estimated_db_storage_mb || ((a.database_count || 0) * 12.5)
+      const maxDbStorage = a.max_database_disk_mb || 100
+      const dbFull = dbStorageMb >= (maxDbStorage * 0.8) && (a.database_count || 0) > 0
+      const diskHigh = (a.estimated_disk_mb || 0) >= ((a.max_disk_mb || 500) * 0.7)
+      return (projFull && dbFull) || diskHigh || (projFull && (a.database_count || 0) > 0)
+    }).length
+    return { all: list.length, filled, nearFull }
+  }, [systemCapacity])
+
+  // Filter and sort accounts:
+  // "tampilkan akun yang telah terisi dan paling banyak hingga hampir penuh"
+  const sortedAndFilteredAccounts = useMemo(() => {
     if (!systemCapacity?.accounts) return []
-    if (!accountSearchQuery.trim()) return systemCapacity.accounts
-    const q = accountSearchQuery.toLowerCase().trim()
-    return systemCapacity.accounts.filter(
-      (a) =>
-        a.username?.toLowerCase().includes(q) ||
-        a.name?.toLowerCase().includes(q) ||
-        a.class_name?.toLowerCase().includes(q)
-    )
-  }, [systemCapacity, accountSearchQuery])
+    let list = [...systemCapacity.accounts]
+
+    // Search query filter
+    if (accountSearchQuery.trim()) {
+      const q = accountSearchQuery.toLowerCase().trim()
+      list = list.filter(
+        (a) =>
+          a.username?.toLowerCase().includes(q) ||
+          a.name?.toLowerCase().includes(q) ||
+          a.class_name?.toLowerCase().includes(q)
+      )
+    }
+
+    // Filter by tab
+    if (accountFilterTab === 'filled') {
+      list = list.filter(
+        (a) => (a.project_count || 0) > 0 || (a.database_count || 0) > 0 || (a.estimated_disk_mb || 0) > 0
+      )
+    } else if (accountFilterTab === 'near_full') {
+      list = list.filter((a) => {
+        const projFull = (a.project_count || 0) >= (a.max_projects || 2) && (a.project_count || 0) > 0
+        const dbStorageMb = a.estimated_db_storage_mb || ((a.database_count || 0) * 12.5)
+        const maxDbStorage = a.max_database_disk_mb || 100
+        const dbFull = dbStorageMb >= (maxDbStorage * 0.8) && (a.database_count || 0) > 0
+        const diskHigh = (a.estimated_disk_mb || 0) >= ((a.max_disk_mb || 500) * 0.7)
+        return (projFull && dbFull) || diskHigh || (projFull && (a.database_count || 0) > 0)
+      })
+    }
+
+    // Sort: Akun terisi & paling penuh berada di posisi paling atas!
+    list.sort((a, b) => {
+      // Admin always at top
+      if (a.role === 'admin' && b.role !== 'admin') return -1
+      if (b.role === 'admin' && a.role !== 'admin') return 1
+
+      const maxDiskA = a.max_disk_mb || 500
+      const maxDiskB = b.max_disk_mb || 500
+      const diskPctA = (a.estimated_disk_mb || 0) / maxDiskA
+      const diskPctB = (b.estimated_disk_mb || 0) / maxDiskB
+
+      const projA = a.project_count || 0
+      const projB = b.project_count || 0
+      const dbA = a.database_count || 0
+      const dbB = b.database_count || 0
+
+      // Fullness score: prioritize accounts with both slots and DBs used, and high disk usage
+      const scoreA = (projA * 100) + (dbA * 50) + (diskPctA * 80)
+      const scoreB = (projB * 100) + (dbB * 50) + (diskPctB * 80)
+
+      if (scoreB !== scoreA) {
+        return scoreB - scoreA
+      }
+      return (b.estimated_disk_mb || 0) - (a.estimated_disk_mb || 0)
+    })
+
+    return list
+  }, [systemCapacity, accountSearchQuery, accountFilterTab])
+
+  const totalAccountPages = Math.ceil(sortedAndFilteredAccounts.length / accountPageSize) || 1
+  const paginatedAccounts = useMemo(() => {
+    const start = (accountPage - 1) * accountPageSize
+    return sortedAndFilteredAccounts.slice(start, start + accountPageSize)
+  }, [sortedAndFilteredAccounts, accountPage, accountPageSize])
 
   // Calculation for Disk Usage Modal / Student meter
-  const diskTotalMb = 1024 // 1 GB allocated
+  const diskTotalMb = quota?.max_disk_mb || 500
   const diskUsedMb = useMemo(() => {
-    let base = 24.5
-    if (projects.length > 0) base += projects.length * 12.8
-    if (databases.length > 0) base += databases.length * 16.4
-    return Math.min(diskTotalMb, parseFloat(base.toFixed(1)))
-  }, [projects.length, databases.length])
+    if (quota?.disk_used_mb !== undefined && quota?.disk_used_mb !== null) {
+      return Math.min(diskTotalMb, parseFloat(quota.disk_used_mb.toFixed(1)))
+    }
+    return 0.0
+  }, [quota?.disk_used_mb, diskTotalMb])
   const diskPercent = Math.min(100, Math.round((diskUsedMb / diskTotalMb) * 100))
 
+  // Storage Database calculation (Berdasarkan kapasitas storage, bukan per instance database):
+  const dbStorageMaxMb = quota?.max_database_disk_mb || 100
+  const dbStorageUsedMb = quota?.used_database_disk_mb ?? parseFloat((databases.length * 12.5).toFixed(1))
+  const dbStoragePercent = Math.min(100, Math.round((dbStorageUsedMb / dbStorageMaxMb) * 100))
+
   return (
-    <div className="space-y-8 animate-in fade-in duration-200">
-      {/* 1. STATISTIK: MONITOR KAPASITAS SERVER (ADMIN) ATAU KUOTA MAHASISWA */}
-      <div>
+    <div className="space-y-8 animate-in fade-in duration-200 w-full">
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+        {/* Kolom Kiri: Tools & Monitoring Utama */}
+        <div className="xl:col-span-8 2xl:col-span-9 space-y-6">
+          {/* 1. STATISTIK: MONITOR KAPASITAS SERVER (ADMIN) ATAU KUOTA MAHASISWA */}
+          <div>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3.5">
           <h3 className="text-lg font-serif font-bold text-[#26160F] flex items-center space-x-2">
             {isAdmin ? (
@@ -328,10 +483,7 @@ export default function StudentDashboard({
           </h3>
           <span className="text-xs font-mono text-[#5C3B29] font-medium flex items-center space-x-1.5">
             {isAdmin ? (
-              <>
-                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                <span>Host Server Labdocker • Tanpa Batas Alokasi (Akses Root)</span>
-              </>
+              <span>Host Server Labdocker | Tanpa Batas Alokasi (Akses Root)</span>
             ) : (
               <span>Terisolasi per Mahasiswa</span>
             )}
@@ -431,7 +583,7 @@ export default function StudentDashboard({
                   <div className="bg-amber-400 h-full rounded-full w-full"></div>
                 </div>
                 <p className="text-[11px] text-[#DFCDB5]/70 mt-2 font-mono">
-                  {systemCapacity?.host?.total_databases_postgres ?? 0} PG • {systemCapacity?.host?.total_databases_mariadb ?? 0} MariaDB
+                  {systemCapacity?.host?.total_databases_postgres ?? 0} PG + {systemCapacity?.host?.total_databases_mariadb ?? 0} MariaDB
                 </p>
               </div>
             </div>
@@ -455,8 +607,11 @@ export default function StudentDashboard({
                     <input
                       type="text"
                       value={accountSearchQuery}
-                      onChange={(e) => setAccountSearchQuery(e.target.value)}
-                      placeholder="Cari NIM, Nama, Kelas..."
+                      onChange={(e) => {
+                        setAccountSearchQuery(e.target.value)
+                        setAccountPage(1)
+                      }}
+                      placeholder="Cari NIM atau Nama Pengguna..."
                       className="w-full bg-[#1C0F0A] border border-[#3E2316] focus:border-[#C49767] rounded-xl pl-9 pr-3 py-1.5 text-xs text-[#FAF5EC] placeholder-[#A47E65] outline-none font-sans"
                     />
                   </div>
@@ -469,115 +624,272 @@ export default function StudentDashboard({
                 </div>
               </div>
 
+              {/* Filter Tabs / Pills: Semua, Terisi, Hampir Penuh */}
+              <div className="flex items-center gap-2 mb-3">
+                <button
+                  onClick={() => {
+                    setAccountFilterTab('all')
+                    setAccountPage(1)
+                  }}
+                  className={`px-3 py-1 rounded-xl text-xs font-medium transition ${
+                    accountFilterTab === 'all'
+                      ? 'bg-[#C49767] text-[#1C0F0A] font-bold shadow'
+                      : 'bg-[#1C0F0A] text-[#DFCDB5] hover:bg-[#25150E] border border-[#3E2316]'
+                  }`}
+                >
+                  Semua Akun ({accountCounts.all})
+                </button>
+                <button
+                  onClick={() => {
+                    setAccountFilterTab('filled')
+                    setAccountPage(1)
+                  }}
+                  className={`px-3 py-1 rounded-xl text-xs font-medium transition ${
+                    accountFilterTab === 'filled'
+                      ? 'bg-[#C49767] text-[#1C0F0A] font-bold shadow'
+                      : 'bg-[#1C0F0A] text-[#DFCDB5] hover:bg-[#25150E] border border-[#3E2316]'
+                  }`}
+                >
+                  Terisi / Aktif ({accountCounts.filled})
+                </button>
+                <button
+                  onClick={() => {
+                    setAccountFilterTab('near_full')
+                    setAccountPage(1)
+                  }}
+                  className={`px-3 py-1 rounded-xl text-xs font-medium flex items-center space-x-1.5 transition ${
+                    accountFilterTab === 'near_full'
+                      ? 'bg-amber-600 text-amber-950 font-bold shadow'
+                      : 'bg-[#1C0F0A] text-amber-400/90 hover:bg-[#25150E] border border-amber-900/40'
+                  }`}
+                >
+                  <span>Hampir Penuh ({accountCounts.nearFull})</span>
+                </button>
+              </div>
+
               {/* Table of Accounts */}
               <div className="border border-[#3E2316] rounded-2xl overflow-hidden bg-[#1C0F0A]">
                 <table className="w-full text-xs text-left">
                   <thead className="bg-[#160C08] border-b border-[#3E2316] text-[#A47E65] font-mono text-[11px]">
                     <tr>
                       <th className="p-3">Akun / NIM</th>
-                      <th className="p-3">Nama Mahasiswa</th>
-                      <th className="p-3">Kelas / Angkatan</th>
-                      <th className="p-3 text-center">Web Projects</th>
+                      <th className="p-3">Nama Pengguna</th>
+                      <th className="p-3">Role</th>
+                      <th className="p-3 text-center">Deployment</th>
                       <th className="p-3 text-center">Databases</th>
                       <th className="p-3 text-right">Est. Storage</th>
-                      <th className="p-3 text-center">Status Akun</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#2F1A10]">
-                    {filteredAccounts.length === 0 ? (
+                    {paginatedAccounts.length === 0 ? (
                       <tr>
-                        <td colSpan="7" className="p-6 text-center text-[#A47E65] font-sans">
-                          Tidak ada akun yang sesuai dengan pencarian "{accountSearchQuery}".
+                        <td colSpan="6" className="p-6 text-center text-[#A47E65] font-sans">
+                          Tidak ada akun yang sesuai dengan filter atau pencarian "{accountSearchQuery}".
                         </td>
                       </tr>
                     ) : (
-                      filteredAccounts.map((acc) => (
-                        <tr key={acc.id} className="hover:bg-[#25150E] transition">
-                          <td className="p-3 font-mono font-bold text-[#FAF5EC] flex items-center space-x-2">
-                            <span>{acc.username}</span>
-                            {acc.role === 'admin' && (
-                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-950/80 text-amber-300 border border-amber-700/60 font-mono">
-                                Admin
+                      paginatedAccounts.map((acc) => {
+                        const isProjFull = (acc.project_count || 0) >= (acc.max_projects || 2) && (acc.project_count || 0) > 0
+                        const dbStorageMb = acc.estimated_db_storage_mb || ((acc.database_count || 0) * 12.5)
+                        const maxDbStorage = acc.max_database_disk_mb || (acc.role === 'admin' ? 1000 : 100)
+                        const isDbFull = dbStorageMb >= (maxDbStorage * 0.85) && (acc.database_count || 0) > 0
+                        const maxDisk = acc.max_disk_mb || (acc.role === 'admin' ? 2000 : 5000)
+                        const diskRatio = (acc.estimated_disk_mb || 0) / maxDisk
+                        const isNearFull = (isProjFull && isDbFull) || diskRatio >= 0.7
+
+                        return (
+                          <tr key={acc.id} className="hover:bg-[#25150E] transition">
+                            <td className="p-3 font-mono font-bold text-[#FAF5EC] flex items-center space-x-2">
+                              <span>{acc.username}</span>
+                              {acc.role === 'admin' && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-950/80 text-amber-300 border border-amber-700/60 font-mono">
+                                  Admin
+                                </span>
+                              )}
+                              {isNearFull && acc.role !== 'admin' && (
+                                <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-950/90 text-amber-300 border border-amber-600/50 font-sans font-medium">
+                                  Hampir Penuh
+                                </span>
+                              )}
+                            </td>
+                            <td className="p-3 text-[#DFCDB5] font-medium">{acc.name}</td>
+                            <td className="p-3">
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono uppercase tracking-wider ${
+                                acc.role === 'admin'
+                                  ? 'bg-[#5A3521] text-[#E8DCB8] border border-[#7D492F]'
+                                  : 'bg-[#2A170F] text-[#DFCDB5] border border-[#3E2316]'
+                              }`}>
+                                {acc.role || 'student'}
                               </span>
-                            )}
-                          </td>
-                          <td className="p-3 text-[#DFCDB5] font-medium">{acc.name}</td>
-                          <td className="p-3 text-[#A47E65] font-mono text-[11px]">
-                            {acc.class_name ? `${acc.class_name} (${acc.cohort_year || 'Aktif'})` : 'Superadmin'}
-                          </td>
-                          <td className="p-3 text-center">
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full font-mono text-xs ${
-                              acc.project_count > 0 ? 'bg-indigo-950/80 text-indigo-300 border border-indigo-700/60 font-bold' : 'text-[#A47E65]'
-                            }`}>
-                              {acc.project_count} slot
-                            </span>
-                          </td>
-                          <td className="p-3 text-center">
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full font-mono text-xs ${
-                              acc.database_count > 0 ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-700/60 font-bold' : 'text-[#A47E65]'
-                            }`}>
-                              {acc.database_count} DB
-                            </span>
-                          </td>
-                          <td className="p-3 text-right font-mono text-[#E8DCB8] font-semibold">
-                            {acc.estimated_disk_mb} MB
-                          </td>
-                          <td className="p-3 text-center">
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-mono ${
-                              acc.is_active ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-800/60' : 'bg-rose-950/80 text-rose-300 border border-rose-800/60'
-                            }`}>
-                              {acc.is_active ? '● Aktif' : 'Nonaktif'}
-                            </span>
-                          </td>
-                        </tr>
-                      ))
+                            </td>
+                            <td className="p-3 text-center">
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full font-mono text-xs ${
+                                (acc.project_count > 0)
+                                  ? 'bg-indigo-950/80 text-indigo-300 border border-indigo-700/60 font-bold'
+                                  : 'text-[#A47E65]'
+                              }`}>
+                                {acc.project_count || 0} Aktif
+                              </span>
+                            </td>
+                            <td className="p-3 text-center">
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full font-mono text-xs ${
+                                isDbFull
+                                  ? 'bg-amber-950/80 text-amber-300 border border-amber-700/60 font-bold'
+                                  : (acc.database_count > 0)
+                                  ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-700/60 font-bold'
+                                  : 'text-[#A47E65]'
+                              }`}>
+                                {acc.database_count} DB ({dbStorageMb.toFixed(1)} / {maxDbStorage} MB)
+                              </span>
+                            </td>
+                            <td className="p-3 text-right">
+                              <div className="flex flex-col items-end">
+                                <span className="font-mono text-[#FAF5EC] font-semibold text-xs">
+                                  {acc.estimated_disk_mb} MB{' '}
+                                  <span className="text-[10px] text-[#A47E65] font-normal">
+                                    / {maxDisk >= 1000 ? `${(maxDisk / 1000).toFixed(maxDisk % 1000 === 0 ? 0 : 1)} GB` : `${maxDisk} MB`}
+                                  </span>
+                                </span>
+                                <div className="w-24 bg-[#160C08] h-1.5 rounded-full mt-1 overflow-hidden border border-[#3E2316]">
+                                  <div
+                                    className={`h-full rounded-full transition-all duration-300 ${
+                                      diskRatio >= 0.8
+                                        ? 'bg-rose-500'
+                                        : diskRatio >= 0.4
+                                        ? 'bg-amber-400'
+                                        : 'bg-emerald-400'
+                                    }`}
+                                    style={{
+                                      width: `${Math.min(100, Math.max(acc.estimated_disk_mb > 0 ? 5 : 0, Math.round(diskRatio * 100)))}%`
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                      })
                     )}
                   </tbody>
                 </table>
+
+                {/* Pagination Controls Footer */}
+                {sortedAndFilteredAccounts.length > 0 && (
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 bg-[#160C08] border-t border-[#3E2316] text-xs text-[#A47E65]">
+                    <div className="flex items-center space-x-2">
+                      <span>Tampilkan</span>
+                      <select
+                        value={accountPageSize}
+                        onChange={(e) => {
+                          setAccountPageSize(Number(e.target.value))
+                          setAccountPage(1)
+                        }}
+                        className="bg-[#2B1810] border border-[#4D2D1E] rounded-xl px-2.5 py-1 text-xs text-[#FAF5EC] focus:outline-none"
+                      >
+                        <option value={5}>5</option>
+                        <option value={10}>10</option>
+                        <option value={25}>25</option>
+                        <option value={50}>50</option>
+                      </select>
+                      <span>akun per halaman</span>
+                      <span className="text-[#C49767] ml-2 font-mono">
+                        (Menampilkan {(accountPage - 1) * accountPageSize + 1} - {Math.min(accountPage * accountPageSize, sortedAndFilteredAccounts.length)} dari {sortedAndFilteredAccounts.length} akun)
+                      </span>
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <span className="text-[11px] font-mono mr-1">
+                        Halaman {accountPage} dari {totalAccountPages}
+                      </span>
+                      <button
+                        onClick={() => setAccountPage((p) => Math.max(1, p - 1))}
+                        disabled={accountPage <= 1}
+                        className="p-1.5 rounded-xl bg-[#2B1810] border border-[#4D2D1E] text-[#FAF5EC] disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#3D2317] transition"
+                        title="Halaman Sebelumnya"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </button>
+
+                      {/* Numeric page buttons */}
+                      <div className="flex items-center space-x-1">
+                        {Array.from({ length: totalAccountPages }, (_, i) => i + 1)
+                          .filter((p) => p === 1 || p === totalAccountPages || Math.abs(p - accountPage) <= 1)
+                          .map((p, idx, arr) => (
+                            <React.Fragment key={p}>
+                              {idx > 0 && arr[idx - 1] !== p - 1 && (
+                                <span className="px-1 text-[#A47E65]">...</span>
+                              )}
+                              <button
+                                onClick={() => setAccountPage(p)}
+                                className={`px-2.5 py-1 rounded-xl text-xs font-mono transition ${
+                                  accountPage === p
+                                    ? 'bg-[#C49767] text-[#1C0F0A] font-bold shadow'
+                                    : 'bg-[#2B1810] border border-[#4D2D1E] text-[#DFCDB5] hover:bg-[#3D2317]'
+                                }`}
+                              >
+                                {p}
+                              </button>
+                            </React.Fragment>
+                          ))}
+                      </div>
+
+                      <button
+                        onClick={() => setAccountPage((p) => Math.min(totalAccountPages, p + 1))}
+                        disabled={accountPage >= totalAccountPages}
+                        className="p-1.5 rounded-xl bg-[#2B1810] border border-[#4D2D1E] text-[#FAF5EC] disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#3D2317] transition"
+                        title="Halaman Selanjutnya"
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
         ) : (
           /* TAMPILAN MAHASISWA: KUOTA PERSONAL */
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Projects Meter */}
+            {/* Deployment Meter (Sebelumnya Web Projects, batasan adalah storage) */}
             <div
               onClick={() => onNavigate('/deploy')}
               className="bg-[#2B1810] border border-[#4D2D1E] hover:border-[#6D4029] p-5 rounded-3xl shadow-xl text-[#FAF5EC] cursor-pointer transition group"
             >
               <div className="flex items-center justify-between text-[#DFCDB5] mb-2">
-                <span className="text-xs font-semibold group-hover:text-[#FAF5EC]">Web Projects</span>
+                <span className="text-xs font-semibold group-hover:text-[#FAF5EC]">Deployment</span>
                 <Layers className="h-4 w-4 text-[#E8DCB8] group-hover:scale-110 transition" />
               </div>
               <div className="text-2xl font-black text-[#FAF5EC] font-sans">
-                {quota?.used_projects ?? projects.length} <span className="text-xs text-[#DFCDB5]/70 font-normal">/ {quota?.max_projects ?? 2} slot</span>
+                {quota?.used_projects ?? projects.length} <span className="text-xs text-[#DFCDB5]/70 font-normal">Aktif</span>
               </div>
-              <div className="w-full bg-[#1C0F0A] h-2 rounded-full mt-3 overflow-hidden border border-[#3D2316]">
-                <div
-                  className="bg-[#C49767] h-full rounded-full transition-all duration-500"
-                  style={{ width: `${Math.min(100, (((quota?.used_projects ?? projects.length) || 0) / (quota?.max_projects || 2)) * 100)}%` }}
-                ></div>
-              </div>
+              <p className="text-[11px] text-[#DFCDB5]/70 mt-2 font-mono flex items-center justify-between">
+                <span>Dibatasi kuota storage</span>
+                <span className="text-emerald-400 font-bold">Uncapped Slot</span>
+              </p>
             </div>
 
-            {/* Databases Meter */}
+            {/* Storage Database Meter (Bukan per instance, tapi per kapasitas storage DB) */}
             <div
               onClick={() => onNavigate('/databases')}
               className="bg-[#2B1810] border border-[#4D2D1E] hover:border-[#6D4029] p-5 rounded-3xl shadow-xl text-[#FAF5EC] cursor-pointer transition group"
             >
               <div className="flex items-center justify-between text-[#DFCDB5] mb-2">
-                <span className="text-xs font-semibold group-hover:text-[#FAF5EC]">Databases</span>
+                <span className="text-xs font-semibold group-hover:text-[#FAF5EC]">Storage Database</span>
                 <Database className="h-4 w-4 text-[#E8DCB8] group-hover:scale-110 transition" />
               </div>
               <div className="text-2xl font-black text-[#FAF5EC] font-sans">
-                {quota?.used_databases ?? databases.length} <span className="text-xs text-[#DFCDB5]/70 font-normal">/ {quota?.max_databases ?? 2} DB</span>
+                {dbStorageUsedMb} <span className="text-xs text-[#DFCDB5]/70 font-normal">/ {dbStorageMaxMb} MB</span>
               </div>
               <div className="w-full bg-[#1C0F0A] h-2 rounded-full mt-3 overflow-hidden border border-[#3D2316]">
                 <div
-                  className="bg-[#C49767] h-full rounded-full transition-all duration-500"
-                  style={{ width: `${Math.min(100, (((quota?.used_databases ?? databases.length) || 0) / (quota?.max_databases || 2)) * 100)}%` }}
+                  className="bg-amber-400 h-full rounded-full transition-all duration-500"
+                  style={{ width: `${dbStoragePercent}%` }}
                 ></div>
               </div>
+              <p className="text-[11px] text-[#DFCDB5]/70 mt-2 font-mono flex items-center justify-between">
+                <span>{databases.length} Database aktif</span>
+                <span className="text-amber-400 font-bold">{dbStoragePercent}%</span>
+              </p>
             </div>
 
             {/* Memory Allocation */}
@@ -592,14 +904,14 @@ export default function StudentDashboard({
               <p className="text-[11px] text-[#DFCDB5]/70 mt-2 font-mono">Isolasi OOM killer aktif.</p>
             </div>
 
-            {/* Disk Storage Quick Meter */}
+            {/* Storage File Manager Quick Meter */}
             <div
               onClick={() => onNavigate('/disk-usage')}
               className="bg-[#2B1810] border border-[#4D2D1E] hover:border-[#6D4029] p-5 rounded-3xl shadow-xl text-[#FAF5EC] cursor-pointer transition group"
             >
               <div className="flex items-center justify-between text-[#DFCDB5] mb-2">
-                <span className="text-xs font-semibold group-hover:text-[#FAF5EC]">Disk Usage</span>
-                <PieChart className="h-4 w-4 text-[#E8DCB8] group-hover:scale-110 transition" />
+                <span className="text-xs font-semibold group-hover:text-[#FAF5EC]">Storage File Manager</span>
+                <HardDrive className="h-4 w-4 text-[#E8DCB8] group-hover:scale-110 transition" />
               </div>
               <div className="text-2xl font-black text-[#FAF5EC] font-sans">
                 {diskUsedMb} <span className="text-xs text-[#DFCDB5]/70 font-normal">/ {diskTotalMb} MB</span>
@@ -610,6 +922,10 @@ export default function StudentDashboard({
                   style={{ width: `${diskPercent}%` }}
                 ></div>
               </div>
+              <p className="text-[11px] text-[#DFCDB5]/70 mt-2 font-mono flex items-center justify-between">
+                <span>Web project & files</span>
+                <span className="text-emerald-400 font-bold">{diskPercent}%</span>
+              </p>
             </div>
           </div>
         )}
@@ -652,9 +968,6 @@ export default function StudentDashboard({
                       <h4 className="text-base font-serif font-bold text-[#FAF5EC] tracking-wide">
                         {group.title}
                       </h4>
-                      <p className="text-[11px] text-[#A47E65] hidden sm:block">
-                        {group.subtitle}
-                      </p>
                     </div>
                   </div>
 
@@ -716,6 +1029,13 @@ export default function StudentDashboard({
             )
           })
         )}
+      </div>
+        </div>
+
+        {/* Kolom Kanan: Sidepanel Kanan Informasi Akun & Statistik ala cPanel */}
+        <div className="xl:col-span-4 2xl:col-span-3 sticky top-6">
+          <CpanelSidepanel user={user} />
+        </div>
       </div>
     </div>
   )

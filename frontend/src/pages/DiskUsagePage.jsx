@@ -7,7 +7,7 @@ import {
   ArrowLeft,
   ExternalLink,
   RefreshCw,
-  Sparkles,
+  Info,
   PieChart,
   ShieldCheck,
   Check,
@@ -83,13 +83,13 @@ export default function DiskUsagePage({ user, onNavigate }) {
 
   // Calculate storage numbers
   const diskTotalMb = quota?.max_disk_mb || 1024
-  const diskUsedMb = quota?.disk_used_mb ? parseFloat(quota.disk_used_mb.toFixed(1)) : 50.1
+  const diskUsedMb = quota?.disk_used_mb !== undefined && quota?.disk_used_mb !== null ? parseFloat(quota.disk_used_mb.toFixed(1)) : 0.0
   const diskPercent = Math.min(100, Math.round((diskUsedMb / diskTotalMb) * 100))
   const remainingMb = parseFloat((diskTotalMb - diskUsedMb).toFixed(1))
 
   // Estimate project and database sizes
   const projectItems = projects.map((p) => ({
-    name: `/home/student/lab/${p.name}`,
+    name: `/home/${p.owner_username || user?.username || 'user'}/${p.name}`,
     type: `${p.language || p.template_type || 'web'} App`,
     sizeMb: 12.8,
     action: () => window.open('/files', '_blank', 'noopener,noreferrer'),
@@ -113,8 +113,8 @@ export default function DiskUsagePage({ user, onNavigate }) {
 
   const serverItems = [
     {
-      name: '/home/student/lab (Seluruh Direktori Sandbox Mahasiswa)',
-      type: 'Mahasiswa Storage',
+      name: `/home/${user?.username || 'user'} (Direktori Sandbox Akun)`,
+      type: user?.role === 'admin' ? 'Semua User Storage' : 'Mahasiswa Storage',
       sizeMb: systemCapacity?.host?.total_allocated_disk_mb || 50.1,
       action: () => window.open('/files', '_blank', 'noopener,noreferrer'),
     },
@@ -147,7 +147,7 @@ export default function DiskUsagePage({ user, onNavigate }) {
   const allItems = isAdmin ? serverItems : [...projectItems, ...databaseItems, ...systemItems]
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-200">
+    <div className="space-y-6 animate-in fade-in duration-200 w-full">
       {/* Top Header & Breadcrumb */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center space-x-3">
@@ -160,17 +160,7 @@ export default function DiskUsagePage({ user, onNavigate }) {
             <ArrowLeft className="h-4 w-4 group-hover:-translate-x-0.5 transition-transform" />
           </button>
           <div>
-            <div className="flex items-center space-x-2">
-              <span className={`text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-md border ${
-                isAdmin
-                  ? 'text-emerald-300 bg-emerald-950/80 border-emerald-700/60'
-                  : 'text-[#C49767] bg-[#3B2215] border-[#523220]'
-              }`}>
-                {isAdmin ? '🛡️ Administrator Superuser' : 'Storage Manager'}
-              </span>
-              <span className="text-xs text-[#A47E65]">/ Tools</span>
-            </div>
-            <h1 className="text-2xl font-serif font-bold text-[#26160F] flex items-center space-x-2.5 mt-0.5">
+            <h1 className="text-2xl font-serif font-bold text-[#26160F] flex items-center space-x-2.5">
               <HardDrive className="h-6 w-6 text-[#5A3521]" />
               <span>{isAdmin ? 'Monitor Kapasitas Storage & Pembagian Akun' : 'Disk Usage (Penggunaan Ruang Penyimpanan)'}</span>
             </h1>
@@ -226,7 +216,7 @@ export default function DiskUsagePage({ user, onNavigate }) {
                   {systemCapacity?.host?.disk_percent ?? 8}% Terpakai
                 </span>
                 <span className="text-xs text-[#DFCDB5]">
-                  • Sisa: <strong className="text-emerald-400 font-mono">{systemCapacity?.host?.disk_free_gb ?? '107.4'} GB</strong> Free
+                  Sisa: <strong className="text-emerald-400 font-mono">{systemCapacity?.host?.disk_free_gb ?? '107.4'} GB</strong> Free
                 </span>
               </div>
             </div>
@@ -321,7 +311,7 @@ export default function DiskUsagePage({ user, onNavigate }) {
                   {diskPercent}% Terpakai
                 </span>
                 <span className="text-xs text-[#DFCDB5]">
-                  • Sisa: <strong className="text-emerald-400 font-mono">{remainingMb} MB</strong>
+                  Sisa: <strong className="text-emerald-400 font-mono">{remainingMb} MB</strong>
                 </span>
               </div>
             </div>
@@ -347,9 +337,9 @@ export default function DiskUsagePage({ user, onNavigate }) {
                   <Folder className="h-5 w-5" />
                 </div>
                 <div className="overflow-hidden">
-                  <div className="text-[11px] text-[#A47E65]">Web Projects</div>
+                  <div className="text-[11px] text-[#A47E65]">Deployment</div>
                   <div className="font-bold text-sm text-[#FAF5EC] font-mono truncate">
-                    {projects.length} Project Aktif
+                    {projects.length} Deployment Aktif
                   </div>
                 </div>
               </div>
@@ -419,18 +409,17 @@ export default function DiskUsagePage({ user, onNavigate }) {
                 <tr>
                   <th className="p-3.5">Akun / NIM</th>
                   <th className="p-3.5">Nama Mahasiswa</th>
-                  <th className="p-3.5">Kelas / Angkatan</th>
+                  <th className="p-3.5">Role</th>
                   <th className="p-3.5 text-center">Web Projects</th>
                   <th className="p-3.5 text-center">Databases</th>
                   <th className="p-3.5 text-right">Pemakaian Disk</th>
                   <th className="p-3.5 text-center">Batas Kuota</th>
-                  <th className="p-3.5 text-center">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#2F1A10]">
                 {filteredAccounts.length === 0 ? (
                   <tr>
-                    <td colSpan="8" className="p-6 text-center text-[#A47E65] font-sans">
+                    <td colSpan="7" className="p-6 text-center text-[#A47E65] font-sans">
                       Tidak ada akun mahasiswa yang cocok dengan pencarian "{searchAccount}".
                     </td>
                   </tr>
@@ -446,8 +435,14 @@ export default function DiskUsagePage({ user, onNavigate }) {
                         )}
                       </td>
                       <td className="p-3.5 text-[#DFCDB5] font-medium">{acc.name}</td>
-                      <td className="p-3.5 text-[#A47E65] font-mono text-[11px]">
-                        {acc.class_name ? `${acc.class_name} (${acc.cohort_year || 'Aktif'})` : 'Root Lab'}
+                      <td className="p-3.5">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono uppercase tracking-wider ${
+                          acc.role === 'admin'
+                            ? 'bg-[#5A3521] text-[#E8DCB8] border border-[#7D492F]'
+                            : 'bg-[#2A170F] text-[#DFCDB5] border border-[#3E2316]'
+                        }`}>
+                          {acc.role || 'student'}
+                        </span>
                       </td>
                       <td className="p-3.5 text-center">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full font-mono text-xs ${
@@ -472,13 +467,6 @@ export default function DiskUsagePage({ user, onNavigate }) {
                         ) : (
                           <span className="text-[#DFCDB5]/70">{acc.max_disk_mb} MB</span>
                         )}
-                      </td>
-                      <td className="p-3.5 text-center">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-mono ${
-                          acc.is_active ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-800/60' : 'bg-rose-950/80 text-rose-300 border border-rose-800/60'
-                        }`}>
-                          {acc.is_active ? '● Aktif' : 'Nonaktif'}
-                        </span>
                       </td>
                     </tr>
                   ))
@@ -588,7 +576,7 @@ export default function DiskUsagePage({ user, onNavigate }) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="p-5 rounded-3xl bg-[#2B1810] border border-[#4D2D1E] shadow-xl text-[#FAF5EC] space-y-2.5">
           <h4 className="text-sm font-serif font-bold text-[#FAF5EC] flex items-center space-x-2">
-            <Sparkles className="h-4 w-4 text-[#C49767]" />
+            <Info className="h-4 w-4 text-[#C49767]" />
             <span>{isAdmin ? 'Panduan Efisiensi Storage Server' : 'Tips Menghemat Ruang Penyimpanan'}</span>
           </h4>
           <ul className="text-xs text-[#DFCDB5]/80 space-y-1.5 list-disc list-inside">

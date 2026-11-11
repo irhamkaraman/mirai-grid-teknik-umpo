@@ -52,6 +52,8 @@ async def init_db():
             class_id INTEGER REFERENCES classes(id) ON DELETE SET NULL,
             must_change_password BOOLEAN DEFAULT 1,
             is_active BOOLEAN DEFAULT 1,
+            onboarding_step INTEGER DEFAULT 1,
+            onboarding_completed BOOLEAN DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         """)
@@ -62,10 +64,11 @@ async def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER UNIQUE REFERENCES users(id) ON DELETE CASCADE,
             max_projects INTEGER DEFAULT 2,
-            max_databases INTEGER DEFAULT 2,
+            max_databases INTEGER DEFAULT 99,
             max_memory_mb INTEGER DEFAULT 256,
             max_cpu_cores REAL DEFAULT 0.5,
             max_disk_mb INTEGER DEFAULT 500,
+            max_database_disk_mb INTEGER DEFAULT 100,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         """)
@@ -133,9 +136,125 @@ async def init_db():
         );
         """)
 
+        # 9. Git Version Control Repositories
+        await db.execute("""
+        CREATE TABLE IF NOT EXISTS git_repositories (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            name VARCHAR(100) NOT NULL,
+            path VARCHAR(255) NOT NULL,
+            filesystem_path VARCHAR(255) NOT NULL,
+            remote_url TEXT,
+            default_branch VARCHAR(100) DEFAULT 'main',
+            target_project_id INTEGER REFERENCES projects(id) ON DELETE SET NULL,
+            last_deployed_at TIMESTAMP,
+            last_deployed_commit VARCHAR(40),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(user_id, name)
+        );
+        """)
+
+        # 10. Cron Jobs
+        await db.execute("""
+        CREATE TABLE IF NOT EXISTS cron_jobs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            title VARCHAR(100) NOT NULL,
+            command TEXT NOT NULL,
+            schedule VARCHAR(100) NOT NULL,
+            minute VARCHAR(20) DEFAULT '*',
+            hour VARCHAR(20) DEFAULT '*',
+            day VARCHAR(20) DEFAULT '*',
+            month VARCHAR(20) DEFAULT '*',
+            weekday VARCHAR(20) DEFAULT '*',
+            is_active INTEGER DEFAULT 1,
+            last_run TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        """)
+
+        # Migration: Add HTTP/S Webhook fields if not present
+        cursor = await db.execute("PRAGMA table_info(cron_jobs)")
+        columns = [row[1] for row in await cursor.fetchall()]
+        if "job_type" not in columns:
+            await db.execute("ALTER TABLE cron_jobs ADD COLUMN job_type VARCHAR(20) DEFAULT 'command'")
+        if "http_method" not in columns:
+            await db.execute("ALTER TABLE cron_jobs ADD COLUMN http_method VARCHAR(10) DEFAULT 'GET'")
+        if "http_url" not in columns:
+            await db.execute("ALTER TABLE cron_jobs ADD COLUMN http_url TEXT")
+        if "http_headers" not in columns:
+            await db.execute("ALTER TABLE cron_jobs ADD COLUMN http_headers TEXT")
+        if "http_params" not in columns:
+            await db.execute("ALTER TABLE cron_jobs ADD COLUMN http_params TEXT")
+        if "http_body" not in columns:
+            await db.execute("ALTER TABLE cron_jobs ADD COLUMN http_body TEXT")
+
+        # 11. Web Deployments (Public Subdomain Router)
+        await db.execute("""
+        CREATE TABLE IF NOT EXISTS web_deployments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE,
+            subdomain VARCHAR(120) UNIQUE NOT NULL,
+            target_port INTEGER NOT NULL,
+            container_name VARCHAR(100) NOT NULL,
+            status VARCHAR(20) DEFAULT 'active', -- 'active', 'stopped'
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        """)
+        await db.execute("CREATE INDEX IF NOT EXISTS idx_web_deployments_subdomain ON web_deployments(subdomain);")
+        await db.execute("CREATE INDEX IF NOT EXISTS idx_web_deployments_user ON web_deployments(user_id);")
+
+        # 12. Isolated Per-User Redis Instances (Multi-Tenant & Anti-Bocor)
+        await db.execute("""
+        CREATE TABLE IF NOT EXISTS user_redis_instances (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            is_active INTEGER DEFAULT 0,
+            port INTEGER NOT NULL,
+            socket_path TEXT NOT NULL,
+            password TEXT NOT NULL,
+            max_memory_mb INTEGER DEFAULT 32,
+            eviction_policy VARCHAR(50) DEFAULT 'allkeys-lru',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        """)
+        await db.execute("CREATE INDEX IF NOT EXISTS idx_user_redis_user_id ON user_redis_instances(user_id);")
+
         # Check if config_json column exists, if not add it
         try:
             await db.execute("ALTER TABLE projects ADD COLUMN config_json TEXT;")
+        except Exception:
+            pass
+
+        # Ensure database permission columns exist in quotas table
+        for col, col_def in [
+            ("allow_postgres", "INTEGER DEFAULT 1"),
+            ("allow_mariadb", "INTEGER DEFAULT 1"),
+            ("allow_remote_db", "INTEGER DEFAULT 1"),
+            ("max_database_disk_mb", "INTEGER DEFAULT 100"),
+        ]:
+            try:
+                await db.execute(f"ALTER TABLE quotas ADD COLUMN {col} {col_def};")
+            except Exception:
+                pass
+
+        # Ensure onboarding columns exist in users table
+        for col, col_def in [
+            ("onboarding_step", "INTEGER DEFAULT 1"),
+            ("onboarding_completed", "BOOLEAN DEFAULT 0"),
+        ]:
+            try:
+                await db.execute(f"ALTER TABLE users ADD COLUMN {col} {col_def};")
+            except Exception:
+                pass
+
+        # Ensure admin accounts always have onboarding completed
+        try:
+            await db.execute("UPDATE users SET onboarding_completed = 1, onboarding_step = 4 WHERE role = 'admin';")
         except Exception:
             pass
 
@@ -145,10 +264,38 @@ async def init_db():
         if not admin:
             admin_pass_hash = hash_password("splitti26nakama")
             await db.execute("""
-            INSERT INTO users (username, name, email, password_hash, role, must_change_password, is_active)
-            VALUES ('admin', 'Administrator Lab TI', 'admin.labit@umpo.ac.id', ?, 'admin', 0, 1)
+            INSERT INTO users (username, name, email, password_hash, role, must_change_password, is_active, onboarding_step, onboarding_completed)
+            VALUES ('admin', 'Administrator Lab TI', 'admin.labit@umpo.ac.id', ?, 'admin', 0, 1, 4, 1)
             """, (admin_pass_hash,))
             await db.commit()
             print("Default admin user seeded: admin / splitti26nakama")
+            cursor = await db.execute("SELECT id FROM users WHERE username = 'admin'")
+            admin = await cursor.fetchone()
+
+        # Ensure admin always has a definitive, synchronized quota record (Single Source of Truth)
+        if admin:
+            admin_id = admin[0] if isinstance(admin, (tuple, list)) else admin["id"]
+            admin_q = await (await db.execute("SELECT id FROM quotas WHERE user_id = ?", (admin_id,))).fetchone()
+            if not admin_q:
+                await db.execute("""
+                    INSERT INTO quotas (user_id, max_projects, max_databases, max_memory_mb, max_cpu_cores, max_disk_mb, max_database_disk_mb, allow_postgres, allow_mariadb, allow_remote_db)
+                    VALUES (?, 99, 99, 1024, 2.0, 2000, 1000, 1, 1, 1)
+                """, (admin_id,))
+                await db.commit()
+            else:
+                # Synchronize admin quota if needed
+                await db.execute("""
+                    UPDATE quotas 
+                    SET max_projects = 99, max_databases = 99, max_memory_mb = 1024, max_cpu_cores = 2.0, max_disk_mb = 2000, max_database_disk_mb = 1000
+                    WHERE user_id = ?
+                """, (admin_id,))
+                await db.commit()
+
+        # Ensure admin home sandbox is fully provisioned with cPanel dotfiles and directories
+        try:
+            from app.services.user_home import ensure_user_home
+            ensure_user_home("admin", "Administrator Lab TI", "admin.labit@umpo.ac.id")
+        except Exception as e:
+            print(f"[Warning] Admin home provisioning: {e}")
 
         await db.commit()

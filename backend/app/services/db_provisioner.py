@@ -165,3 +165,84 @@ class DatabaseProvisioner:
             return True
         finally:
             conn.close()
+
+    @staticmethod
+    async def purge_all_user_databases(nim: str) -> Dict[str, Any]:
+        """
+        Permanently drops ALL PostgreSQL and MariaDB databases and database users
+        belonging to student NIM/username (s{nim}_* and user s{nim}).
+        """
+        clean_nim = re.sub(r"[^a-zA-Z0-9_]", "", nim)
+        db_user = f"s{clean_nim}"
+        pg_deleted = []
+        maria_deleted = []
+
+        # 1. Purge PostgreSQL
+        try:
+            pg_conn = await asyncpg.connect(
+                host=settings.POSTGRES_ADMIN_HOST,
+                port=settings.POSTGRES_ADMIN_PORT,
+                user=settings.POSTGRES_ADMIN_USER,
+                password=settings.POSTGRES_ADMIN_PASSWORD,
+                database=settings.POSTGRES_DEFAULT_DB,
+                timeout=10
+            )
+            try:
+                # Find all databases starting with s{clean_nim}_ or s{clean_nim}
+                rows = await pg_conn.fetch(
+                    "SELECT datname FROM pg_database WHERE datname LIKE $1 OR datname = $2",
+                    f"s{clean_nim}_%", f"s{clean_nim}"
+                )
+                for r in rows:
+                    dname = r["datname"]
+                    # Terminate connections
+                    await pg_conn.execute("""
+                        SELECT pg_terminate_backend(pid)
+                        FROM pg_stat_activity
+                        WHERE datname = $1 AND pid <> pg_backend_pid();
+                    """, dname)
+                    await pg_conn.execute(f'DROP DATABASE IF EXISTS "{dname}";')
+                    pg_deleted.append(dname)
+
+                # Drop PG user
+                try:
+                    await pg_conn.execute(f'DROP USER IF EXISTS "{db_user}";')
+                except Exception as e:
+                    print(f"[Warn] Drop PG user {db_user} error: {e}")
+            finally:
+                await pg_conn.close()
+        except Exception as e:
+            print(f"[Warn] PG purge error for {clean_nim}: {e}")
+
+        # 2. Purge MariaDB / MySQL
+        try:
+            maria_conn = await aiomysql.connect(
+                host=settings.MARIADB_ADMIN_HOST,
+                port=settings.MARIADB_ADMIN_PORT,
+                user=settings.MARIADB_ADMIN_USER,
+                password=settings.MARIADB_ADMIN_PASSWORD,
+                autocommit=True,
+                connect_timeout=10
+            )
+            try:
+                async with maria_conn.cursor() as cursor:
+                    await cursor.execute(f"SHOW DATABASES LIKE 's{clean_nim}%';")
+                    rows = await cursor.fetchall()
+                    for r in rows:
+                        dname = r[0]
+                        await cursor.execute(f"DROP DATABASE IF EXISTS `{dname}`;")
+                        maria_deleted.append(dname)
+
+                    # Drop user
+                    try:
+                        await cursor.execute(f"DROP USER IF EXISTS '{db_user}'@'%';")
+                        await cursor.execute(f"DROP USER IF EXISTS '{db_user}'@'localhost';")
+                        await cursor.execute("FLUSH PRIVILEGES;")
+                    except Exception as e:
+                        print(f"[Warn] Drop MariaDB user {db_user} error: {e}")
+            finally:
+                maria_conn.close()
+        except Exception as e:
+            print(f"[Warn] MariaDB purge error for {clean_nim}: {e}")
+
+        return {"postgres_databases": pg_deleted, "mariadb_databases": maria_deleted, "user": db_user}

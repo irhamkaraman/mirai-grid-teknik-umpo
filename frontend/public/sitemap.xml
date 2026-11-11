@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
+
+  <!-- Beranda & Portal Utama -->
+  <url>
+    <loc>https://miraigrid.web.id/</loc>
+    <lastmod>2026-11-11</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+    <image:image>
+      <image:loc>https://miraigrid.web.id/og-image.jpg</image:loc>
+      <image:title>Infrastruktur Cloud Laboratorium Teknik Informatika UMPO — MiraiGrid</image:title>
+      <image:caption>Tampilan antarmuka dashboard dan login portal platform cloud mandiri praktikum mahasiswa Teknik Informatika Universitas Muhammadiyah Ponorogo.</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://miraigrid.web.id/images/miraigrid-cloud-platform.jpg</image:loc>
+      <image:title>MiraiGrid Platform Cloud Hosting Mandiri</image:title>
+      <image:caption>Arsitektur isolated container runtimes, multi-database MariaDB &amp; PostgreSQL, serta Git version control.</image:caption>
+    </image:image>
+  </url>
+
+  <!-- Halaman Tentang & Arsitektur Teknologi -->
+  <url>
+    <loc>https://miraigrid.web.id/about</loc>
+    <lastmod>2026-11-11</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <image:image>
+      <image:loc>https://miraigrid.web.id/og-image.jpg</image:loc>
+      <image:title>Arsitektur Teknologi Modern MiraiGrid UMPO</image:title>
+      <image:caption>Teknologi modern PaaS laboratorium: Docker, Linux Container (LXC), Next.js, FastAPI, Nginx Reverse Proxy.</image:caption>
+    </image:image>
+  </url>
+
+  <!-- Halaman Login & Akses Portal Mahasiswa -->
+  <url>
+    <loc>https://miraigrid.web.id/login</loc>
+    <lastmod>2026-11-11</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+    <image:image>
+      <image:loc>https://miraigrid.web.id/og-image.jpg</image:loc>
+      <image:title>Login Portal Workspace MiraiGrid</image:title>
+      <image:caption>Autentikasi terintegrasi mahasiswa Teknik Informatika Universitas Muhammadiyah Ponorogo.</image:caption>
+    </image:image>
+  </url>
+
+</urlset>

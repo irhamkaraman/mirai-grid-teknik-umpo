@@ -12,13 +12,16 @@ from app.models.schemas import (
     ExternalDatabaseCreate, ExternalDatabaseResponse
 )
 from app.services.db_provisioner import DatabaseProvisioner, sanitize_identifier
-from app.api.deps import get_current_user, get_client_ip
+from app.services.cloudbeaver_sync import sync_cloudbeaver_datasources
+from app.api.deps import get_current_user, get_client_ip, require_onboarding_completed
 
 router = APIRouter(prefix="/databases", tags=["Databases"])
 
+@router.get("", response_model=List[StudentDatabaseResponse])
+@router.get("/", response_model=List[StudentDatabaseResponse])
 @router.get("/my-databases", response_model=List[StudentDatabaseResponse])
 async def list_my_databases(
-    current_user: dict = Depends(get_current_user),
+    current_user: dict = Depends(require_onboarding_completed),
     db: aiosqlite.Connection = Depends(get_db)
 ):
     cursor = await db.execute("""
@@ -51,16 +54,25 @@ async def create_database(
     current_user: dict = Depends(get_current_user),
     db: aiosqlite.Connection = Depends(get_db)
 ):
-    # 1. Quota check
-    cursor = await db.execute("SELECT max_databases FROM quotas WHERE user_id = ?", (current_user["id"],))
+    # 1. Storage Quota check (Batasan berbasis Storage Database, bukan slot/jumlah instance)
+    cursor = await db.execute("SELECT * FROM quotas WHERE user_id = ?", (current_user["id"],))
     quota_row = await cursor.fetchone()
-    max_dbs = quota_row["max_databases"] if quota_row else 2
+    
+    is_admin = current_user.get("role") == "admin"
+    max_db_storage_mb = 1000 if is_admin else (
+        quota_row["max_database_disk_mb"] if (quota_row and "max_database_disk_mb" in quota_row.keys() and quota_row["max_database_disk_mb"]) else 100
+    )
 
     c_cur = await db.execute("SELECT COUNT(*) FROM student_databases WHERE user_id = ?", (current_user["id"],))
     used_dbs = (await c_cur.fetchone())[0]
+    used_db_storage_mb = round(used_dbs * 12.5, 1)
 
-    if used_dbs >= max_dbs:
-        raise HTTPException(status_code=400, detail=f"Batas kuota database tercapai (Maksimal: {max_dbs} database).")
+    # Cek apakah kuota storage database masih mencukupi untuk membuat database baru (est. 12.5 MB)
+    if (used_db_storage_mb + 12.5) > max_db_storage_mb:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Batas kuota Storage Database penuh ({used_db_storage_mb} MB dari {max_db_storage_mb} MB). Silakan bersihkan database lama atau hubungi asisten lab untuk menambah kuota storage database."
+        )
 
     nim = current_user["username"]
     try:
@@ -95,6 +107,11 @@ async def create_database(
         VALUES (?, 'CREATE_DB', ?, ?, ?)
     """, (current_user["id"], prov["db_name"], ip, f"Created {body.engine} database"))
     await db.commit()
+
+    try:
+        await sync_cloudbeaver_datasources(db)
+    except Exception as e:
+        print(f"[Warn] CloudBeaver sync on create failed: {e}")
 
     return {
         "id": db_id,
@@ -138,6 +155,11 @@ async def delete_database(
         VALUES (?, 'DELETE_DB', ?, ?, 'Database deleted')
     """, (current_user["id"], row["db_name"], ip))
     await db.commit()
+
+    try:
+        await sync_cloudbeaver_datasources(db)
+    except Exception as e:
+        print(f"[Warn] CloudBeaver sync on create failed: {e}")
 
     return {"success": True, "message": "Database berhasil dihapus."}
 
@@ -250,6 +272,7 @@ async def sso_launch_database(
 
     is_maria = ("maria" in row["engine"] or "mysql" in row["engine"])
     port = 8080 if is_maria else 8088
+    subdomain = "pma.miraigrid.web.id" if is_maria else "ppa.miraigrid.web.id"
 
     return {
         "success": True,
@@ -258,6 +281,7 @@ async def sso_launch_database(
         "db_username": db_user,
         "port": port,
         "path": "/signon.php",
+        "action_url": f"https://{subdomain}/signon.php",
         "fields": {
             "user": db_user,
             "password": decrypted_pass,

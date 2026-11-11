@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useLocation } from 'react-router-dom'
-import { Plus, Play, Square, RotateCw, Trash2, Edit2, ExternalLink, Layers, AlertCircle, Terminal } from 'lucide-react'
+import { Plus, Play, Square, RotateCw, Trash2, Edit2, ExternalLink, Layers, AlertCircle, Terminal, Search, RefreshCw, ChevronLeft, ChevronRight, Globe, Copy, Check } from 'lucide-react'
 import { toast } from 'sonner'
 import { api } from '../api/client'
 import { SkeletonTable, Spinner } from '../components/Skeletons'
@@ -10,7 +10,9 @@ import ProjectDetailPage from './ProjectDetailPage'
 import CreateProjectPage from './CreateProjectPage'
 import ConsolePage from './ConsolePage'
 
-export default function ProjectsView() {
+export default function ProjectsView({ user: propUser }) {
+  const currentUser = propUser || JSON.parse(localStorage.getItem('miraigrid_user') || '{}')
+  const isAdmin = currentUser?.role === 'admin'
   const [projects, setProjects] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -23,7 +25,15 @@ export default function ProjectsView() {
   // Confirmation modal
   const [confirmDelete, setConfirmDelete] = useState({ open: false, id: null, name: '' })
   const [controlLoadingId, setControlLoadingId] = useState(null)
+  const [publishLoadingId, setPublishLoadingId] = useState(null)
+  const [copiedId, setCopiedId] = useState(null)
   const location = useLocation()
+
+  // Search, Filter & Pagination States
+  const [searchQuery, setSearchQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState('all') // 'all', 'running', 'stopped', 'php', 'node', 'python'
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 10
 
   useEffect(() => {
     if (location.search.includes('create=true')) {
@@ -34,6 +44,38 @@ export default function ProjectsView() {
   useEffect(() => {
     fetchProjects()
   }, [])
+
+  const handlePublishWeb = async (projectId) => {
+    setPublishLoadingId(projectId)
+    try {
+      const res = await api.post('/deployments/publish', { project_id: projectId })
+      toast.success(`Berhasil mem-publish web ke subdomain resmi: ${res.data.subdomain}`)
+      await fetchProjects(true)
+    } catch (err) {
+      console.error(err)
+      toast.error(err.response?.data?.detail || 'Gagal mem-publish web.')
+    } finally {
+      setPublishLoadingId(null)
+    }
+  }
+
+  const handleToggleDeployment = async (deploymentId) => {
+    try {
+      const res = await api.post(`/deployments/${deploymentId}/toggle`)
+      toast.success(`Status publikasi diubah menjadi: ${res.data.status}`)
+      await fetchProjects(true)
+    } catch (err) {
+      console.error(err)
+      toast.error(err.response?.data?.detail || 'Gagal mengubah status publikasi.')
+    }
+  }
+
+  const handleCopyLink = (url, id) => {
+    navigator.clipboard.writeText(url)
+    setCopiedId(id)
+    toast.success('Link publik resmi disalin ke clipboard!')
+    setTimeout(() => setCopiedId(null), 2500)
+  }
 
   const fetchProjects = async (updateDetail = false) => {
     try {
@@ -50,6 +92,52 @@ export default function ProjectsView() {
       setLoading(false)
     }
   }
+
+  // Filter & Search Logic
+  const filteredProjects = useMemo(() => {
+    return projects.filter((p) => {
+      const q = searchQuery.toLowerCase().trim()
+      const appCfg = p.app_config || {}
+      const matchesSearch =
+        !q ||
+        p.name?.toLowerCase().includes(q) ||
+        p.subdomain?.toLowerCase().includes(q) ||
+        p.owner_username?.toLowerCase().includes(q) ||
+        String(appCfg.app_root || '').toLowerCase().includes(q)
+
+      if (!matchesSearch) return false
+
+      if (statusFilter === 'all') return true
+      if (statusFilter === 'running') return p.status === 'running'
+      if (statusFilter === 'stopped') return p.status !== 'running'
+      if (['php', 'node', 'python'].includes(statusFilter)) {
+        return (p.language || '').toLowerCase() === statusFilter
+      }
+      return true
+    })
+  }, [projects, searchQuery, statusFilter])
+
+  // Reset page on search or filter change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery, statusFilter])
+
+  const counts = useMemo(() => {
+    return {
+      all: projects.length,
+      running: projects.filter((p) => p.status === 'running').length,
+      stopped: projects.filter((p) => p.status !== 'running').length,
+      php: projects.filter((p) => (p.language || '').toLowerCase() === 'php').length,
+      node: projects.filter((p) => (p.language || '').toLowerCase() === 'node').length,
+      python: projects.filter((p) => (p.language || '').toLowerCase() === 'python').length,
+    }
+  }, [projects])
+
+  const totalPages = Math.max(1, Math.ceil(filteredProjects.length / itemsPerPage))
+  const paginatedProjects = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage
+    return filteredProjects.slice(start, start + itemsPerPage)
+  }, [filteredProjects, currentPage, itemsPerPage])
 
   const handleControl = async (projectId, action) => {
     setControlLoadingId(projectId)
@@ -85,6 +173,7 @@ export default function ProjectsView() {
   if (isCreatingProject) {
     return (
       <CreateProjectPage
+        user={currentUser}
         onBack={() => setIsCreatingProject(false)}
         onCreated={(newProj) => {
           setIsCreatingProject(false)
@@ -99,6 +188,7 @@ export default function ProjectsView() {
   if (activeProjectDetail) {
     return (
       <ProjectDetailPage
+        user={currentUser}
         project={activeProjectDetail}
         onBack={() => {
           setActiveProjectDetail(null)
@@ -139,7 +229,7 @@ export default function ProjectsView() {
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-200">
+    <div className="space-y-6 animate-in fade-in duration-200 w-full">
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -147,15 +237,116 @@ export default function ProjectsView() {
             Konfigurasi Deploy
           </h2>
           <p className="text-xs text-[#5C3B29] mt-1 font-sans">
-            Deploy kode praktikum (PHP, Python, Node.js) ke container terisolasi.
+            Deploy kode praktikum (PHP, Python, Node.js) ke container terisolasi & publikasikan ke subdomain resmi.
           </p>
         </div>
+        <div className="flex items-center space-x-2.5">
+          <div className="hidden sm:flex items-center space-x-2 px-3.5 py-2 rounded-2xl bg-[#2B1810] border border-[#4D2D1E] text-xs font-mono text-[#E8DCB8] shadow-sm">
+            <Globe className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+            <span>Wildcard: <strong className="text-emerald-300">*.miraigrid.web.id</strong></span>
+          </div>
+          <button
+            onClick={() => setIsCreatingProject(true)}
+            className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-2xl text-xs font-semibold bg-[#2B1810] hover:bg-[#3D2317] text-[#FAF5EC] border border-[#4D2D1E] shadow-lg shadow-black/10 transition shrink-0"
+          >
+            <Plus className="h-4 w-4 text-[#E8DCB8]" />
+            <span>Buat Project Baru</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Search, Filter & Control Toolbar */}
+      <div className="bg-[#2B1810] border border-[#4D2D1E] rounded-2xl p-4 flex flex-col md:flex-row items-center justify-between gap-3 shadow-md">
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto flex-1">
+          {/* Search Box */}
+          <div className="relative w-full sm:w-72">
+            <Search className="h-4 w-4 text-[#A47E65] absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Cari project, subdomain, path..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl pl-9 pr-3 py-2 text-xs text-[#FAF5EC] placeholder-[#A47E65] focus:outline-none focus:border-[#C49767] transition font-sans"
+            />
+          </div>
+
+          {/* Filter Pills */}
+          <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
+            <button
+              onClick={() => setStatusFilter('all')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-medium transition shrink-0 ${
+                statusFilter === 'all'
+                  ? 'bg-amber-600 text-amber-950 font-bold shadow'
+                  : 'bg-[#1C0F0A] text-[#DFCDB5] hover:bg-[#382115] border border-[#3E2316]'
+              }`}
+            >
+              Semua ({counts.all})
+            </button>
+            <button
+              onClick={() => setStatusFilter('running')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-medium transition shrink-0 ${
+                statusFilter === 'running'
+                  ? 'bg-emerald-600 text-emerald-950 font-bold shadow'
+                  : 'bg-[#1C0F0A] text-emerald-400/90 hover:bg-[#16271D] border border-emerald-900/40'
+              }`}
+            >
+              Running ({counts.running})
+            </button>
+            <button
+              onClick={() => setStatusFilter('stopped')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-medium transition shrink-0 ${
+                statusFilter === 'stopped'
+                  ? 'bg-rose-600 text-rose-950 font-bold shadow'
+                  : 'bg-[#1C0F0A] text-rose-400/90 hover:bg-[#281518] border border-rose-900/40'
+              }`}
+            >
+              Stopped ({counts.stopped})
+            </button>
+            {counts.php > 0 && (
+              <button
+                onClick={() => setStatusFilter('php')}
+                className={`px-2.5 py-1.5 rounded-xl text-xs font-mono transition shrink-0 ${
+                  statusFilter === 'php'
+                    ? 'bg-indigo-600 text-indigo-950 font-bold shadow'
+                    : 'bg-[#1C0F0A] text-indigo-300 hover:bg-[#241B33] border border-indigo-900/40'
+                }`}
+              >
+                PHP ({counts.php})
+              </button>
+            )}
+            {counts.node > 0 && (
+              <button
+                onClick={() => setStatusFilter('node')}
+                className={`px-2.5 py-1.5 rounded-xl text-xs font-mono transition shrink-0 ${
+                  statusFilter === 'node'
+                    ? 'bg-emerald-600 text-emerald-950 font-bold shadow'
+                    : 'bg-[#1C0F0A] text-emerald-300 hover:bg-[#152B1F] border border-emerald-900/40'
+                }`}
+              >
+                Node ({counts.node})
+              </button>
+            )}
+            {counts.python > 0 && (
+              <button
+                onClick={() => setStatusFilter('python')}
+                className={`px-2.5 py-1.5 rounded-xl text-xs font-mono transition shrink-0 ${
+                  statusFilter === 'python'
+                    ? 'bg-amber-600 text-amber-950 font-bold shadow'
+                    : 'bg-[#1C0F0A] text-amber-300 hover:bg-[#282116] border border-amber-900/40'
+                }`}
+              >
+                Python ({counts.python})
+              </button>
+            )}
+          </div>
+        </div>
+
         <button
-          onClick={() => setIsCreatingProject(true)}
-          className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-2xl text-xs font-semibold bg-[#2B1810] hover:bg-[#3D2317] text-[#FAF5EC] border border-[#4D2D1E] shadow-lg shadow-black/10 transition shrink-0"
+          onClick={() => fetchProjects()}
+          title="Muat Ulang Data"
+          className="p-2 rounded-xl bg-[#1C0F0A] hover:bg-[#3A2216] text-[#DFCDB5] border border-[#3E2316] transition shrink-0"
         >
-          <Plus className="h-4 w-4 text-[#E8DCB8]" />
-          <span>Buat Project Baru</span>
+          <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
         </button>
       </div>
 
@@ -190,11 +381,29 @@ export default function ProjectsView() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#3E2316]">
-                {projects.map((proj) => {
-                  const isRunning = proj.status === 'running'
+                {filteredProjects.length === 0 ? (
+                  <tr>
+                    <td colSpan="5" className="p-8 text-center text-[#A47E65]">
+                      Tidak ada project yang cocok dengan pencarian atau filter yang dipilih.
+                    </td>
+                  </tr>
+                ) : (
+                  paginatedProjects.map((proj) => {
+                    const isRunning = proj.status === 'running'
                   const isBusy = controlLoadingId === proj.id
                   const appCfg = proj.app_config || {}
-                  const appRoot = appCfg.app_root ? `/home/student/${proj.name}/${appCfg.app_root}` : `/home/student/${proj.name}`
+                  const projOwner = proj.owner_username || 'user'
+                  const isGitRepo = appCfg.is_git_repo || (appCfg.app_root && String(appCfg.app_root).includes('/repositories/'))
+                  let appRoot = `/home/${projOwner}/${proj.name}`
+                  if (appCfg.display_app_root) {
+                    appRoot = appCfg.display_app_root
+                  } else if (appCfg.app_root) {
+                    if (String(appCfg.app_root).startsWith('/')) {
+                      appRoot = appCfg.app_root
+                    } else {
+                      appRoot = `/home/${projOwner}/${proj.name}/${String(appCfg.app_root).replace(/^\/+/g, '')}`
+                    }
+                  }
                   const mode = appCfg.app_mode || 'development'
 
                   return (
@@ -209,13 +418,75 @@ export default function ProjectsView() {
                           <ExternalLink className="h-3 w-3 text-[#A47E65]" />
                         </button>
                         <div className="text-[10px] font-mono text-[#DFCDB5]/60 mt-0.5 truncate max-w-xs">
-                          {proj.access_url}
+                          {proj.public_url || proj.access_url}
                         </div>
+
+                        {/* Public Web Subdomain / Publish Web Button */}
+                        {proj.public_url ? (
+                          <div className="mt-2 flex items-center space-x-1.5 flex-wrap">
+                            <a
+                              href={proj.public_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className={`inline-flex items-center space-x-1 px-2.5 py-1 rounded-lg text-[11px] font-mono transition border ${
+                                proj.is_published
+                                  ? 'bg-emerald-950/70 border-emerald-700/60 text-emerald-300 hover:bg-emerald-900/80 hover:text-emerald-200'
+                                  : 'bg-stone-900/60 border-stone-700/50 text-stone-400'
+                              }`}
+                              title="Buka Website Resmi Publik"
+                            >
+                              <Globe className={`h-3 w-3 ${proj.is_published ? 'text-emerald-400' : 'text-stone-400'} shrink-0`} />
+                              <span className="truncate max-w-[210px] font-semibold">{proj.public_subdomain}</span>
+                              <ExternalLink className="h-2.5 w-2.5 shrink-0 opacity-70" />
+                            </a>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleCopyLink(proj.public_url, proj.id)
+                              }}
+                              title="Salin Link Publik"
+                              className="p-1 rounded-lg bg-[#1C0F0A] hover:bg-[#382115] text-[#DFCDB5] border border-[#3E2316] transition"
+                            >
+                              {copiedId === proj.id ? (
+                                <Check className="h-3 w-3 text-emerald-400" />
+                              ) : (
+                                <Copy className="h-3 w-3 text-[#C49767]" />
+                              )}
+                            </button>
+                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${
+                              proj.is_published ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-stone-800 text-stone-400'
+                            }`}>
+                              {proj.is_published ? 'Online' : 'Stopped'}
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="mt-2">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handlePublishWeb(proj.id)
+                              }}
+                              disabled={publishLoadingId === proj.id}
+                              className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-xl text-[11px] font-semibold bg-[#3A2216] hover:bg-[#5A3521] text-[#FAF5EC] border border-[#683E24] transition shadow-sm"
+                              title="Generate subdomain & publikasikan web ini ke internet (web-xxxx-nim.miraigrid.web.id)"
+                            >
+                              <Globe className="h-3 w-3 text-amber-400" />
+                              <span>{publishLoadingId === proj.id ? 'Mengenerate Subdomain...' : 'Deploy / Publish Web'}</span>
+                            </button>
+                          </div>
+                        )}
                       </td>
 
                       {/* 2. App Root Directory */}
                       <td className="p-4 font-mono text-[#DFCDB5]/80 text-[11px]">
-                        {appRoot}
+                        <div className="flex items-center space-x-1.5 flex-wrap">
+                          <span className="truncate max-w-[260px]" title={appRoot}>{appRoot}</span>
+                          {isGitRepo && (
+                            <span className="px-1.5 py-0.5 rounded text-[9px] bg-[#C49767]/20 border border-[#C49767]/40 text-[#E8DCB8] font-sans font-medium">
+                              Git™ Repo
+                            </span>
+                          )}
+                        </div>
                       </td>
 
                       {/* 3. Mode */}
@@ -277,6 +548,21 @@ export default function ProjectsView() {
                             <Terminal className="h-4 w-4" />
                           </button>
 
+                          {/* Public Deployment Toggle (Start / Stop Publikasi) */}
+                          {proj.deployment_id && (
+                            <button
+                              onClick={() => handleToggleDeployment(proj.deployment_id)}
+                              title={proj.is_published ? 'Hentikan Publikasi Web (Subdomain Off)' : 'Aktifkan Kembali Publikasi Web'}
+                              className={`p-1.5 rounded-lg transition ${
+                                proj.is_published
+                                  ? 'text-emerald-400 hover:text-emerald-300 hover:bg-[#1E3022]'
+                                  : 'text-stone-400 hover:text-amber-400 hover:bg-[#3A2115]'
+                              }`}
+                            >
+                              <Globe className="h-4 w-4" />
+                            </button>
+                          )}
+
                           {/* Edit / Detail Page (Pencil Icon) -> BUKAN MODAL! */}
                           <button
                             onClick={() => setActiveProjectDetail(proj)}
@@ -298,10 +584,52 @@ export default function ProjectsView() {
                       </td>
                     </tr>
                   )
-                })}
+                }))}
               </tbody>
             </table>
           </div>
+
+          {/* Pagination Controls */}
+          {filteredProjects.length > 0 && (
+            <div className="bg-[#1C0F0A] px-5 py-3.5 border-t border-[#3E2316] flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-[#DFCDB5]">
+              <span className="font-mono text-[11px] text-[#A47E65]">
+                Menampilkan {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, filteredProjects.length)} dari {filteredProjects.length} project
+              </span>
+              {totalPages > 1 && (
+                <div className="flex items-center space-x-1.5">
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="p-1.5 rounded-lg bg-[#2B1810] hover:bg-[#3D2317] border border-[#4D2D1E] text-[#DFCDB5] disabled:opacity-40 transition"
+                    title="Halaman Sebelumnya"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                    <button
+                      key={page}
+                      onClick={() => setCurrentPage(page)}
+                      className={`px-2.5 py-1 rounded-lg font-mono text-xs transition ${
+                        currentPage === page
+                          ? 'bg-[#C49767] text-[#2B1810] font-bold shadow-sm'
+                          : 'bg-[#2B1810] hover:bg-[#3D2317] border border-[#4D2D1E] text-[#DFCDB5]'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    className="p-1.5 rounded-lg bg-[#2B1810] hover:bg-[#3D2317] border border-[#4D2D1E] text-[#DFCDB5] disabled:opacity-40 transition"
+                    title="Halaman Selanjutnya"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 

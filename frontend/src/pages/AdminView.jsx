@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Shield, Users, UserPlus, KeyRound, Ban, Search, Clock, Trash2, Plus, Sparkles,
-  UserCheck, ChevronLeft, ChevronRight, Sliders, HardDrive, Cpu, X
+  UserCheck, ChevronLeft, ChevronRight, Sliders, HardDrive, Cpu, X, Database, ArrowRight
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { api } from '../api/client'
@@ -9,21 +10,18 @@ import { SkeletonCard, SkeletonTable, Spinner } from '../components/Skeletons'
 import ConfirmModal from '../components/ConfirmModal'
 import ModalPortal from '../components/ModalPortal'
 
-export default function AdminView() {
+export default function AdminView({ onNavigate }) {
+  const routerNavigate = useNavigate()
+  const navigate = (p) => onNavigate ? onNavigate(p) : routerNavigate(p)
   const [stats, setStats] = useState(null)
-  const [cohorts, setCohorts] = useState([])
-  const [classes, setClasses] = useState([])
   const [users, setUsers] = useState([])
   const [userPage, setUserPage] = useState(1)
   const [userPageSize, setUserPageSize] = useState(10)
   const [auditLogs, setAuditLogs] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
-  const [selectedClass, setSelectedClass] = useState('')
-  const [activeTab, setActiveTab] = useState('users') // 'users', 'generator', 'classes', 'logs'
-
-  // Sub-tabs in generator
-  const [generatorMode, setGeneratorMode] = useState('bulk') // 'bulk' or 'manual'
+  const [selectedRole, setSelectedRole] = useState('') // '' = all, 'student', 'admin'
+  const [activeTab, setActiveTab] = useState('users') // 'users', 'create', 'logs'
 
   // Confirmation modal
   const [confirmModal, setConfirmModal] = useState({ open: false, title: '', message: '', onConfirm: () => {} })
@@ -31,7 +29,7 @@ export default function AdminView() {
   // Bulk selection states
   const [selectedUserIds, setSelectedUserIds] = useState([])
 
-  // Resource limit modal states
+  // Resource limit modal states (bulk only)
   const [limitModal, setLimitModal] = useState({
     open: false,
     isBulk: false,
@@ -43,29 +41,14 @@ export default function AdminView() {
     maxCpuCores: 1.0,
   })
   const [savingLimit, setSavingLimit] = useState(false)
-
-  // Bulk Generator states
-  const [genCohortId, setGenCohortId] = useState('')
-  const [genClassId, setGenClassId] = useState('')
-  const [genNimPrefix, setGenNimPrefix] = useState('23533')
-  const [genStartNum, setGenStartNum] = useState(1)
-  const [genCount, setGenCount] = useState(30)
-  const [generatedAccounts, setGeneratedAccounts] = useState([])
   const [loadingAction, setLoadingAction] = useState(false)
 
-  // Manual Single Account states
+  // Single Account Creation states
   const [manualUsername, setManualUsername] = useState('')
   const [manualName, setManualName] = useState('')
   const [manualPassword, setManualPassword] = useState('')
   const [manualRole, setManualRole] = useState('student')
-  const [manualClassId, setManualClassId] = useState('')
   const [manualMustChange, setManualMustChange] = useState(true)
-
-  // Class & Cohort create states
-  const [newCohortYear, setNewCohortYear] = useState(2025)
-  const [newCohortDesc, setNewCohortDesc] = useState('')
-  const [newClassName, setNewClassName] = useState('')
-  const [newClassCohortId, setNewClassCohortId] = useState('')
 
   useEffect(() => {
     loadAll()
@@ -75,8 +58,6 @@ export default function AdminView() {
     setLoading(true)
     await Promise.allSettled([
       fetchStats(),
-      fetchCohorts(),
-      fetchClasses(),
       fetchUsers(),
       fetchAuditLogs(),
     ])
@@ -90,186 +71,108 @@ export default function AdminView() {
     } catch (err) {}
   }
 
-  const fetchCohorts = async () => {
-    try {
-      const res = await api.get('/admin/cohorts')
-      setCohorts(res.data)
-      if (res.data.length > 0) {
-        setGenCohortId(res.data[0].id)
-        setNewClassCohortId(res.data[0].id)
-      }
-    } catch (err) {}
-  }
-
-  const fetchClasses = async () => {
-    try {
-      const res = await api.get('/admin/classes')
-      setClasses(res.data)
-      if (res.data.length > 0) {
-        setGenClassId(res.data[0].id)
-      }
-    } catch (err) {}
-  }
-
   const fetchUsers = async () => {
     setUserPage(1)
     try {
       const res = await api.get('/admin/users', {
         params: {
           search: search || undefined,
-          class_id: selectedClass || undefined,
         },
       })
-      setUsers(res.data)
+      setUsers(res.data || [])
     } catch (err) {}
   }
 
   const fetchAuditLogs = async () => {
     try {
       const res = await api.get('/admin/audit-logs?limit=50')
-      setAuditLogs(res.data)
+      setAuditLogs(res.data || [])
     } catch (err) {}
   }
 
-  // 1. Bulk Generate
-  const handleGenerateAccounts = async (e) => {
+  // Create Single Account (Student or Admin)
+  const handleCreateAccount = async (e) => {
     e.preventDefault()
     setLoadingAction(true)
-    const toastId = toast.loading('Sedang membuat akun massal...')
-    try {
-      const res = await api.post('/admin/generate-bulk-accounts', {
-        cohort_id: parseInt(genCohortId),
-        class_id: parseInt(genClassId),
-        nim_prefix: genNimPrefix,
-        start_number: parseInt(genStartNum),
-        count: parseInt(genCount),
-      })
-      setGeneratedAccounts(res.data.accounts)
-      fetchUsers()
-      fetchStats()
-      toast.success(`Berhasil membuat ${res.data.total_generated} akun mahasiswa baru!`, { id: toastId })
-    } catch (err) {
-      toast.error(err.response?.data?.detail || 'Gagal generate akun.', { id: toastId })
-    } finally {
-      setLoadingAction(false)
-    }
-  }
-
-  // 2. Manual User Create (Custom Username & Password)
-  const handleCreateManualUser = async (e) => {
-    e.preventDefault()
-    setLoadingAction(true)
-    const toastId = toast.loading('Membuat akun kustom...')
+    const toastId = toast.loading('Membuat akun baru...')
     try {
       await api.post('/admin/users/create', {
         username: manualUsername.trim(),
         name: manualName.trim(),
         password: manualPassword,
         role: manualRole,
-        class_id: manualClassId ? parseInt(manualClassId) : null,
+        class_id: null,
         must_change_password: manualMustChange,
       })
-      toast.success(`Akun '${manualUsername}' berhasil dibuat!`, { id: toastId })
+      toast.success(`Akun '${manualUsername}' (${manualRole === 'admin' ? 'Administrator' : 'Mahasiswa'}) berhasil dibuat!`, { id: toastId })
       setManualUsername('')
       setManualName('')
       setManualPassword('')
+      setManualRole('student')
       fetchUsers()
       fetchStats()
+      setActiveTab('users')
     } catch (err) {
-      toast.error(err.response?.data?.detail || 'Gagal membuat akun kustom.', { id: toastId })
+      toast.error(err.response?.data?.detail || 'Gagal membuat akun.', { id: toastId })
     } finally {
       setLoadingAction(false)
     }
   }
 
-  // 3. Cohorts CRUD
-  const handleCreateCohort = async (e) => {
-    e.preventDefault()
-    try {
-      await api.post('/admin/cohorts', { year: parseInt(newCohortYear), description: newCohortDesc })
-      fetchCohorts()
-      setNewCohortDesc('')
-      toast.success('Angkatan berhasil ditambahkan.')
-    } catch (err) {
-      toast.error(err.response?.data?.detail || 'Gagal menambah angkatan.')
-    }
-  }
-
-  const triggerDeleteCohort = (cohortId, year) => {
-    setConfirmModal({
-      open: true,
-      title: 'Hapus Angkatan?',
-      message: `Hapus Angkatan ${year}? Kelas yang terhubung dengan angkatan ini juga akan terhapus.`,
-      onConfirm: async () => {
-        try {
-          await api.delete(`/admin/cohorts/${cohortId}`)
-          toast.success(`Angkatan ${year} berhasil dihapus.`)
-          fetchCohorts()
-          fetchClasses()
-        } catch (err) {
-          toast.error('Gagal menghapus angkatan.')
-        }
-      }
-    })
-  }
-
-  // 4. Classes CRUD
-  const handleCreateClass = async (e) => {
-    e.preventDefault()
-    try {
-      await api.post('/admin/classes', { cohort_id: parseInt(newClassCohortId), name: newClassName })
-      fetchClasses()
-      setNewClassName('')
-      toast.success('Kelas praktikum berhasil ditambahkan.')
-    } catch (err) {
-      toast.error(err.response?.data?.detail || 'Gagal menambah kelas.')
-    }
-  }
-
-  const triggerDeleteClass = (classId, name) => {
-    setConfirmModal({
-      open: true,
-      title: 'Hapus Kelas Praktikum?',
-      message: `Hapus kelas '${name}'? Tindakan ini tidak dapat dibatalkan.`,
-      onConfirm: async () => {
-        try {
-          await api.delete(`/admin/classes/${classId}`)
-          toast.success(`Kelas '${name}' berhasil dihapus.`)
-          fetchClasses()
-          fetchUsers()
-        } catch (err) {
-          toast.error('Gagal menghapus kelas.')
-        }
-      }
-    })
-  }
-
-  // 5. User Account Actions
+  // User Actions
   const triggerResetPassword = (userId, name) => {
     setConfirmModal({
       open: true,
-      title: 'Reset Password?',
-      message: `Reset password untuk '${name}' ke password sementara?`,
+      title: 'Reset Password Akun?',
+      message: `Reset password untuk ${name}? Sistem akan membuat password sementara acak dan mewajibkan ganti password saat login berikutnya.`,
       onConfirm: async () => {
         try {
           const res = await api.post(`/admin/users/${userId}/reset-password`)
-          toast.success(`Password sementara baru: ${res.data.new_temporary_password}`, { duration: 10000 })
+          const newPass = res.data.new_temporary_password
+          toast.success(
+            <div>
+              <p className="font-bold">Password Berhasil Direset!</p>
+              <p className="font-mono text-xs mt-1">Password Baru: <strong>{newPass}</strong></p>
+            </div>,
+            { duration: 10000 }
+          )
+          fetchUsers()
         } catch (err) {
-          toast.error('Gagal reset password.')
+          toast.error('Gagal mereset password.')
         }
       }
     })
   }
 
-  const triggerDeleteUser = (userId, username) => {
+  const triggerToggleSuspend = (userId, name, currentStatus) => {
+    const actionText = currentStatus ? 'Nonaktifkan (Suspend)' : 'Aktifkan Kembali'
     setConfirmModal({
       open: true,
-      title: 'Hapus Akun?',
-      message: `Hapus akun '${username}' beserta seluruh datanya? Tindakan ini tidak dapat dibatalkan.`,
+      title: `${actionText} Akun?`,
+      message: `${actionText} akun ${name}? ${currentStatus ? 'User tidak akan bisa login ke sistem.' : 'User akan dapat kembali mengakses platform.'}`,
+      onConfirm: async () => {
+        try {
+          await api.post(`/admin/users/${userId}/toggle-suspend`)
+          toast.success(`Status akun ${name} berhasil diperbarui.`)
+          fetchUsers()
+        } catch (err) {
+          toast.error('Gagal memperbarui status akun.')
+        }
+      }
+    })
+  }
+
+  const triggerDeleteUser = (userId, name) => {
+    setConfirmModal({
+      open: true,
+      title: 'Hapus Akun Pengguna?',
+      message: `Hapus akun '${name}' secara permanen? Seluruh project, file di direktori home, dan database terkait akan dibersihkan.`,
+      danger: true,
+      confirmText: 'Hapus Permanen',
       onConfirm: async () => {
         try {
           await api.delete(`/admin/users/${userId}`)
-          toast.success(`Akun '${username}' berhasil dihapus.`)
+          toast.success(`Akun ${name} berhasil dihapus.`)
           fetchUsers()
           fetchStats()
         } catch (err) {
@@ -279,9 +182,14 @@ export default function AdminView() {
     })
   }
 
-  // Pagination calculations for user list
-  const totalUserPages = Math.max(1, Math.ceil(users.length / userPageSize))
-  const paginatedUsers = users.slice((userPage - 1) * userPageSize, userPage * userPageSize)
+  // Filtered & Paginated Users
+  const filteredUsers = useMemo(() => {
+    if (!selectedRole) return users
+    return users.filter((u) => u.role === selectedRole)
+  }, [users, selectedRole])
+
+  const totalUserPages = Math.max(1, Math.ceil(filteredUsers.length / userPageSize))
+  const paginatedUsers = filteredUsers.slice((userPage - 1) * userPageSize, userPage * userPageSize)
 
   // Selection helpers (only student role accounts can be selected/bulk deleted)
   const selectableUsersOnPage = paginatedUsers.filter((u) => u.role !== 'admin')
@@ -327,17 +235,8 @@ export default function AdminView() {
     })
   }
 
-  const openLimitModal = (u) => {
-    setLimitModal({
-      open: true,
-      isBulk: false,
-      userId: u.id,
-      username: u.username,
-      name: u.name,
-      maxDiskMb: u.max_disk_mb || 1000,
-      maxMemoryMb: u.max_memory_mb || 512,
-      maxCpuCores: u.max_cpu_cores ?? 1.0,
-    })
+  const openLimitPage = (u) => {
+    navigate(`/admin/users/${u.id}/config`)
   }
 
   const openBulkLimitModal = () => {
@@ -349,33 +248,27 @@ export default function AdminView() {
       username: `${selectedUserIds.length} Akun Mahasiswa Terpilih`,
       name: 'Pengaturan Limit Massal',
       maxDiskMb: 1000,
+      maxDatabaseDiskMb: 100,
       maxMemoryMb: 512,
       maxCpuCores: 1.0,
     })
   }
 
-  const handleSaveLimit = async (e) => {
+  const handleSaveBulkLimit = async (e) => {
     e.preventDefault()
     setSavingLimit(true)
-    const toastId = toast.loading('Menyimpan konfigurasi limit resource...')
+    const toastId = toast.loading('Menyimpan konfigurasi limit resource & database...')
     try {
-      if (limitModal.isBulk) {
-        const res = await api.post('/admin/users/bulk-quota', {
-          user_ids: selectedUserIds,
-          max_disk_mb: parseInt(limitModal.maxDiskMb),
-          max_memory_mb: parseInt(limitModal.maxMemoryMb),
-          max_cpu_cores: parseFloat(limitModal.maxCpuCores),
-        })
-        toast.success(res.data.message || `Limit resource untuk ${res.data.updated_count} akun berhasil diperbarui!`, { id: toastId })
-      } else {
-        const res = await api.put(`/admin/users/${limitModal.userId}/quota`, {
-          max_disk_mb: parseInt(limitModal.maxDiskMb),
-          max_memory_mb: parseInt(limitModal.maxMemoryMb),
-          max_cpu_cores: parseFloat(limitModal.maxCpuCores),
-        })
-        toast.success(res.data.message || `Limit resource untuk '${limitModal.username}' berhasil diperbarui!`, { id: toastId })
-      }
+      const res = await api.post('/admin/users/bulk-quota', {
+        user_ids: selectedUserIds,
+        max_disk_mb: parseInt(limitModal.maxDiskMb),
+        max_database_disk_mb: parseInt(limitModal.maxDatabaseDiskMb || 100),
+        max_memory_mb: parseInt(limitModal.maxMemoryMb),
+        max_cpu_cores: parseFloat(limitModal.maxCpuCores),
+      })
+      toast.success(res.data.message || 'Limit resource berhasil diperbarui.', { id: toastId })
       setLimitModal((prev) => ({ ...prev, open: false }))
+      setSelectedUserIds([])
       fetchUsers()
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Gagal menyimpan limit resource.', { id: toastId })
@@ -384,31 +277,34 @@ export default function AdminView() {
     }
   }
 
-  const handleToggleStatus = async (userId) => {
-    try {
-      const res = await api.post(`/admin/users/${userId}/toggle-status`)
-      fetchUsers()
-      toast.success(res.data.is_active ? 'Akun telah diaktifkan kembali.' : 'Akun telah di-suspend.')
-    } catch (err) {
-      toast.error('Gagal mengubah status akun.')
-    }
-  }
+  // Dynamic user counters
+  const totalStudents = users.filter((u) => u.role === 'student').length
+  const totalAdmins = users.filter((u) => u.role === 'admin').length
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 font-sans w-full">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-serif font-bold text-[#26160F] flex items-center space-x-2">
+          <h2 className="text-2xl font-serif font-extrabold text-[#26160F] flex items-center space-x-2.5">
             <Users className="h-6 w-6 text-[#5A3521]" />
-            <span>Kelola Akun — MiraiGrid</span>
+            <span>Kelola Akun – MiraiGrid</span>
           </h2>
-          <p className="text-xs text-[#5C3B29] mt-1 font-sans">
-            Kelola angkatan, kelas praktikum, akun mahasiswa massal & kustom, dan audit log.
+          <p className="text-xs text-[#7A5A48] mt-1">
+            Kelola akun pengguna (Student & Admin), alokasi kuota resource, dan audit log aktivitas.
           </p>
         </div>
+
+        <button
+          onClick={() => setActiveTab('create')}
+          className="flex items-center space-x-2 px-4 py-2.5 rounded-2xl bg-[#2B1810] hover:bg-[#3E2316] text-[#FAF5EC] border border-[#4D2D1E] shadow-md transition font-semibold text-xs shrink-0"
+        >
+          <UserPlus className="h-4 w-4 text-[#C49767]" />
+          <span>Tambah Akun Baru</span>
+        </button>
       </div>
 
-      {/* Global Stat Cards */}
+      {/* Global Stat Cards: Berdasarkan Role Student vs Admin */}
       {loading ? (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <SkeletonCard />
@@ -419,69 +315,75 @@ export default function AdminView() {
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <div className="bg-[#2B1810] border border-[#4D2D1E] p-5 rounded-3xl shadow-xl text-[#FAF5EC]">
-            <p className="text-xs text-[#DFCDB5]">Total Mahasiswa</p>
-            <p className="text-2xl font-black text-[#FAF5EC] mt-1 font-sans">{stats?.total_students ?? 0}</p>
+            <p className="text-xs text-[#DFCDB5]">Total Pengguna</p>
+            <p className="text-2xl font-black text-[#FAF5EC] mt-1 font-sans">{users.length}</p>
+            <p className="text-[10px] text-[#A47E65] mt-1">Semua Akun Terdaftar</p>
           </div>
           <div className="bg-[#2B1810] border border-[#4D2D1E] p-5 rounded-3xl shadow-xl text-[#FAF5EC]">
-            <p className="text-xs text-[#DFCDB5]">Project Aktif</p>
-            <p className="text-2xl font-black text-[#E8DCB8] mt-1 font-sans">{stats?.total_projects ?? 0}</p>
+            <p className="text-xs text-[#DFCDB5]">Mahasiswa (Student)</p>
+            <p className="text-2xl font-black text-cyan-300 mt-1 font-sans">{totalStudents}</p>
+            <p className="text-[10px] text-[#A47E65] mt-1">Akun Praktikan Sandbox</p>
           </div>
           <div className="bg-[#2B1810] border border-[#4D2D1E] p-5 rounded-3xl shadow-xl text-[#FAF5EC]">
-            <p className="text-xs text-[#DFCDB5]">Database Siswa</p>
-            <p className="text-2xl font-black text-emerald-400 mt-1 font-sans">{stats?.total_databases ?? 0}</p>
+            <p className="text-xs text-[#DFCDB5]">Administrator (Admin)</p>
+            <p className="text-2xl font-black text-amber-300 mt-1 font-sans">{totalAdmins}</p>
+            <p className="text-[10px] text-[#A47E65] mt-1">Akses Root & Manajemen</p>
           </div>
           <div className="bg-[#2B1810] border border-[#4D2D1E] p-5 rounded-3xl shadow-xl text-[#FAF5EC]">
-            <p className="text-xs text-[#DFCDB5]">Kelas Praktikum</p>
-            <p className="text-2xl font-black text-[#E8C58D] mt-1 font-sans">{stats?.total_classes ?? 0}</p>
+            <p className="text-xs text-[#DFCDB5]">Resource Aktif</p>
+            <p className="text-2xl font-black text-emerald-400 mt-1 font-sans">
+              {(stats?.total_projects ?? 0) + (stats?.total_databases ?? 0)}
+            </p>
+            <p className="text-[10px] text-[#A47E65] mt-1">
+              {stats?.total_projects ?? 0} Proj • {stats?.total_databases ?? 0} DB
+            </p>
           </div>
         </div>
       )}
 
-      {/* Sub Navigation */}
+      {/* Sub Navigation (Disederhanakan: Daftar Akun, Tambah Akun, Audit Log) */}
       <div className="flex border-b border-[#DECDBD] space-x-2 overflow-x-auto">
         <button
           onClick={() => setActiveTab('users')}
-          className={`px-4 py-2.5 text-xs font-semibold border-b-2 whitespace-nowrap transition ${
+          className={`px-4 py-2.5 text-xs font-semibold border-b-2 whitespace-nowrap transition flex items-center space-x-2 ${
             activeTab === 'users' ? 'border-[#5A3521] text-[#26160F] font-bold' : 'border-transparent text-[#7A5A48] hover:text-[#26160F]'
           }`}
         >
-          Daftar Mahasiswa
+          <Users className="h-3.5 w-3.5" />
+          <span>Daftar Akun</span>
         </button>
         <button
-          onClick={() => setActiveTab('generator')}
-          className={`px-4 py-2.5 text-xs font-semibold border-b-2 whitespace-nowrap transition ${
-            activeTab === 'generator' ? 'border-[#5A3521] text-[#26160F] font-bold' : 'border-transparent text-[#7A5A48] hover:text-[#26160F]'
+          onClick={() => setActiveTab('create')}
+          className={`px-4 py-2.5 text-xs font-semibold border-b-2 whitespace-nowrap transition flex items-center space-x-2 ${
+            activeTab === 'create' ? 'border-[#5A3521] text-[#26160F] font-bold' : 'border-transparent text-[#7A5A48] hover:text-[#26160F]'
           }`}
         >
-          Pembuatan Akun (Massal & Kustom)
-        </button>
-        <button
-          onClick={() => setActiveTab('classes')}
-          className={`px-4 py-2.5 text-xs font-semibold border-b-2 whitespace-nowrap transition ${
-            activeTab === 'classes' ? 'border-[#5A3521] text-[#26160F] font-bold' : 'border-transparent text-[#7A5A48] hover:text-[#26160F]'
-          }`}
-        >
-          Kelola Angkatan & Kelas
+          <UserPlus className="h-3.5 w-3.5" />
+          <span>Tambah Akun</span>
         </button>
         <button
           onClick={() => setActiveTab('logs')}
-          className={`px-4 py-2.5 text-xs font-semibold border-b-2 whitespace-nowrap transition ${
+          className={`px-4 py-2.5 text-xs font-semibold border-b-2 whitespace-nowrap transition flex items-center space-x-2 ${
             activeTab === 'logs' ? 'border-[#5A3521] text-[#26160F] font-bold' : 'border-transparent text-[#7A5A48] hover:text-[#26160F]'
           }`}
         >
-          Audit Log
+          <Clock className="h-3.5 w-3.5" />
+          <span>Audit Log</span>
         </button>
       </div>
 
-      {/* TAB 1: USER LIST */}
+      {/* ======================================================== */}
+      {/* TAB 1: DAFTAR AKUN (ROLE STUDENT & ADMIN)                 */}
+      {/* ======================================================== */}
       {activeTab === 'users' && (
         <div className="space-y-4">
+          {/* Search Bar & Filter Berdasarkan Role */}
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
               <Search className="h-4 w-4 text-[#7A5A48] absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
-                placeholder="Cari NIM atau Nama Mahasiswa..."
+                placeholder="Cari NIM, Username, atau Nama Akun..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && fetchUsers()}
@@ -489,20 +391,22 @@ export default function AdminView() {
               />
             </div>
             <select
-              value={selectedClass}
-              onChange={(e) => { setSelectedClass(e.target.value); setTimeout(fetchUsers, 50); }}
-              className="bg-[#DECDBD] border border-[#BFAB96] rounded-2xl px-4 py-2.5 text-xs text-[#26160F] focus:outline-none focus:border-[#5A3521]"
+              value={selectedRole}
+              onChange={(e) => {
+                setSelectedRole(e.target.value)
+                setUserPage(1)
+              }}
+              className="bg-[#DECDBD] border border-[#BFAB96] rounded-2xl px-4 py-2.5 text-xs text-[#26160F] focus:outline-none focus:border-[#5A3521] font-medium"
             >
-              <option value="">Semua Kelas</option>
-              {classes.map((c) => (
-                <option key={c.id} value={c.id}>{c.name} ({c.cohort_year})</option>
-              ))}
+              <option value="">Semua Role (Student & Admin)</option>
+              <option value="student">Mahasiswa (Student)</option>
+              <option value="admin">Administrator (Admin)</option>
             </select>
             <button
               onClick={fetchUsers}
               className="px-5 py-2.5 rounded-2xl text-xs font-semibold bg-[#2B1810] hover:bg-[#3D2317] text-[#FAF5EC] transition"
             >
-              Filter
+              Cari
             </button>
           </div>
 
@@ -563,7 +467,6 @@ export default function AdminView() {
                     <th className="p-4">NIM / Username</th>
                     <th className="p-4">Nama</th>
                     <th className="p-4">Role</th>
-                    <th className="p-4">Kelas / Angkatan</th>
                     <th className="p-4 text-center">Storage</th>
                     <th className="p-4 text-center">RAM</th>
                     <th className="p-4 text-center">CPU</th>
@@ -574,582 +477,303 @@ export default function AdminView() {
                 <tbody className="divide-y divide-[#3E2316]">
                   {paginatedUsers.length === 0 ? (
                     <tr>
-                      <td colSpan="10" className="p-8 text-center text-[#DFCDB5]">
+                      <td colSpan="9" className="p-8 text-center text-[#DFCDB5]">
                         {loading ? (
                           <span className="flex items-center justify-center space-x-2">
                             <Spinner size="xs" />
-                            <span>Memuat daftar akun mahasiswa...</span>
+                            <span>Memuat daftar akun...</span>
                           </span>
                         ) : (
-                          <span>Tidak ada akun mahasiswa yang terdaftar atau cocok dengan pencarian.</span>
+                          <span>Tidak ada akun yang cocok dengan pencarian atau filter.</span>
                         )}
                       </td>
                     </tr>
                   ) : (
                     paginatedUsers.map((u) => (
-                    <tr
-                      key={u.id}
-                      className={`hover:bg-[#361E13] transition ${
-                        selectedUserIds.includes(u.id) ? 'bg-[#3A2216]/60' : ''
-                      }`}
-                    >
-                      <td className="p-4 text-center">
-                        {u.role === 'admin' ? (
-                          <span className="text-[10px] text-[#7A5A48] select-none">-</span>
-                        ) : (
-                          <input
-                            type="checkbox"
-                            checked={selectedUserIds.includes(u.id)}
-                            onChange={() => handleToggleSelectUser(u.id)}
-                            className="w-4 h-4 rounded border-[#4D2D1E] text-[#C49767] focus:ring-0 focus:ring-offset-0 bg-[#2B1810] cursor-pointer accent-[#C49767]"
-                          />
-                        )}
-                      </td>
-                      <td className="p-4 font-mono font-semibold text-[#FAF5EC]">{u.username}</td>
-                      <td className="p-4 font-medium">{u.name}</td>
-                      <td className="p-4">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono uppercase tracking-wider ${
-                          u.role === 'admin' ? 'bg-[#5A3521] text-[#E8DCB8] border border-[#7D492F]' : 'bg-[#1C0F0A] text-[#DFCDB5]'
-                        }`}>
-                          {u.role}
-                        </span>
-                      </td>
-                      <td className="p-4 text-[#DFCDB5]">
-                        {u.class_name ? `${u.class_name} (${u.cohort_year})` : '-'}
-                      </td>
-                      {/* Storage */}
-                      <td className="p-4 text-center">
-                        <button
-                          type="button"
-                          onClick={() => openLimitModal(u)}
-                          title="Klik untuk ubah limit Storage akun ini"
-                          className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-xl bg-[#1C0F0A] hover:bg-[#2A170F] border border-[#3E2316] hover:border-[#C49767]/60 text-[#DFCDB5] hover:text-[#FAF5EC] transition font-mono text-[11px]"
-                        >
-                          <HardDrive className="h-3 w-3 text-[#C49767]" />
-                          <span>
-                            {u.max_disk_mb >= 1000
-                              ? `${(u.max_disk_mb / 1000).toFixed(u.max_disk_mb % 1000 === 0 ? 0 : 1)} GB`
-                              : `${u.max_disk_mb || 1000} MB`}
+                      <tr
+                        key={u.id}
+                        className={`hover:bg-[#361E13] transition ${
+                          selectedUserIds.includes(u.id) ? 'bg-[#3A2216]/60' : ''
+                        }`}
+                      >
+                        <td className="p-4 text-center">
+                          {u.role === 'admin' ? (
+                            <span className="text-[10px] text-[#7A5A48] select-none">-</span>
+                          ) : (
+                            <input
+                              type="checkbox"
+                              checked={selectedUserIds.includes(u.id)}
+                              onChange={() => handleToggleSelectUser(u.id)}
+                              className="w-4 h-4 rounded border-[#4D2D1E] text-[#C49767] focus:ring-0 focus:ring-offset-0 bg-[#2B1810] cursor-pointer accent-[#C49767]"
+                            />
+                          )}
+                        </td>
+                        <td className="p-4 font-mono font-semibold text-[#FAF5EC]">{u.username}</td>
+                        <td className="p-4 font-medium">{u.name}</td>
+                        <td className="p-4">
+                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-mono uppercase tracking-wider font-semibold ${
+                            u.role === 'admin'
+                              ? 'bg-[#5A3521] text-[#E8DCB8] border border-[#7D492F]'
+                              : 'bg-[#1C0F0A] text-[#DFCDB5] border border-[#3E2316]'
+                          }`}>
+                            {u.role}
                           </span>
-                        </button>
-                      </td>
-                      {/* RAM */}
-                      <td className="p-4 text-center">
-                        <button
-                          type="button"
-                          onClick={() => openLimitModal(u)}
-                          title="Klik untuk ubah limit RAM akun ini"
-                          className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-xl bg-[#1C0F0A] hover:bg-[#2A170F] border border-[#3E2316] hover:border-emerald-500/60 text-[#DFCDB5] hover:text-[#FAF5EC] transition font-mono text-[11px]"
-                        >
-                          <Cpu className="h-3 w-3 text-emerald-400" />
-                          <span>
-                            {u.max_memory_mb >= 1024
-                              ? `${(u.max_memory_mb / 1024).toFixed(u.max_memory_mb % 1024 === 0 ? 0 : 1)} GB`
-                              : `${u.max_memory_mb || 512} MB`}
-                          </span>
-                        </button>
-                      </td>
-                      {/* CPU */}
-                      <td className="p-4 text-center">
-                        <button
-                          type="button"
-                          onClick={() => openLimitModal(u)}
-                          title="Klik untuk ubah limit CPU akun ini"
-                          className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-xl bg-[#1C0F0A] hover:bg-[#2A170F] border border-[#3E2316] hover:border-cyan-500/60 text-[#DFCDB5] hover:text-[#FAF5EC] transition font-mono text-[11px]"
-                        >
-                          <Sliders className="h-3 w-3 text-cyan-400" />
-                          <span>{u.max_cpu_cores ?? 1.0} Core</span>
-                        </button>
-                      </td>
-                      <td className="p-4">
-                        <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-semibold ${
-                          u.is_active ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                        }`}>
-                          {u.is_active ? 'Aktif' : 'Suspended'}
-                        </span>
-                      </td>
-                      <td className="p-4 text-right space-x-1 whitespace-nowrap">
-                        <button
-                          onClick={() => openLimitModal(u)}
-                          title="Atur Limit Resource (Storage, RAM, CPU)"
-                          className="p-1.5 text-[#DFCDB5] hover:text-[#C49767] hover:bg-[#3E2316] rounded-lg transition"
-                        >
-                          <Sliders className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => triggerResetPassword(u.id, u.name)}
-                          title="Reset Password Sementara"
-                          className="p-1.5 text-[#DFCDB5] hover:text-[#E8C58D] hover:bg-[#3E2316] rounded-lg transition"
-                        >
-                          <KeyRound className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handleToggleStatus(u.id)}
-                          title={u.is_active ? 'Suspend Akun' : 'Aktifkan Akun'}
-                          className={`p-1.5 rounded-lg transition ${
-                            u.is_active ? 'text-[#DFCDB5] hover:text-rose-400 hover:bg-[#3E2316]' : 'text-emerald-400 hover:bg-emerald-500/10'
-                          }`}
-                        >
-                          <Ban className="h-4 w-4" />
-                        </button>
-                        {u.role !== 'admin' && (
+                        </td>
+                        {/* Storage */}
+                        <td className="p-4 text-center">
                           <button
-                            onClick={() => triggerDeleteUser(u.id, u.username)}
-                            title="Hapus Akun"
-                            className="p-1.5 text-rose-400 hover:bg-rose-500/10 rounded-lg transition"
+                            type="button"
+                            onClick={() => openLimitPage(u)}
+                            title="Klik untuk konfigurasi limit Storage & Database akun ini"
+                            className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-xl bg-[#1C0F0A] hover:bg-[#2A170F] border border-[#3E2316] hover:border-[#C49767]/60 text-[#DFCDB5] hover:text-[#FAF5EC] transition font-mono text-[11px]"
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <HardDrive className="h-3 w-3 text-[#C49767]" />
+                            <span>
+                              {u.max_disk_mb >= 1000
+                                ? `${(u.max_disk_mb / 1000).toFixed(u.max_disk_mb % 1000 === 0 ? 0 : 1)} GB`
+                                : `${u.max_disk_mb || 500} MB`}
+                            </span>
+                            <span className="text-[#A47E65]">|</span>
+                            <Database className="h-3 w-3 text-[#E8C58D]" />
+                            <span>
+                              DB {u.max_database_disk_mb >= 1000
+                                ? `${(u.max_database_disk_mb / 1000).toFixed(u.max_database_disk_mb % 1000 === 0 ? 0 : 1)} GB`
+                                : `${u.max_database_disk_mb || 100} MB`}
+                            </span>
                           </button>
-                        )}
-                      </td>
-                    </tr>
-                  )))}
+                        </td>
+                        {/* RAM */}
+                        <td className="p-4 text-center">
+                          <button
+                            type="button"
+                            onClick={() => openLimitPage(u)}
+                            title="Klik untuk ubah limit RAM akun ini"
+                            className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-xl bg-[#1C0F0A] hover:bg-[#2A170F] border border-[#3E2316] hover:border-emerald-500/60 text-[#DFCDB5] hover:text-[#FAF5EC] transition font-mono text-[11px]"
+                          >
+                            <Cpu className="h-3 w-3 text-emerald-400" />
+                            <span>
+                              {u.max_memory_mb >= 1024
+                                ? `${(u.max_memory_mb / 1024).toFixed(u.max_memory_mb % 1024 === 0 ? 0 : 1)} GB`
+                                : `${u.max_memory_mb || 512} MB`}
+                            </span>
+                          </button>
+                        </td>
+                        {/* CPU */}
+                        <td className="p-4 text-center">
+                          <button
+                            type="button"
+                            onClick={() => openLimitPage(u)}
+                            title="Klik untuk ubah limit CPU akun ini"
+                            className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-xl bg-[#1C0F0A] hover:bg-[#2A170F] border border-[#3E2316] hover:border-cyan-500/60 text-[#DFCDB5] hover:text-[#FAF5EC] transition font-mono text-[11px]"
+                          >
+                            <Sliders className="h-3 w-3 text-cyan-400" />
+                            <span>{u.max_cpu_cores ?? 1.0} Core</span>
+                          </button>
+                        </td>
+                        <td className="p-4">
+                          <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-semibold ${
+                            u.is_active ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                          }`}>
+                            {u.is_active ? 'Aktif' : 'Suspended'}
+                          </span>
+                        </td>
+                        <td className="p-4 text-right space-x-1 whitespace-nowrap">
+                          <button
+                            onClick={() => openLimitPage(u)}
+                            title="Atur Limit Resource & Konfigurasi DB"
+                            className="p-1.5 text-[#DFCDB5] hover:text-[#C49767] hover:bg-[#3E2316] rounded-lg transition"
+                          >
+                            <Sliders className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => triggerResetPassword(u.id, u.name)}
+                            title="Reset Password Sementara"
+                            className="p-1.5 text-[#DFCDB5] hover:text-[#E8C58D] hover:bg-[#3E2316] rounded-lg transition"
+                          >
+                            <KeyRound className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => triggerToggleSuspend(u.id, u.name, u.is_active)}
+                            title={u.is_active ? 'Suspend Akun' : 'Aktifkan Akun'}
+                            className={`p-1.5 rounded-lg transition ${
+                              u.is_active ? 'text-[#DFCDB5] hover:text-amber-400 hover:bg-[#3E2316]' : 'text-emerald-400 hover:bg-emerald-500/10'
+                            }`}
+                          >
+                            {u.is_active ? <Ban className="h-4 w-4" /> : <UserCheck className="h-4 w-4" />}
+                          </button>
+                          {u.role !== 'admin' && (
+                            <button
+                              onClick={() => triggerDeleteUser(u.id, u.name)}
+                              title="Hapus Akun Mahasiswa"
+                              className="p-1.5 text-rose-400 hover:bg-rose-500/10 rounded-lg transition"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
 
             {/* Pagination Controls */}
-            {users.length > 0 && (
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 bg-[#1C0F0A] border-t border-[#3E2316] text-xs text-[#DFCDB5]">
-                <div className="flex items-center space-x-2">
-                  <span>Tampilkan</span>
-                  <select
-                    value={userPageSize}
-                    onChange={(e) => {
-                      setUserPageSize(Number(e.target.value))
-                      setUserPage(1)
-                    }}
-                    className="bg-[#2B1810] border border-[#4D2D1E] rounded-xl px-2.5 py-1 text-xs text-[#FAF5EC] focus:outline-none"
-                  >
-                    <option value={5}>5</option>
-                    <option value={10}>10</option>
-                    <option value={25}>25</option>
-                    <option value={50}>50</option>
-                  </select>
-                  <span>akun per halaman</span>
-                  <span className="text-[#A47E65] ml-2">
-                    (Total: {users.length} akun)
-                  </span>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <span className="text-[11px] font-mono mr-1">
-                    Halaman {userPage} dari {totalUserPages}
-                  </span>
-                  <button
-                    onClick={() => setUserPage((p) => Math.max(1, p - 1))}
-                    disabled={userPage <= 1}
-                    className="p-1.5 rounded-xl bg-[#2B1810] border border-[#4D2D1E] text-[#FAF5EC] disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#3D2317] transition"
-                    title="Halaman Sebelumnya"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={() => setUserPage((p) => Math.min(Math.ceil(users.length / userPageSize) || 1, p + 1))}
-                    disabled={userPage >= totalUserPages}
-                    className="p-1.5 rounded-xl bg-[#2B1810] border border-[#4D2D1E] text-[#FAF5EC] disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#3D2317] transition"
-                    title="Halaman Selanjutnya"
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* TAB 2: GENERATOR & MANUAL USER CREATION */}
-      {activeTab === 'generator' && (
-        <div className="space-y-6">
-          {/* Sub-mode Buttons: Massal vs Kustom */}
-          <div className="flex space-x-2">
-            <button
-              onClick={() => setGeneratorMode('bulk')}
-              className={`px-4 py-2 rounded-xl text-xs font-semibold transition ${
-                generatorMode === 'bulk'
-                  ? 'bg-[#2B1810] text-[#FAF5EC] border border-[#4D2D1E] shadow-md'
-                  : 'bg-[#DECDBD] text-[#5C3B29] hover:bg-[#D1BDAB]'
-              }`}
-            >
-              Generator Massal (Rentang NIM)
-            </button>
-            <button
-              onClick={() => setGeneratorMode('manual')}
-              className={`px-4 py-2 rounded-xl text-xs font-semibold transition ${
-                generatorMode === 'manual'
-                  ? 'bg-[#2B1810] text-[#FAF5EC] border border-[#4D2D1E] shadow-md'
-                  : 'bg-[#DECDBD] text-[#5C3B29] hover:bg-[#D1BDAB]'
-              }`}
-            >
-              + Buat Akun Kustom (Username & Password Bebas)
-            </button>
-          </div>
-
-          {generatorMode === 'bulk' ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="bg-[#2B1810] border border-[#4D2D1E] rounded-3xl p-6 sm:p-7 shadow-xl text-[#FAF5EC]">
-                <h3 className="text-lg font-serif font-bold text-[#FAF5EC] mb-1 flex items-center space-x-2">
-                  <UserPlus className="h-5 w-5 text-[#E8DCB8]" />
-                  <span>Generator Akun Kelas Sekali Klik</span>
-                </h3>
-                <p className="text-xs text-[#DFCDB5] mb-5">
-                  Sistem akan otomatis membuat rentang akun mahasiswa dengan password awal unik acak.
-                </p>
-
-                <form onSubmit={handleGenerateAccounts} className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-[#DFCDB5] mb-1">Pilih Angkatan</label>
-                    <select
-                      value={genCohortId}
-                      onChange={(e) => setGenCohortId(e.target.value)}
-                      className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3.5 py-2.5 text-xs text-[#FAF5EC] focus:outline-none focus:border-[#C49767]"
-                    >
-                      {cohorts.map((c) => (
-                        <option key={c.id} value={c.id}>Angkatan {c.year} - {c.description}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-[#DFCDB5] mb-1">Pilih Kelas</label>
-                    <select
-                      value={genClassId}
-                      onChange={(e) => setGenClassId(e.target.value)}
-                      className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3.5 py-2.5 text-xs text-[#FAF5EC] focus:outline-none focus:border-[#C49767]"
-                    >
-                      {classes.map((cl) => (
-                        <option key={cl.id} value={cl.id}>{cl.name} (Tahun {cl.cohort_year})</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-3">
-                    <div>
-                      <label className="block text-xs font-semibold text-[#DFCDB5] mb-1">Prefix NIM</label>
-                      <input
-                        type="text"
-                        required
-                        value={genNimPrefix}
-                        onChange={(e) => setGenNimPrefix(e.target.value)}
-                        className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3 py-2 text-xs text-[#FAF5EC] font-mono"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-[#DFCDB5] mb-1">Nomor Awal</label>
-                      <input
-                        type="number"
-                        required
-                        value={genStartNum}
-                        onChange={(e) => setGenStartNum(e.target.value)}
-                        className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3 py-2 text-xs text-[#FAF5EC] font-mono"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-[#DFCDB5] mb-1">Jumlah</label>
-                      <input
-                        type="number"
-                        required
-                        value={genCount}
-                        onChange={(e) => setGenCount(e.target.value)}
-                        className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3 py-2 text-xs text-[#FAF5EC] font-mono"
-                      />
-                    </div>
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={loadingAction}
-                    className="w-full py-3 rounded-2xl text-xs font-semibold bg-[#5A3521] hover:bg-[#6D4029] text-[#FAF5EC] border border-[#7D492F] shadow-lg shadow-black/20 transition disabled:opacity-50 mt-2"
-                  >
-                    {loadingAction ? (
-                      <span className="flex items-center justify-center space-x-1.5">
-                        <Spinner size="xs" />
-                        <span>Sedang Memproses Akun...</span>
-                      </span>
-                    ) : (
-                      'Generate Akun Sekarang'
-                    )}
-                  </button>
-                </form>
-              </div>
-
-              {/* Results Box */}
-              <div className="bg-[#2B1810] border border-[#4D2D1E] rounded-3xl p-6 sm:p-7 shadow-xl flex flex-col text-[#FAF5EC]">
-                <h3 className="text-lg font-serif font-bold text-[#FAF5EC] mb-1">Hasil Akun Baru</h3>
-                <p className="text-xs text-[#DFCDB5] mb-4">Salin dan bagikan password sementara ini kepada mahasiswa.</p>
-
-                <div className="bg-[#1C0F0A] border border-[#3E2316] rounded-2xl p-4 flex-1 overflow-y-auto max-h-96 font-mono text-xs text-[#FAF5EC]">
-                  {generatedAccounts.length === 0 ? (
-                    <span className="text-[#7A5A48]">Daftar akun yang baru digenerate akan muncul di sini.</span>
-                  ) : (
-                    <div className="space-y-2">
-                      <div className="text-[10px] text-[#A47E65] pb-2 border-b border-[#3E2316] flex justify-between">
-                        <span>NIM</span>
-                        <span>INITIAL PASSWORD</span>
-                      </div>
-                      {generatedAccounts.map((acc) => (
-                        <div key={acc.nim} className="flex justify-between items-center text-[#FAF5EC] py-1">
-                          <span className="font-bold text-[#E8DCB8]">{acc.nim}</span>
-                          <span className="bg-[#3A2115] px-2 py-0.5 rounded text-[#E8C58D] font-mono border border-[#543221]">{acc.initial_password}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          ) : (
-            /* MANUAL SINGLE ACCOUNT CREATION (Custom Username & Password) */
-            <div className="bg-[#2B1810] border border-[#4D2D1E] rounded-3xl p-6 sm:p-8 shadow-xl text-[#FAF5EC] max-w-xl">
-              <h3 className="text-lg font-serif font-bold text-[#FAF5EC] mb-1 flex items-center space-x-2">
-                <UserCheck className="h-5 w-5 text-[#E8DCB8]" />
-                <span>Buat Akun Kustom (Username & Password Bebas)</span>
-              </h3>
-              <p className="text-xs text-[#DFCDB5] mb-6">
-                Admin dapat membuat akun selain format NIM (misal: aslab, dosen, akun khusus praktikum) dengan username dan password yang ditentukan bebas.
-              </p>
-
-              <form onSubmit={handleCreateManualUser} className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-[#DFCDB5] mb-1">Username / NIM</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. aslab_jarkom / 23533999"
-                      value={manualUsername}
-                      onChange={(e) => setManualUsername(e.target.value)}
-                      className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3.5 py-2 text-xs text-[#FAF5EC] font-mono focus:outline-none focus:border-[#C49767]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-[#DFCDB5] mb-1">Nama Lengkap</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. Asisten Praktikum Basis Data"
-                      value={manualName}
-                      onChange={(e) => setManualName(e.target.value)}
-                      className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3.5 py-2 text-xs text-[#FAF5EC] focus:outline-none focus:border-[#C49767]"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-[#DFCDB5] mb-1">Password</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="Minimal 6 karakter"
-                      value={manualPassword}
-                      onChange={(e) => setManualPassword(e.target.value)}
-                      className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3.5 py-2 text-xs text-[#FAF5EC] font-mono focus:outline-none focus:border-[#C49767]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-[#DFCDB5] mb-1">Role / Peran Akun</label>
-                    <select
-                      value={manualRole}
-                      onChange={(e) => setManualRole(e.target.value)}
-                      className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3.5 py-2 text-xs text-[#FAF5EC] focus:outline-none focus:border-[#C49767]"
-                    >
-                      <option value="student">Mahasiswa (Praktikan)</option>
-                      <option value="admin">Administrator Lab</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-[#DFCDB5] mb-1">Kelas Praktikum (Opsional)</label>
-                  <select
-                    value={manualClassId}
-                    onChange={(e) => setManualClassId(e.target.value)}
-                    className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3.5 py-2 text-xs text-[#FAF5EC] focus:outline-none focus:border-[#C49767]"
-                  >
-                    <option value="">-- Tanpa Kelas (Umum/Staff) --</option>
-                    {classes.map((cl) => (
-                      <option key={cl.id} value={cl.id}>{cl.name} (Tahun {cl.cohort_year})</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="flex items-center space-x-2 pt-1">
-                  <input
-                    type="checkbox"
-                    id="mustChangeCheck"
-                    checked={manualMustChange}
-                    onChange={(e) => setManualMustChange(e.target.checked)}
-                    className="h-4 w-4 rounded accent-[#5A3521] bg-[#1C0F0A] border-[#3E2316]"
-                  />
-                  <label htmlFor="mustChangeCheck" className="text-xs text-[#DFCDB5] cursor-pointer">
-                    Wajibkan ganti password saat user pertama kali login
-                  </label>
-                </div>
-
-                <div className="pt-2">
-                  <button
-                    type="submit"
-                    disabled={loadingAction}
-                    className="px-6 py-2.5 rounded-2xl text-xs font-semibold bg-[#5A3521] hover:bg-[#6D4029] text-[#FAF5EC] border border-[#7D492F] shadow-lg transition disabled:opacity-50"
-                  >
-                    {loadingAction ? 'Menyimpan...' : 'Buat Akun Kustom Sekarang'}
-                  </button>
-                </div>
-              </form>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* TAB 3: CLASSES & COHORTS (Lengkap dengan List & Hapus Angkatan / Kelas!) */}
-      {activeTab === 'classes' && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Form Tambah Angkatan */}
-            <div className="bg-[#2B1810] border border-[#4D2D1E] rounded-3xl p-6 shadow-xl text-[#FAF5EC]">
-              <h3 className="text-base font-serif font-bold text-[#FAF5EC] mb-1">Tambah Angkatan Baru</h3>
-              <p className="text-xs text-[#DFCDB5] mb-4">Daftarkan tahun angkatan mahasiswa (misal: 2025).</p>
-              <form onSubmit={handleCreateCohort} className="space-y-3">
-                <div>
-                  <label className="block text-xs font-semibold text-[#DFCDB5] mb-1">Tahun Angkatan</label>
-                  <input
-                    type="number"
-                    required
-                    value={newCohortYear}
-                    onChange={(e) => setNewCohortYear(e.target.value)}
-                    className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3.5 py-2 text-xs text-[#FAF5EC] focus:outline-none focus:border-[#C49767]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-[#DFCDB5] mb-1">Deskripsi</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Mahasiswa Baru Angkatan 2025"
-                    value={newCohortDesc}
-                    onChange={(e) => setNewCohortDesc(e.target.value)}
-                    className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3.5 py-2 text-xs text-[#FAF5EC] focus:outline-none focus:border-[#C49767]"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  className="px-5 py-2.5 rounded-2xl text-xs font-semibold bg-[#5A3521] hover:bg-[#6D4029] text-[#FAF5EC] border border-[#7D492F] transition"
+            <div className="flex flex-col sm:flex-row items-center justify-between p-4 bg-[#1C0F0A] border-t border-[#3E2316] gap-3 text-xs">
+              <div className="flex items-center space-x-2">
+                <span className="text-[#DFCDB5]">Tampilkan</span>
+                <select
+                  value={userPageSize}
+                  onChange={(e) => {
+                    setUserPageSize(parseInt(e.target.value))
+                    setUserPage(1)
+                  }}
+                  className="bg-[#2B1810] border border-[#3E2316] rounded-xl px-2.5 py-1 text-xs text-[#FAF5EC] focus:outline-none"
                 >
-                  Simpan Angkatan
-                </button>
-              </form>
-            </div>
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+                <span className="text-[#DFCDB5]">
+                  akun per halaman (Total {filteredUsers.length} akun)
+                </span>
+              </div>
 
-            {/* Form Tambah Kelas */}
-            <div className="bg-[#2B1810] border border-[#4D2D1E] rounded-3xl p-6 shadow-xl text-[#FAF5EC]">
-              <h3 className="text-base font-serif font-bold text-[#FAF5EC] mb-1">Tambah Kelas Praktikum</h3>
-              <p className="text-xs text-[#DFCDB5] mb-4">Tambahkan kelas praktikum di bawah angkatan terkait.</p>
-              <form onSubmit={handleCreateClass} className="space-y-3">
-                <div>
-                  <label className="block text-xs font-semibold text-[#DFCDB5] mb-1">Pilih Angkatan</label>
-                  <select
-                    value={newClassCohortId}
-                    onChange={(e) => setNewClassCohortId(e.target.value)}
-                    className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3.5 py-2 text-xs text-[#FAF5EC] focus:outline-none focus:border-[#C49767]"
-                  >
-                    {cohorts.map((c) => (
-                      <option key={c.id} value={c.id}>Angkatan {c.year} - {c.description}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-[#DFCDB5] mb-1">Nama Kelas</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. TI-A / Praktikum Basis Data A"
-                    value={newClassName}
-                    onChange={(e) => setNewClassName(e.target.value)}
-                    className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3.5 py-2 text-xs text-[#FAF5EC] focus:outline-none focus:border-[#C49767]"
-                  />
-                </div>
+              <div className="flex items-center space-x-2">
+                <span className="text-[#DFCDB5]">
+                  Halaman {userPage} dari {totalUserPages}
+                </span>
                 <button
-                  type="submit"
-                  className="px-5 py-2.5 rounded-2xl text-xs font-semibold bg-emerald-700 hover:bg-emerald-600 text-[#FAF5EC] border border-emerald-500/40 transition"
+                  disabled={userPage <= 1}
+                  onClick={() => setUserPage((p) => Math.max(1, p - 1))}
+                  className="p-1.5 rounded-xl border border-[#3E2316] bg-[#2B1810] text-[#DFCDB5] hover:text-white disabled:opacity-40 transition"
                 >
-                  Simpan Kelas
+                  <ChevronLeft className="h-4 w-4" />
                 </button>
-              </form>
+                <button
+                  disabled={userPage >= totalUserPages}
+                  onClick={() => setUserPage((p) => Math.min(totalUserPages, p + 1))}
+                  className="p-1.5 rounded-xl border border-[#3E2316] bg-[#2B1810] text-[#DFCDB5] hover:text-white disabled:opacity-40 transition"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
             </div>
-          </div>
-
-          {/* List & Kelola Data Angkatan yang Ada (Sesuai Permintaan Bos!) */}
-          <div className="bg-[#2B1810] border border-[#4D2D1E] rounded-3xl p-6 shadow-xl text-[#FAF5EC]">
-            <h3 className="text-base font-serif font-bold text-[#FAF5EC] mb-3 flex items-center justify-between">
-              <span>Daftar Angkatan Terdaftar</span>
-              <span className="text-xs text-[#DFCDB5] font-normal">{cohorts.length} Angkatan</span>
-            </h3>
-
-            {cohorts.length === 0 ? (
-              <p className="text-xs text-[#7A5A48]">Belum ada angkatan terdaftar.</p>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {cohorts.map((c) => (
-                  <div key={c.id} className="bg-[#1C0F0A] border border-[#3E2316] p-4 rounded-2xl flex items-center justify-between shadow-sm">
-                    <div>
-                      <h4 className="text-sm font-bold text-[#E8DCB8] font-mono">Angkatan {c.year}</h4>
-                      <p className="text-xs text-[#DFCDB5]/70 mt-0.5">{c.description || 'Tidak ada deskripsi'}</p>
-                      <span className="text-[10px] text-[#A47E65] font-mono block mt-1">
-                        {c.class_count ?? 0} Kelas Terhubung
-                      </span>
-                    </div>
-                    <button
-                      onClick={() => triggerDeleteCohort(c.id, c.year)}
-                      title="Hapus Angkatan"
-                      className="p-2 text-rose-400 hover:bg-rose-500/10 rounded-xl transition"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* List & Kelola Data Kelas yang Ada */}
-          <div className="bg-[#2B1810] border border-[#4D2D1E] rounded-3xl p-6 shadow-xl text-[#FAF5EC]">
-            <h3 className="text-base font-serif font-bold text-[#FAF5EC] mb-3 flex items-center justify-between">
-              <span>Daftar Kelas Praktikum Terdaftar</span>
-              <span className="text-xs text-[#DFCDB5] font-normal">{classes.length} Kelas</span>
-            </h3>
-
-            {classes.length === 0 ? (
-              <p className="text-xs text-[#7A5A48]">Belum ada kelas praktikum terdaftar.</p>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {classes.map((cl) => (
-                  <div key={cl.id} className="bg-[#1C0F0A] border border-[#3E2316] p-4 rounded-2xl flex items-center justify-between shadow-sm">
-                    <div>
-                      <h4 className="text-sm font-bold text-[#FAF5EC]">{cl.name}</h4>
-                      <p className="text-xs text-[#E8DCB8] font-mono mt-0.5">Tahun Angkatan {cl.cohort_year}</p>
-                      <span className="text-[10px] text-emerald-400 font-mono block mt-1">
-                        {cl.student_count ?? 0} Mahasiswa Terdaftar
-                      </span>
-                    </div>
-                    <button
-                      onClick={() => triggerDeleteClass(cl.id, cl.name)}
-                      title="Hapus Kelas"
-                      className="p-2 text-rose-400 hover:bg-rose-500/10 rounded-xl transition"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
         </div>
       )}
 
-      {/* TAB 4: AUDIT LOGS */}
+      {/* ======================================================== */}
+      {/* TAB 2: TAMBAH AKUN PENGGUNA (ROLE STUDENT & ADMIN)        */}
+      {/* ======================================================== */}
+      {activeTab === 'create' && (
+        <div className="bg-[#2B1810] border border-[#4D2D1E] rounded-3xl p-6 sm:p-8 shadow-xl text-[#FAF5EC] max-w-xl">
+          <h3 className="text-lg font-serif font-bold text-[#FAF5EC] mb-1 flex items-center space-x-2">
+            <UserPlus className="h-5 w-5 text-[#C49767]" />
+            <span>Tambah Akun Pengguna Baru</span>
+          </h3>
+          <p className="text-xs text-[#DFCDB5] mb-6">
+            Buat akun pengguna baru dengan menentukan username, nama lengkap, password, dan role (Mahasiswa atau Administrator).
+          </p>
+
+          <form onSubmit={handleCreateAccount} className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-[#DFCDB5] mb-1">
+                  NIM / Username <span className="text-rose-400">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. 23533001 atau admin_lab"
+                  value={manualUsername}
+                  onChange={(e) => setManualUsername(e.target.value)}
+                  className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3.5 py-2.5 text-xs text-[#FAF5EC] font-mono focus:outline-none focus:border-[#C49767]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[#DFCDB5] mb-1">
+                  Nama Lengkap <span className="text-rose-400">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Budi Santoso"
+                  value={manualName}
+                  onChange={(e) => setManualName(e.target.value)}
+                  className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3.5 py-2.5 text-xs text-[#FAF5EC] focus:outline-none focus:border-[#C49767]"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-[#DFCDB5] mb-1">
+                  Password <span className="text-rose-400">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Minimal 6 karakter"
+                  value={manualPassword}
+                  onChange={(e) => setManualPassword(e.target.value)}
+                  className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3.5 py-2.5 text-xs text-[#FAF5EC] font-mono focus:outline-none focus:border-[#C49767]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[#DFCDB5] mb-1">
+                  Role / Peran Akun <span className="text-rose-400">*</span>
+                </label>
+                <select
+                  value={manualRole}
+                  onChange={(e) => setManualRole(e.target.value)}
+                  className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3.5 py-2.5 text-xs text-[#FAF5EC] focus:outline-none focus:border-[#C49767] font-medium"
+                >
+                  <option value="student">Mahasiswa (Student)</option>
+                  <option value="admin">Administrator Lab (Admin)</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-2 pt-1">
+              <input
+                type="checkbox"
+                id="mustChangeCheck"
+                checked={manualMustChange}
+                onChange={(e) => setManualMustChange(e.target.checked)}
+                className="h-4 w-4 rounded accent-[#5A3521] bg-[#1C0F0A] border-[#3E2316]"
+              />
+              <label htmlFor="mustChangeCheck" className="text-xs text-[#DFCDB5] cursor-pointer">
+                Wajibkan ganti password saat user pertama kali login
+              </label>
+            </div>
+
+            <div className="pt-2 flex items-center space-x-3">
+              <button
+                type="submit"
+                disabled={loadingAction}
+                className="px-6 py-2.5 rounded-2xl text-xs font-semibold bg-[#5A3521] hover:bg-[#6D4029] text-[#FAF5EC] border border-[#7D492F] shadow-lg transition disabled:opacity-50"
+              >
+                {loadingAction ? 'Menyimpan...' : 'Buat Akun Sekarang'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('users')}
+                className="px-4 py-2.5 rounded-2xl text-xs font-semibold bg-[#1C0F0A] hover:bg-[#341F14] text-[#DFCDB5] border border-[#3E2316] transition"
+              >
+                Batal
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* TAB 3: AUDIT LOGS                                         */}
+      {/* ======================================================== */}
       {activeTab === 'logs' && (
         <div className="bg-[#2B1810] border border-[#4D2D1E] rounded-3xl overflow-hidden shadow-xl text-[#FAF5EC]">
           <div className="p-4 sm:p-5 border-b border-[#3E2316] flex items-center justify-between">
@@ -1165,19 +789,23 @@ export default function AdminView() {
             </button>
           </div>
           <div className="divide-y divide-[#3E2316] text-xs">
-            {auditLogs.map((log) => (
-              <div key={log.id} className="p-4 hover:bg-[#361E13] flex items-center justify-between gap-4 transition">
-                <div>
-                  <div className="flex items-center space-x-2">
-                    <span className="font-semibold text-[#FAF5EC]">{log.actor_name || 'System'}</span>
-                    <span className="bg-[#1C0F0A] px-2 py-0.5 rounded-lg text-[10px] font-mono text-[#E8DCB8] border border-[#3E2316]">{log.action}</span>
-                    <span className="text-[#A47E65] text-[11px] font-mono">[{log.ip_address}]</span>
+            {auditLogs.length === 0 ? (
+              <div className="p-6 text-center text-[#7A5A48]">Belum ada catatan aktivitas.</div>
+            ) : (
+              auditLogs.map((log) => (
+                <div key={log.id} className="p-4 hover:bg-[#361E13] flex items-center justify-between gap-4 transition">
+                  <div>
+                    <div className="flex items-center space-x-2">
+                      <span className="font-semibold text-[#FAF5EC]">{log.actor_name || 'System'}</span>
+                      <span className="bg-[#1C0F0A] px-2 py-0.5 rounded-lg text-[10px] font-mono text-[#E8DCB8] border border-[#3E2316]">{log.action}</span>
+                      <span className="text-[#A47E65] text-[11px] font-mono">[{log.ip_address}]</span>
+                    </div>
+                    <p className="text-[#DFCDB5] text-xs mt-1">{log.details}</p>
                   </div>
-                  <p className="text-[#DFCDB5] text-xs mt-1">{log.details}</p>
+                  <span className="text-[11px] text-[#A47E65] whitespace-nowrap">{log.created_at}</span>
                 </div>
-                <span className="text-[11px] text-[#A47E65] whitespace-nowrap">{log.created_at}</span>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
       )}
@@ -1191,10 +819,16 @@ export default function AdminView() {
         onClose={() => setConfirmModal({ open: false, title: '', message: '', onConfirm: () => {} })}
       />
 
-      {/* Resource Limit (Storage, RAM, CPU) Modal */}
+      {/* Resource Limit (Bulk Only) Modal */}
       <ModalPortal isOpen={limitModal.open}>
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-150">
-          <div className="w-full max-w-lg bg-[#2B1810] border border-[#4D2D1E] rounded-3xl shadow-2xl p-6 sm:p-7 text-[#FAF5EC] max-h-[90vh] overflow-y-auto">
+        <div
+          onClick={() => setLimitModal((prev) => ({ ...prev, open: false }))}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-in fade-in duration-150"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-lg bg-[#2B1810] border border-[#4D2D1E] rounded-3xl shadow-2xl p-6 sm:p-7 text-[#FAF5EC] max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-150"
+          >
             <div className="flex items-center justify-between pb-4 mb-5 border-b border-[#3E2316]">
               <div className="flex items-center space-x-3">
                 <div className="h-10 w-10 rounded-2xl bg-[#5A3521]/40 border border-[#7D492F] flex items-center justify-center text-[#C49767]">
@@ -1202,12 +836,10 @@ export default function AdminView() {
                 </div>
                 <div>
                   <h3 className="text-base font-serif font-bold text-[#FAF5EC]">
-                    {limitModal.isBulk ? 'Atur Limit Resource Massal' : 'Atur Limit Resource Akun'}
+                    Atur Limit Resource Massal
                   </h3>
                   <p className="text-xs text-[#DFCDB5] font-mono mt-0.5">
-                    {limitModal.isBulk
-                      ? `${selectedUserIds.length} Akun Mahasiswa Terpilih`
-                      : `${limitModal.username} • ${limitModal.name}`}
+                    {selectedUserIds.length} Akun Mahasiswa Terpilih
                   </p>
                 </div>
               </div>
@@ -1220,15 +852,15 @@ export default function AdminView() {
               </button>
             </div>
 
-            <form onSubmit={handleSaveLimit} className="space-y-5">
-              {/* 1. Storage Quota */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-semibold text-[#FAF5EC] flex items-center space-x-1.5">
-                    <HardDrive className="h-3.5 w-3.5 text-[#C49767]" />
-                    <span>Storage / Ruang Penyimpanan (MB)</span>
+            <form onSubmit={handleSaveBulkLimit} className="space-y-5">
+              {/* Storage File Manager */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-semibold text-[#DFCDB5] flex items-center space-x-1.5">
+                    <HardDrive className="h-4 w-4 text-[#C49767]" />
+                    <span>Storage File Manager (MB)</span>
                   </label>
-                  <span className="text-[11px] font-mono text-[#C49767]">
+                  <span className="font-mono text-xs text-[#C49767]">
                     {limitModal.maxDiskMb >= 1000
                       ? `${(limitModal.maxDiskMb / 1000).toFixed(limitModal.maxDiskMb % 1000 === 0 ? 0 : 1)} GB (${limitModal.maxDiskMb} MB)`
                       : `${limitModal.maxDiskMb} MB`}
@@ -1236,137 +868,99 @@ export default function AdminView() {
                 </div>
                 <input
                   type="number"
-                  min="50"
+                  min="100"
                   max="100000"
                   step="50"
-                  value={limitModal.maxDiskMb}
-                  onChange={(e) => setLimitModal((prev) => ({ ...prev, maxDiskMb: Number(e.target.value) }))}
-                  className="w-full bg-[#1C0F0A] border border-[#4D2D1E] rounded-xl px-3.5 py-2.5 text-xs text-[#FAF5EC] focus:outline-none focus:border-[#C49767] font-mono"
                   required
+                  value={limitModal.maxDiskMb}
+                  onChange={(e) => setLimitModal({ ...limitModal, maxDiskMb: parseInt(e.target.value) || 0 })}
+                  className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3.5 py-2 text-xs text-[#FAF5EC] font-mono focus:outline-none focus:border-[#C49767]"
                 />
-                <div className="flex flex-wrap gap-1.5">
-                  {[500, 1000, 2000, 5000].map((val) => (
-                    <button
-                      key={val}
-                      type="button"
-                      onClick={() => setLimitModal((prev) => ({ ...prev, maxDiskMb: val }))}
-                      className={`px-2.5 py-1 rounded-lg text-[10px] font-mono transition border ${
-                        limitModal.maxDiskMb === val
-                          ? 'bg-[#5A3521] border-[#C49767] text-[#FAF5EC]'
-                          : 'bg-[#1C0F0A] border-[#3E2316] text-[#DFCDB5] hover:border-[#5A3521]'
-                      }`}
-                    >
-                      {val >= 1000 ? `${val / 1000} GB` : `${val} MB`}
-                    </button>
-                  ))}
-                </div>
-                <p className="text-[10px] text-[#A47E65]">
-                  Alokasi kuota penyimpanan untuk direktori web dan file project mahasiswa.
-                </p>
               </div>
 
-              {/* 2. RAM Limit */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-semibold text-[#FAF5EC] flex items-center space-x-1.5">
-                    <Cpu className="h-3.5 w-3.5 text-emerald-400" />
+              {/* Storage Database */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-semibold text-[#DFCDB5] flex items-center space-x-1.5">
+                    <Database className="h-4 w-4 text-[#E8C58D]" />
+                    <span>Storage Database (MB)</span>
+                  </label>
+                  <span className="font-mono text-xs text-[#E8C58D]">
+                    {limitModal.maxDatabaseDiskMb || 100} MB
+                  </span>
+                </div>
+                <input
+                  type="number"
+                  min="20"
+                  max="50000"
+                  step="20"
+                  required
+                  value={limitModal.maxDatabaseDiskMb || 100}
+                  onChange={(e) => setLimitModal({ ...limitModal, maxDatabaseDiskMb: parseInt(e.target.value) || 100 })}
+                  className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3.5 py-2 text-xs text-[#FAF5EC] font-mono focus:outline-none focus:border-[#E8C58D]"
+                />
+              </div>
+
+              {/* RAM */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-semibold text-[#DFCDB5] flex items-center space-x-1.5">
+                    <Cpu className="h-4 w-4 text-emerald-400" />
                     <span>RAM / Batas Memori Container (MB)</span>
                   </label>
-                  <span className="text-[11px] font-mono text-emerald-400">
+                  <span className="font-mono text-xs text-emerald-400">
                     {limitModal.maxMemoryMb >= 1024
-                      ? `${(limitModal.maxMemoryMb / 1024).toFixed(limitModal.maxMemoryMb % 1024 === 0 ? 0 : 1)} GB (${limitModal.maxMemoryMb} MB)`
+                      ? `${(limitModal.maxMemoryMb / 1024).toFixed(limitModal.maxMemoryMb % 1024 === 0 ? 0 : 1)} GB`
                       : `${limitModal.maxMemoryMb} MB`}
                   </span>
                 </div>
                 <input
                   type="number"
-                  min="64"
-                  max="64000"
+                  min="128"
+                  max="32768"
                   step="64"
-                  value={limitModal.maxMemoryMb}
-                  onChange={(e) => setLimitModal((prev) => ({ ...prev, maxMemoryMb: Number(e.target.value) }))}
-                  className="w-full bg-[#1C0F0A] border border-[#4D2D1E] rounded-xl px-3.5 py-2.5 text-xs text-[#FAF5EC] focus:outline-none focus:border-emerald-500 font-mono"
                   required
+                  value={limitModal.maxMemoryMb}
+                  onChange={(e) => setLimitModal({ ...limitModal, maxMemoryMb: parseInt(e.target.value) || 0 })}
+                  className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3.5 py-2 text-xs text-[#FAF5EC] font-mono focus:outline-none focus:border-emerald-500"
                 />
-                <div className="flex flex-wrap gap-1.5">
-                  {[256, 512, 1024, 2048].map((val) => (
-                    <button
-                      key={val}
-                      type="button"
-                      onClick={() => setLimitModal((prev) => ({ ...prev, maxMemoryMb: val }))}
-                      className={`px-2.5 py-1 rounded-lg text-[10px] font-mono transition border ${
-                        limitModal.maxMemoryMb === val
-                          ? 'bg-emerald-950/60 border-emerald-500 text-emerald-300'
-                          : 'bg-[#1C0F0A] border-[#3E2316] text-[#DFCDB5] hover:border-[#5A3521]'
-                      }`}
-                    >
-                      {val >= 1024 ? `${val / 1024} GB` : `${val} MB`}
-                    </button>
-                  ))}
-                </div>
-                <p className="text-[10px] text-[#A47E65]">
-                  Batas memori RAM per container runtime project praktikum mahasiswa.
-                </p>
               </div>
 
-              {/* 3. CPU Core Allocation */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-semibold text-[#FAF5EC] flex items-center space-x-1.5">
-                    <Sliders className="h-3.5 w-3.5 text-cyan-400" />
+              {/* CPU */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-semibold text-[#DFCDB5] flex items-center space-x-1.5">
+                    <Sliders className="h-4 w-4 text-cyan-400" />
                     <span>CPU Core Allocation (Cores)</span>
                   </label>
-                  <span className="text-[11px] font-mono text-cyan-400">
-                    {limitModal.maxCpuCores} Core
-                  </span>
+                  <span className="font-mono text-xs text-cyan-400">{limitModal.maxCpuCores} Core</span>
                 </div>
                 <input
                   type="number"
                   min="0.1"
-                  max="16.0"
+                  max="16"
                   step="0.1"
-                  value={limitModal.maxCpuCores}
-                  onChange={(e) => setLimitModal((prev) => ({ ...prev, maxCpuCores: Number(e.target.value) }))}
-                  className="w-full bg-[#1C0F0A] border border-[#4D2D1E] rounded-xl px-3.5 py-2.5 text-xs text-[#FAF5EC] focus:outline-none focus:border-cyan-500 font-mono"
                   required
+                  value={limitModal.maxCpuCores}
+                  onChange={(e) => setLimitModal({ ...limitModal, maxCpuCores: parseFloat(e.target.value) || 0.1 })}
+                  className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3.5 py-2 text-xs text-[#FAF5EC] font-mono focus:outline-none focus:border-cyan-500"
                 />
-                <div className="flex flex-wrap gap-1.5">
-                  {[0.5, 1.0, 1.5, 2.0].map((val) => (
-                    <button
-                      key={val}
-                      type="button"
-                      onClick={() => setLimitModal((prev) => ({ ...prev, maxCpuCores: val }))}
-                      className={`px-2.5 py-1 rounded-lg text-[10px] font-mono transition border ${
-                        limitModal.maxCpuCores === val
-                          ? 'bg-cyan-950/60 border-cyan-500 text-cyan-300'
-                          : 'bg-[#1C0F0A] border-[#3E2316] text-[#DFCDB5] hover:border-[#5A3521]'
-                      }`}
-                    >
-                      {val} Core
-                    </button>
-                  ))}
-                </div>
-                <p className="text-[10px] text-[#A47E65]">
-                  Batas pemakaian core CPU maksimal yang dialokasikan untuk container project.
-                </p>
               </div>
 
-              {/* Action Buttons */}
-              <div className="grid grid-cols-2 gap-3 pt-3 border-t border-[#3E2316]">
+              <div className="pt-2 flex items-center justify-end space-x-3">
                 <button
                   type="button"
                   onClick={() => setLimitModal((prev) => ({ ...prev, open: false }))}
-                  className="w-full py-2.5 rounded-xl text-xs font-semibold bg-[#3A2115] hover:bg-[#482A1B] text-[#DFCDB5] transition"
+                  className="px-4 py-2 rounded-xl text-xs font-semibold bg-[#1C0F0A] hover:bg-[#3E2316] text-[#DFCDB5] border border-[#3E2316] transition"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
                   disabled={savingLimit}
-                  className="w-full py-2.5 rounded-xl text-xs font-semibold bg-[#5A3521] hover:bg-[#6D4029] text-white shadow-lg shadow-black/20 transition flex items-center justify-center space-x-2 disabled:opacity-50"
+                  className="px-5 py-2 rounded-xl text-xs font-semibold bg-[#5A3521] hover:bg-[#6D4029] text-[#FAF5EC] border border-[#7D492F] shadow-lg transition disabled:opacity-50"
                 >
-                  {savingLimit && <Spinner size="xs" />}
-                  <span>{savingLimit ? 'Menyimpan...' : 'Simpan Limit'}</span>
+                  {savingLimit ? 'Menyimpan...' : 'Simpan Limit'}
                 </button>
               </div>
             </form>
