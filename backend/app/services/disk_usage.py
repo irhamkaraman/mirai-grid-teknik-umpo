@@ -47,6 +47,20 @@ def calculate_account_disk_usage(username: str, db_count: int = 0) -> Tuple[floa
         except Exception:
             pass
 
+    # 3. User Home Sandbox Scan (Includes ThingsBoard IoT, public_html, starter-app, etc.)
+    home_user_dir = os.path.join(settings.DATA_DIR, "home", clean_user)
+    if os.path.exists(home_user_dir):
+        try:
+            for root, dirs, files in os.walk(home_user_dir):
+                for f in files:
+                    try:
+                        fp = os.path.join(root, f)
+                        total_bytes += os.path.getsize(fp)
+                    except OSError:
+                        pass
+        except Exception:
+            pass
+
     file_bytes_mb = total_bytes / (1024 * 1024)
     base_overhead = 2.4 if file_bytes_mb > 0 else 0.0
     total_files_mb = round(file_bytes_mb + base_overhead, 1)

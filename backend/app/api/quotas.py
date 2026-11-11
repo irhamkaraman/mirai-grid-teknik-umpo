@@ -99,6 +99,16 @@ async def get_cpanel_stats(
     dep_row = await dep_cur.fetchone()
     primary_domain = dep_row["subdomain"] if dep_row else f"{username}.miraigrid.web.id"
 
+    # 4c. ThingsBoard IoT Status
+    tb_running = False
+    tb_port = 15000 + user_id
+    try:
+        from app.services.thingsboard_manager import ThingsBoardManager
+        tb_status = await ThingsBoardManager.get_status(user_id, username, db)
+        tb_running = bool(tb_status.get("running"))
+    except Exception:
+        pass
+
     # 5. Assigned Ports
     assigned_ports = []
     for p in projects:
@@ -125,6 +135,8 @@ async def get_cpanel_stats(
         assigned_ports.append({"port": 5432, "service": "PostgreSQL 16", "type": "Database Engine"})
     if has_maria:
         assigned_ports.append({"port": 3306, "service": "MariaDB 11", "type": "Database Engine"})
+    if tb_running:
+        assigned_ports.append({"port": tb_port, "service": "ThingsBoard IoT", "type": "IoT Cloud Platform"})
     assigned_ports.append({"port": 22, "service": "SSH & SFTP", "type": "Terminal & File Transfer"})
     if is_admin:
         assigned_ports.append({"port": 9443, "service": "Portainer CE", "type": "Container Management"})
@@ -137,15 +149,17 @@ async def get_cpanel_stats(
 
     # 7. Number of Processes (NPROC)
     proc_limit = max_processes
-    proc_used = min(proc_limit, max(4, (running_projects * 6) + (used_databases * 3) + 2))
+    tb_procs = 8 if tb_running else 0
+    proc_used = min(proc_limit, max(4, (running_projects * 6) + (used_databases * 3) + tb_procs + 2))
     proc_percent = round((proc_used / proc_limit) * 100, 1) if proc_limit > 0 else 0.0
 
     # 8. Physical Memory Usage
-    mem_used_mb = round(max(32.0, (running_projects * 48.0) + (used_databases * 24.0) + 16.0), 1)
+    tb_mem = 128.0 if tb_running else 0.0
+    mem_used_mb = round(max(32.0, (running_projects * 48.0) + (used_databases * 24.0) + tb_mem + 16.0), 1)
     mem_percent = round((mem_used_mb / max_memory_mb) * 100, 1) if max_memory_mb > 0 else 0.0
 
     # 9. Entry Processes
-    entry_used = max(1, running_projects + (1 if used_databases > 0 else 0))
+    entry_used = max(1, running_projects + (1 if used_databases > 0 else 0) + (1 if tb_running else 0))
     entry_limit = 150 if is_admin else 20
     entry_percent = round((entry_used / entry_limit) * 100, 1)
 

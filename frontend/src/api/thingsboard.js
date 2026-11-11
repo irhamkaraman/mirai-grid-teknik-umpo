@@ -5,6 +5,11 @@ export const getThingsBoardStatus = async () => {
   return res.data
 }
 
+export const getThingsBoardSSO = async () => {
+  const res = await api.get('/thingsboard/sso')
+  return res.data
+}
+
 export const startThingsBoard = async () => {
   const res = await api.post('/thingsboard/start')
   return res.data

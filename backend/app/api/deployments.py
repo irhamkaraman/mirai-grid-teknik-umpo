@@ -54,7 +54,7 @@ def format_deployment_dict(row: aiosqlite.Row) -> dict:
     }
 
 
-@router.get("/resolve")
+@router.api_route("/resolve", methods=["GET", "POST", "HEAD"])
 async def resolve_subdomain(
     request: Request,
     x_original_host: Optional[str] = Header(None),
@@ -94,7 +94,31 @@ async def resolve_subdomain(
         response.headers["Cache-Control"] = "public, max-age=10"
         return response
 
-    # 2. Only resolve subdomains matching pattern: web-<4hex>-<nim>.miraigrid.web.id
+    # 2. Resolve ThingsBoard IoT Subdomains (tb-<username>.miraigrid.web.id or tb.miraigrid.web.id or thingsboard.miraigrid.web.id)
+    if (target_host.startswith("tb-") or target_host.startswith("tb.") or target_host.startswith("thingsboard.")) and target_host.endswith(PUBLIC_BASE_DOMAIN):
+        first_part = target_host.split(".")[0]
+        tb_username = first_part[3:].strip().lower() if first_part.startswith("tb-") else "admin"
+        u_cursor = await db.execute("SELECT id, username FROM users WHERE LOWER(username) = ?", (tb_username,))
+        u_row = await u_cursor.fetchone()
+        if not u_row:
+            return Response(status_code=404, content="ThingsBoard User Not Found")
+        
+        target_port = 15000 + u_row["id"]
+        try:
+            from app.services.thingsboard_manager import ThingsBoardManager
+            st = await ThingsBoardManager.get_status(u_row["id"], u_row["username"], db)
+            if not st.get("running"):
+                await ThingsBoardManager.start(u_row["id"], u_row["username"], db)
+        except Exception as e:
+            print(f"[Resolve ThingsBoard] Warning: {e}")
+
+        response = Response(status_code=200, content="OK")
+        response.headers["X-Target-Port"] = str(target_port)
+        response.headers["X-Deployment-Status"] = "active"
+        response.headers["Cache-Control"] = "public, max-age=5"
+        return response
+
+    # 3. Only resolve subdomains matching pattern: web-<4hex>-<nim>.miraigrid.web.id
     if not target_host.endswith(PUBLIC_BASE_DOMAIN) or not target_host.startswith("web-"):
         return Response(status_code=403, content="Host Not In Scope")
 

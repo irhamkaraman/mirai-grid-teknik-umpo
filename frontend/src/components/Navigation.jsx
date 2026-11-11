@@ -60,6 +60,21 @@ export default function Navigation({ userRole, isCollapsed, setIsCollapsed }) {
   ]
 
   const handleNavClick = async (item) => {
+    if (item.id === 'thingsboard') {
+      try {
+        const { getThingsBoardSSO } = await import('../api/thingsboard')
+        const ssoData = await getThingsBoardSSO()
+        if (ssoData && ssoData.ready && ssoData.sso_url) {
+          window.location.href = ssoData.sso_url
+          return
+        }
+      } catch (err) {
+        console.warn('Check ThingsBoard SSO on nav click:', err)
+      }
+      if (item.path) navigate(item.path)
+      return
+    }
+
     if (item.action === 'jupyter') {
       try {
         setIsLaunchingJupyter(true)

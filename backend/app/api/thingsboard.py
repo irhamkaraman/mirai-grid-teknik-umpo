@@ -19,6 +19,15 @@ async def get_status(
     username = current_user["username"]
     return await ThingsBoardManager.get_status(user_id, username, db)
 
+@router.get("/sso")
+async def get_sso(
+    current_user: dict = Depends(get_current_user),
+    db: aiosqlite.Connection = Depends(get_db)
+):
+    user_id = current_user["id"]
+    username = current_user["username"]
+    return await ThingsBoardManager.get_sso_session(user_id, username, db)
+
 @router.post("/start")
 async def start_thingsboard(
     current_user: dict = Depends(get_current_user),

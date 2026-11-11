@@ -231,7 +231,7 @@ export default function App() {
   const isStandaloneThingsBoard = location.pathname.startsWith('/thingsboard')
   if (isStandaloneThingsBoard) {
     return (
-      <div className="h-screen w-screen bg-[#1E110A] flex flex-col font-sans overflow-hidden select-none m-0 p-0">
+      <div className="min-h-screen w-full bg-[#E6D7BE] flex flex-col font-sans selection:bg-[#5A3521] selection:text-[#FAF5EC] select-none m-0 p-0">
         <Toaster
           richColors
           position="top-right"

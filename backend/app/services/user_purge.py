@@ -56,6 +56,16 @@ class UserPurgeService:
         except Exception as e:
             report["redis_error"] = str(e)
 
+        # 3b. Stop and purge ThingsBoard IoT Sandbox
+        try:
+            from app.services.thingsboard_manager import ThingsBoardManager
+            await ThingsBoardManager.stop(user_id, clean_user)
+            async with ThingsBoardManager._get_docker_client() as tb_client:
+                await tb_client.delete(f"http://docker/containers/tb_{clean_user}?v=true&force=true")
+            report["thingsboard_purged"] = True
+        except Exception as e:
+            report["thingsboard_error"] = str(e)
+
         # 4. Purge All MariaDB & PostgreSQL Databases and Users
         try:
             db_res = await DatabaseProvisioner.purge_all_user_databases(clean_user)
