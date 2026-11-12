@@ -6,6 +6,7 @@ import aiosqlite
 
 from app.core.config import settings
 from app.core.database import get_db
+from app.core.subdomain_auth import verify_subdomain_access
 from app.api.deps import get_current_user, get_current_user_flexible
 from app.services.vscode_manager import VSCodeManager
 
@@ -92,20 +93,37 @@ async def resolve_vscode_subdomain(
     if not row:
         return Response(status_code=404, content="User Not Found")
 
+    # STRICT ZERO-TRUST AUTHORIZATION CHECK
+    is_authorized, status_code, err_msg, auth_user = await verify_subdomain_access(
+        request=request,
+        db=db,
+        target_username=target_user,
+        platform_name="Web IDE (VS Code)"
+    )
+    if not is_authorized:
+        resp = Response(status_code=status_code, content=err_msg)
+        resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        return resp
+
     user_id = row["id"]
     username = row["username"]
     target_port = 14000 + user_id
 
-    # Ensure instance is started
-    try:
-        status_info = await VSCodeManager.get_status(user_id, username)
-        if not status_info.get("running"):
-            await VSCodeManager.start(user_id, username)
-    except Exception:
-        pass
+    # High-Performance Fast-Path for static assets/workers:
+    x_orig_uri = request.headers.get("x-original-uri", "")
+    is_asset = bool(re.search(r'\.(js|css|png|jpg|jpeg|gif|ico|svg|woff2?|ttf|eot|map|wasm)(\?.*)?$', x_orig_uri, re.IGNORECASE))
+
+    if not is_asset:
+        # Ensure instance is started only on main entry hits
+        try:
+            status_info = await VSCodeManager.get_status(user_id, username)
+            if not status_info.get("running"):
+                await VSCodeManager.start(user_id, username)
+        except Exception:
+            pass
 
     response = Response(status_code=200, content="OK")
     response.headers["X-Target-Port"] = str(target_port)
     response.headers["X-Code-User"] = str(username)
-    response.headers["Cache-Control"] = "public, max-age=10"
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     return response

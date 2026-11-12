@@ -552,9 +552,12 @@ async def list_my_projects(
         """, (current_user["id"],))
     rows = await cursor.fetchall()
     
-    # Load all web deployments for mapping
+    # Load all web deployments for mapping (If admin, load all deployments across all student accounts)
     try:
-        dep_cursor = await db.execute("SELECT id, project_id, subdomain, status FROM web_deployments WHERE user_id = ?", (current_user["id"],))
+        if is_admin:
+            dep_cursor = await db.execute("SELECT id, project_id, subdomain, status FROM web_deployments")
+        else:
+            dep_cursor = await db.execute("SELECT id, project_id, subdomain, status FROM web_deployments WHERE user_id = ?", (current_user["id"],))
         dep_rows = await dep_cursor.fetchall()
         dep_map = {d["project_id"]: dict(d) for d in dep_rows if d["project_id"]}
     except Exception:
@@ -618,6 +621,7 @@ async def list_my_projects(
             "created_at": r["created_at"],
             "owner_username": r["owner_username"] if "owner_username" in r.keys() else current_user.get("username"),
             "owner_name": r["owner_name"] if "owner_name" in r.keys() else current_user.get("name"),
+            "owner_role": r["owner_role"] if "owner_role" in r.keys() else current_user.get("role"),
             "public_subdomain": public_subdomain,
             "public_url": public_url,
             "is_published": is_published,
@@ -698,6 +702,7 @@ async def get_project_by_id(
         "created_at": r["created_at"],
         "owner_username": r["owner_username"] if "owner_username" in r.keys() else current_user.get("username"),
         "owner_name": r["owner_name"] if "owner_name" in r.keys() else current_user.get("name"),
+        "owner_role": r["owner_role"] if "owner_role" in r.keys() else current_user.get("role"),
         "public_subdomain": public_subdomain,
         "public_url": public_url,
         "is_published": is_published,
@@ -1485,7 +1490,7 @@ async def extract_archive(
         if os.path.exists(zip_full_path) and zipfile.is_zipfile(zip_full_path):
             with zipfile.ZipFile(zip_full_path, "r") as zf:
                 uncompressed_sz = sum(info.file_size for info in zf.infolist() if not info.is_dir())
-                if disk_used_mb + (uncompressed_sz / (1024 * 1024)) > max_disk_mb:
+                if not is_admin and (disk_used_mb + (uncompressed_sz / (1024 * 1024)) > max_disk_mb):
                     raise HTTPException(
                         status_code=413,
                         detail=f"Ekstraksi arsip melebihi batas kuota penyimpanan ({int(max_disk_mb)} MB)."
@@ -1541,7 +1546,7 @@ async def upload_files_to_directory(
         file_size = file.file.tell()
         file.file.seek(0)
 
-        if disk_used_mb + (file_size / (1024 * 1024)) > max_disk_mb:
+        if not is_admin and (disk_used_mb + (file_size / (1024 * 1024)) > max_disk_mb):
             raise HTTPException(
                 status_code=413,
                 detail=f"Kapasitas penyimpanan workspace mahasiswa telah mencapai batas kuota ({int(max_disk_mb)} MB)."
@@ -1556,7 +1561,7 @@ async def upload_files_to_directory(
             if zipfile.is_zipfile(temp_dest):
                 with zipfile.ZipFile(temp_dest, "r") as zf:
                     uncompressed_sz = sum(info.file_size for info in zf.infolist() if not info.is_dir())
-                    if disk_used_mb + (uncompressed_sz / (1024 * 1024)) > max_disk_mb:
+                    if not is_admin and (disk_used_mb + (uncompressed_sz / (1024 * 1024)) > max_disk_mb):
                         try:
                             os.remove(temp_dest)
                         except Exception:

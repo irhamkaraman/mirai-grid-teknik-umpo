@@ -24,6 +24,16 @@ export function ThingsBoardIcon({ className = "h-4 w-4" }) {
   )
 }
 
+export function VSCodeIcon({ className = "h-4 w-4" }) {
+  return (
+    <img
+      src="/logos/vscode.svg"
+      alt="VS Code"
+      className={`${className} object-contain`}
+    />
+  )
+}
+
 export default function Navigation({ userRole, isCollapsed, setIsCollapsed }) {
   const navigate = useNavigate()
   const location = useLocation()
@@ -36,7 +46,7 @@ export default function Navigation({ userRole, isCollapsed, setIsCollapsed }) {
       label: 'Menu Utama',
       items: [
         { id: 'tools', label: 'Tools', path: '/dashboard', icon: Wrench },
-        { id: 'vscode', label: 'Web IDE (VS Code)', path: '/vscode', icon: Code },
+        { id: 'vscode', label: 'Web IDE (VS Code)', path: '/vscode', icon: VSCodeIcon },
         ...(userRole === 'admin'
           ? [{ id: 'accounts', label: 'Kelola Akun', path: '/admin', icon: Users }]
           : []),

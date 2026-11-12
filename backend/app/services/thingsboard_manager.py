@@ -78,6 +78,22 @@ class ThingsBoardManager:
         os.makedirs(conf_dir, exist_ok=True)
         os.makedirs(logs_dir, exist_ok=True)
 
+        try:
+            # ThingsBoard container runs as UID 799 (thingsboard).
+            # PostgreSQL requires /data/db to be owned by UID 799 with 0700 permissions.
+            os.chmod(tb_base, 0o777)
+            os.chmod(data_dir, 0o777)
+            os.chmod(logs_dir, 0o777)
+            db_dir = os.path.join(data_dir, "db")
+            if os.path.exists(db_dir):
+                os.chmod(db_dir, 0o700)
+                try:
+                    os.chown(db_dir, 799, 799)
+                except Exception:
+                    pass
+        except Exception as e:
+            print(f"[ThingsBoard] Warning adjusting permissions: {e}")
+
         q = quotas or {}
         cpu = q.get("cpu_quota", 0.5)
         ram = q.get("ram_quota_mb", 512)
@@ -160,9 +176,13 @@ COAP_PORT=5683
             except Exception as e:
                 print(f"[ThingsBoard] Error creating README.md: {e}")
 
-        # Set permissions recursively so student (UID 10081) and ThingsBoard (UID 799) have full access
+        # Set permissions recursively, strictly excluding PostgreSQL data dir /data/db
         try:
             for root, dirs, files in os.walk(tb_base):
+                # Critical: Never chmod PostgreSQL data directory /data/db to 0777!
+                # PostgreSQL refuses to start if data directory has group/world permissions.
+                if "db" in dirs:
+                    dirs.remove("db")
                 for d in dirs:
                     try:
                         os.chmod(os.path.join(root, d), 0o777)
@@ -173,6 +193,15 @@ COAP_PORT=5683
                         os.chmod(os.path.join(root, fl), 0o666)
                     except Exception:
                         pass
+
+            # Explicitly enforce 0700 permissions and UID 799 for PostgreSQL data directory
+            db_dir = os.path.join(data_dir, "db")
+            if os.path.exists(db_dir):
+                try:
+                    os.chmod(db_dir, 0o700)
+                    os.chown(db_dir, 799, 799)
+                except Exception:
+                    pass
         except Exception as e:
             print(f"[ThingsBoard] Warning setting permissions on {tb_base}: {e}")
 
@@ -209,14 +238,24 @@ COAP_PORT=5683
         return False
 
     @classmethod
-    async def get_status(cls, user_id: int, username: str, db: Optional[aiosqlite.Connection] = None) -> Dict[str, Any]:
+    async def is_container_running(cls, username: str) -> bool:
+        """Lightweight non-blocking check whether user's ThingsBoard container is alive and running."""
+        container_name = f"tb_{username}"
+        try:
+            async with cls._get_docker_client() as client:
+                res = await client.get(f"http://docker/containers/{container_name}/json")
+                if res.status_code == 200:
+                    return res.json().get("State", {}).get("Running", False)
+        except Exception:
+            pass
+        return False
+
+    @classmethod
+    async def get_status(cls, user_id: int, username: str, db: Optional[aiosqlite.Connection] = None, fetch_tokens: bool = False) -> Dict[str, Any]:
         container_name = f"tb_{username}"
         port = 15000 + user_id
         quotas = await cls.get_user_quotas(user_id, db)
         subdomain = f"tb-{username}.miraigrid.web.id"
-
-        # Ensure directory structure and config files exist for student inspection
-        cls.ensure_storage_dir(username, quotas)
 
         user_tb_dir = os.path.join(DATA_BASE_DIR, username, "thingsboard", "data")
         is_initialized = os.path.exists(user_tb_dir) and len(os.listdir(user_tb_dir)) > 0
@@ -232,7 +271,7 @@ COAP_PORT=5683
                     sso_url = f"https://{subdomain}"
                     if is_running:
                         ready = await cls.is_http_ready(port)
-                        if ready:
+                        if ready and fetch_tokens:
                             jwt_tok, ref_tok = await cls.get_tenant_tokens(port)
                             if jwt_tok:
                                 sso_url = f"https://{subdomain}/sso?token={jwt_tok}&refresh_token={ref_tok}"
@@ -275,10 +314,10 @@ COAP_PORT=5683
     @classmethod
     async def get_sso_session(cls, user_id: int, username: str, db: Optional[aiosqlite.Connection] = None) -> Dict[str, Any]:
         """Generate a one-click SSO redirect session into ThingsBoard."""
-        status_info = await cls.get_status(user_id, username, db)
+        status_info = await cls.get_status(user_id, username, db, fetch_tokens=True)
         if not status_info.get("running"):
             await cls.start(user_id, username, db)
-            status_info = await cls.get_status(user_id, username, db)
+            status_info = await cls.get_status(user_id, username, db, fetch_tokens=True)
 
         port = status_info.get("port", 15000 + user_id)
         subdomain = status_info.get("subdomain", f"tb-{username}.miraigrid.web.id")
@@ -311,10 +350,21 @@ COAP_PORT=5683
         cls.ensure_storage_dir(username, quotas)
         host_user_dir = f"{HOST_DATA_BASE_DIR}/{username}/thingsboard"
 
-        # 2. Memory & CPU cgroups limit calculation (Follows student's MiraiGrid allocation)
-        ram_mb = max(1024, quotas.get("ram_quota_mb", 512))
-        cpu_quota = max(0.5, quotas.get("cpu_quota", 0.5))
-        heap_max = min(512, int(ram_mb * 0.65))
+        # 2. Memory & CPU cgroups limit calculation (Generous allocation for Admin, guaranteed 1GB+ for students)
+        user_ram = quotas.get("ram_quota_mb", 512)
+        user_cpu = quotas.get("cpu_quota", 0.5)
+
+        if user_id == 1 or username == "admin":
+            ram_mb = 3072      # 3 GB dedicated RAM for Admin ThingsBoard
+            cpu_quota = 3.0    # 3 CPU Cores
+            heap_max = 1536    # 1.5 GB Heap for ThingsBoard JVM
+        else:
+            ram_mb = max(1024, user_ram)
+            cpu_quota = max(0.5, user_cpu)
+            heap_max = min(768, max(256, int(ram_mb * 0.6)))
+
+        target_mem = ram_mb * 1024 * 1024
+        target_cpus = int(cpu_quota * 1e9)
 
         async with cls._get_docker_client() as client:
             # Check if container already exists
@@ -327,9 +377,11 @@ COAP_PORT=5683
                     current_host_ip = port_bindings["9090/tcp"][0].get("HostIp", "")
 
                 current_mem = c_data.get("HostConfig", {}).get("Memory", 0)
-                # If bound to 127.0.0.1 or memory < 1024MB, recreate container with proper bindings
-                if current_host_ip == "127.0.0.1" or current_mem < (1024 * 1024 * 1024):
-                    print(f"[ThingsBoard] Recreating container {container_name} with 0.0.0.0 binding & 1024MB RAM...")
+                current_nano_cpus = c_data.get("HostConfig", {}).get("NanoCpus", 0)
+
+                # If bound to 127.0.0.1 or memory/cpu is below target allocation, recreate container
+                if current_host_ip == "127.0.0.1" or current_mem < target_mem or current_nano_cpus < target_cpus:
+                    print(f"[ThingsBoard] Upgrading container {container_name} to {ram_mb}MB RAM and {cpu_quota} CPU...")
                     await client.post(f"http://docker/containers/{container_name}/stop?t=5")
                     await client.delete(f"http://docker/containers/{container_name}?v=false")
                 else:
@@ -343,7 +395,7 @@ COAP_PORT=5683
             create_payload = {
                 "Image": THINGSBOARD_IMAGE,
                 "Env": [
-                    f"JAVA_OPTS=-Xms128M -Xmx{heap_max}M -XX:+ExitOnOutOfMemoryError",
+                    f"JAVA_OPTS=-Xms256M -Xmx{heap_max}M -XX:+ExitOnOutOfMemoryError",
                     "HTTP_BIND_PORT=9090"
                 ],
                 "HostConfig": {

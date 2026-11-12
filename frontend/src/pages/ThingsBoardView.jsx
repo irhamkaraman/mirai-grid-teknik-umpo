@@ -61,11 +61,27 @@ export default function ThingsBoardView({ user, onNavigate }) {
         setStatus(startRes)
       }
 
+      // Helper to ensure domain cookie is set before navigating
+      const getEnhancedSsoUrl = (rawUrl) => {
+        let finalUrl = rawUrl || `https://tb-${username}.miraigrid.web.id`
+        const localMgToken = localStorage.getItem('token') || localStorage.getItem('miraigrid_token')
+        if (localMgToken) {
+          try {
+            document.cookie = `miraigrid_token=${localMgToken}; path=/; domain=.miraigrid.web.id; max-age=604800; SameSite=Lax; Secure`
+          } catch(e) {}
+          if (!finalUrl.includes('mg_token=')) {
+            const sep = finalUrl.includes('?') ? '&' : '?'
+            finalUrl = `${finalUrl}${sep}mg_token=${encodeURIComponent(localMgToken)}`
+          }
+        }
+        return finalUrl
+      }
+
       // If already ready, immediately redirect directly to dedicated subdomain with SSO
       if (sRes.ready) {
         setInitStep(4)
         setInitProgress(100)
-        const targetUrl = sRes.sso_url || sRes.public_url || `https://tb-${username}.miraigrid.web.id`
+        const targetUrl = getEnhancedSsoUrl(sRes.sso_url || sRes.public_url)
         window.location.replace(targetUrl)
         return
       }
@@ -83,7 +99,7 @@ export default function ThingsBoardView({ user, onNavigate }) {
             setInitStep(4)
             setInitProgress(100)
             toast.success('ThingsBoard IoT Sandbox siap! Mengalihkan ke dashboard...')
-            const targetUrl = checkRes.sso_url || checkRes.public_url || `https://tb-${username}.miraigrid.web.id`
+            const targetUrl = getEnhancedSsoUrl(checkRes.sso_url || checkRes.public_url)
             setTimeout(() => {
               window.location.replace(targetUrl)
             }, 500)
@@ -429,7 +445,13 @@ export default function ThingsBoardView({ user, onNavigate }) {
             <div className="flex flex-col sm:flex-row items-center gap-3 pt-1">
               {/* Primary Action Button: Open in New Tab with SSO */}
               <a
-                href={status?.sso_url || publicSubdomainUrl}
+                href={status?.sso_url ? (status.sso_url.includes('?') ? `${status.sso_url}&mg_token=${encodeURIComponent(localStorage.getItem('token') || '')}` : `${status.sso_url}?mg_token=${encodeURIComponent(localStorage.getItem('token') || '')}`) : publicSubdomainUrl}
+                onClick={() => {
+                  try {
+                    const t = localStorage.getItem('token') || localStorage.getItem('miraigrid_token')
+                    if (t) document.cookie = `miraigrid_token=${t}; path=/; domain=.miraigrid.web.id; max-age=604800; SameSite=Lax; Secure`
+                  } catch(e) {}
+                }}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="w-full sm:flex-1 flex items-center justify-center space-x-2 py-3.5 px-5 rounded-2xl bg-[#C49767] hover:bg-[#E8C58D] text-[#24140D] font-bold text-xs sm:text-sm transition shadow-xl alpine-hover-card"

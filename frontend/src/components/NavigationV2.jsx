@@ -1,0 +1,389 @@
+import React, { useState } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
+import {
+  Folder,
+  Wrench,
+  Database,
+  Globe,
+  Info,
+  ChevronLeft,
+  ChevronRight,
+  HardDrive,
+  Activity,
+  Layers,
+  Sparkles,
+  ExternalLink,
+  HelpCircle,
+  Bell,
+  X,
+  Code,
+  Terminal,
+  Cpu
+} from 'lucide-react'
+import { launchJupyterLab } from '../api/jupyter'
+
+export function JupyterIcon({ className = "h-4 w-4" }) {
+  return (
+    <svg viewBox="0 0 44 48" fill="none" className={className} xmlns="http://www.w3.org/2000/svg">
+      <path d="M22.012 11.233c-8.995 0-16.792 4.962-19.645 11.838 2.477-1.897 5.986-3.138 9.932-3.138 6.617 0 12.222 3.46 13.791 8.217.214.645.326 1.32.326 2.001 0 3.847-3.816 7.037-8.81 7.727 1.439.247 2.946.386 4.488.386 8.995 0 16.792-4.962 19.645-11.838-2.477 1.897-5.986 3.138-9.932 3.138-6.617 0-12.222-3.46-13.791-8.217-.214-.645-.326-1.32-.326-2.001 0-3.847 3.816-7.037 8.81-7.727-1.439-.247-2.946-.386-4.488-.386z" fill="#F37626"/>
+      <circle cx="22" cy="4.5" r="3.5" fill="#9E9E9E"/>
+      <circle cx="6.5" cy="38.5" r="3.5" fill="#9E9E9E"/>
+      <circle cx="37.5" cy="38.5" r="3.5" fill="#9E9E9E"/>
+    </svg>
+  )
+}
+
+export default function NavigationV2({
+  userRole,
+  isCollapsed,
+  setIsCollapsed,
+  quota,
+  onOpenResources,
+  mobileOpen = false,
+  setMobileOpen = () => {}
+}) {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const [showPlatformMenu, setShowPlatformMenu] = useState(false)
+
+  const diskTotalMb = quota?.max_disk_mb || 500
+  const diskUsedMb = quota?.disk_used_mb !== undefined && quota?.disk_used_mb !== null
+    ? parseFloat(quota.disk_used_mb.toFixed(1))
+    : 157.9
+  const diskPercent = Math.min(100, Math.round((diskUsedMb / diskTotalMb) * 100))
+
+  const menuItems = [
+    {
+      id: 'files',
+      label: 'All Files',
+      path: '/dashboard',
+      icon: Folder,
+      activeCheck: (p) => p === '/' || p === '/dashboard' || p.startsWith('/files'),
+    },
+    {
+      id: 'tools',
+      label: 'Tools & Deployment',
+      path: '/deploy',
+      icon: Wrench,
+      activeCheck: (p) => p.startsWith('/deploy'),
+    },
+    {
+      id: 'databases',
+      label: 'Databases',
+      path: '/databases',
+      icon: Database,
+      activeCheck: (p) => p.startsWith('/databases') || p.startsWith('/remote-database') || p.startsWith('/database-wizard'),
+    },
+    {
+      id: 'platform',
+      label: 'Platform & Lab',
+      icon: Globe,
+      isDropdown: true,
+      activeCheck: (p) => p.startsWith('/thingsboard') || p.startsWith('/vscode') || p.startsWith('/terminal') || p.startsWith('/redis'),
+    },
+    {
+      id: 'about',
+      label: 'Tentang Sistem',
+      path: '/about',
+      icon: Info,
+      activeCheck: (p) => p.startsWith('/about'),
+    },
+    ...(userRole === 'admin'
+      ? [
+          {
+            id: 'admin',
+            label: 'Kelola Akun (Admin)',
+            path: '/admin',
+            icon: Layers,
+            activeCheck: (p) => p.startsWith('/admin'),
+          },
+        ]
+      : []),
+  ]
+
+  const handleItemClick = (item) => {
+    if (item.isDropdown) {
+      setShowPlatformMenu(!showPlatformMenu)
+      return
+    }
+    if (item.path) {
+      navigate(item.path)
+      setMobileOpen(false)
+    }
+  }
+
+  const handleLaunchPlatform = async (type) => {
+    setMobileOpen(false)
+    setShowPlatformMenu(false)
+    if (type === 'jupyter') {
+      try {
+        await launchJupyterLab()
+      } catch (err) {
+        console.error(err)
+      }
+      return
+    }
+    if (type === 'thingsboard') {
+      try {
+        const { getThingsBoardSSO } = await import('../api/thingsboard')
+        const ssoData = await getThingsBoardSSO()
+        if (ssoData && ssoData.ready && ssoData.sso_url) {
+          window.location.href = ssoData.sso_url
+          return
+        }
+      } catch (e) {}
+      navigate('/thingsboard')
+      return
+    }
+    if (type === 'vscode') {
+      navigate('/vscode')
+      return
+    }
+    if (type === 'terminal') {
+      navigate('/terminal')
+      return
+    }
+    if (type === 'redis') {
+      navigate('/redis')
+      return
+    }
+  }
+
+  const sidebarContent = (
+    <div className="flex flex-col h-full justify-between select-none">
+      {/* Top Header */}
+      <div>
+        <div className={`flex items-center mb-6 w-full ${isCollapsed ? 'justify-center' : 'justify-between px-2'}`}>
+          <div
+            onClick={() => {
+              navigate('/dashboard')
+              setMobileOpen(false)
+            }}
+            className="flex items-center space-x-3 overflow-hidden cursor-pointer group"
+          >
+            <div className="h-10 w-10 rounded-2xl bg-emerald-600 flex items-center justify-center text-white shadow-md shadow-emerald-600/20 group-hover:scale-105 transition-transform shrink-0">
+              <img
+                src="/logos/miraigrid-logo.svg"
+                alt="MiraiGrid"
+                className="h-6 w-6 object-contain invert brightness-0"
+                onError={(e) => {
+                  e.target.style.display = 'none'
+                }}
+              />
+              <span className="font-bold text-sm">MG</span>
+            </div>
+            {!isCollapsed && (
+              <div className="overflow-hidden">
+                <div className="flex items-center space-x-1.5">
+                  <h1 className="text-base font-bold text-gray-900 font-sans tracking-tight truncate">
+                    MiG-Cloud
+                  </h1>
+                  <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.2 rounded-full border border-emerald-200">
+                    Active
+                  </span>
+                </div>
+                <p className="text-[11px] text-gray-500 font-medium truncate">
+                  Lab TI Cloud Workspace
+                </p>
+              </div>
+            )}
+          </div>
+
+          {!isCollapsed && (
+            <button
+              onClick={() => setIsCollapsed(true)}
+              title="Perkecil Sidebar"
+              className="p-1.5 rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition hidden md:block"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+
+        {isCollapsed && (
+          <div className="hidden md:flex justify-center mb-4">
+            <button
+              onClick={() => setIsCollapsed(false)}
+              title="Perlebar Sidebar"
+              className="p-2 rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+
+        {/* Menu Navigation */}
+        <nav className="space-y-1.5 w-full">
+          {menuItems.map((item) => {
+            const Icon = item.icon
+            const isActive = item.activeCheck(location.pathname)
+
+            return (
+              <div key={item.id}>
+                <button
+                  type="button"
+                  onClick={() => handleItemClick(item)}
+                  title={item.label}
+                  className={`w-full flex items-center ${
+                    isCollapsed ? 'justify-center px-0' : 'justify-between px-3.5'
+                  } py-2.5 rounded-2xl text-xs font-semibold transition-all duration-200 ${
+                    isActive
+                      ? 'bg-emerald-50 text-emerald-700 font-bold shadow-sm border border-emerald-100'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80 border border-transparent'
+                  }`}
+                >
+                  <div className="flex items-center space-x-3 truncate">
+                    <Icon
+                      className={`h-4 w-4 shrink-0 transition-colors ${
+                        isActive ? 'text-emerald-600' : 'text-gray-400 group-hover:text-gray-600'
+                      }`}
+                    />
+                    {!isCollapsed && <span className="truncate">{item.label}</span>}
+                  </div>
+                  {!isCollapsed && item.isDropdown && (
+                    <ChevronRight
+                      className={`h-3.5 w-3.5 text-gray-400 transition-transform ${
+                        showPlatformMenu ? 'rotate-90 text-emerald-600' : ''
+                      }`}
+                    />
+                  )}
+                </button>
+
+                {/* Submenu Platform & Lab */}
+                {!isCollapsed && item.isDropdown && showPlatformMenu && (
+                  <div className="ml-4 mt-1 pl-3 border-l-2 border-emerald-100 space-y-1">
+                    <button
+                      onClick={() => handleLaunchPlatform('jupyter')}
+                      className="w-full flex items-center space-x-2 px-2.5 py-1.5 rounded-xl text-[11px] font-medium text-gray-600 hover:text-emerald-700 hover:bg-emerald-50/50 transition text-left"
+                    >
+                      <JupyterIcon className="h-3.5 w-3.5 shrink-0" />
+                      <span>JupyterHub (LAN)</span>
+                    </button>
+                    <button
+                      onClick={() => handleLaunchPlatform('thingsboard')}
+                      className="w-full flex items-center space-x-2 px-2.5 py-1.5 rounded-xl text-[11px] font-medium text-gray-600 hover:text-emerald-700 hover:bg-emerald-50/50 transition text-left"
+                    >
+                      <span className="text-[10px] font-bold text-blue-600 font-mono">IoT</span>
+                      <span>ThingsBoard</span>
+                    </button>
+                    <button
+                      onClick={() => handleLaunchPlatform('vscode')}
+                      className="w-full flex items-center space-x-2 px-2.5 py-1.5 rounded-xl text-[11px] font-medium text-gray-600 hover:text-emerald-700 hover:bg-emerald-50/50 transition text-left"
+                    >
+                      <Code className="h-3.5 w-3.5 text-blue-500 shrink-0" />
+                      <span>Web IDE (VS Code)</span>
+                    </button>
+                    <button
+                      onClick={() => handleLaunchPlatform('terminal')}
+                      className="w-full flex items-center space-x-2 px-2.5 py-1.5 rounded-xl text-[11px] font-medium text-gray-600 hover:text-emerald-700 hover:bg-emerald-50/50 transition text-left"
+                    >
+                      <Terminal className="h-3.5 w-3.5 text-gray-700 shrink-0" />
+                      <span>Terminal Jail</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </nav>
+      </div>
+
+      {/* Bottom Storage & Resource Widget */}
+      <div className="pt-4 border-t border-gray-100 space-y-3">
+        {!isCollapsed ? (
+          <div className="bg-gray-50 border border-gray-200/80 rounded-2xl p-3.5 space-y-2.5">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-semibold text-gray-700 flex items-center space-x-1.5">
+                <HardDrive className="h-3.5 w-3.5 text-emerald-600" />
+                <span>Penyimpanan Cloud</span>
+              </span>
+              <span className="font-mono text-[11px] font-bold text-emerald-700 bg-emerald-100/60 px-1.5 py-0.2 rounded">
+                {diskPercent}%
+              </span>
+            </div>
+
+            <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
+              <div
+                className="bg-emerald-500 h-full rounded-full transition-all duration-500"
+                style={{ width: `${diskPercent}%` }}
+              />
+            </div>
+
+            <div className="flex items-center justify-between text-[11px] text-gray-500 font-mono">
+              <span>{diskUsedMb} MB</span>
+              <span>{diskTotalMb} MB</span>
+            </div>
+
+            <button
+              type="button"
+              onClick={onOpenResources}
+              className="w-full py-1.5 px-2.5 bg-white hover:bg-emerald-50 border border-gray-200 hover:border-emerald-300 rounded-xl text-[11px] font-bold text-gray-700 hover:text-emerald-700 transition flex items-center justify-center space-x-1.5 shadow-sm"
+            >
+              <Activity className="h-3.5 w-3.5 text-emerald-600" />
+              <span>Lihat Detail Resource</span>
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center space-y-2">
+            <button
+              type="button"
+              onClick={onOpenResources}
+              title={`Detail Resource: ${diskPercent}% terpakai`}
+              className="p-2.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-700 hover:scale-105 transition"
+            >
+              <Activity className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+
+        {/* Footer Links */}
+        {!isCollapsed && (
+          <div className="flex items-center justify-between px-2 pt-1 text-[11px] text-gray-400">
+            <button
+              onClick={() => navigate('/about')}
+              className="hover:text-gray-700 transition flex items-center space-x-1"
+            >
+              <HelpCircle className="h-3.5 w-3.5" />
+              <span>Panduan</span>
+            </button>
+            <span className="font-mono text-[10px] text-gray-300">v2.0</span>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+
+  return (
+    <>
+      {/* Desktop Floating Sidebar */}
+      <aside
+        className={`fixed left-5 top-5 bottom-5 bg-white border border-gray-200 rounded-3xl shadow-xl p-4 z-30 hidden md:flex flex-col transition-all duration-300 ease-in-out ${
+          isCollapsed ? 'w-20 items-center' : 'w-64'
+        }`}
+      >
+        {sidebarContent}
+      </aside>
+
+      {/* Mobile Drawer */}
+      {mobileOpen && (
+        <div className="fixed inset-0 z-50 md:hidden flex">
+          <div
+            className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm animate-in fade-in duration-200"
+            onClick={() => setMobileOpen(false)}
+          />
+          <div className="relative w-72 max-w-[85vw] bg-white h-full shadow-2xl p-5 flex flex-col z-10 animate-in slide-in-from-left duration-200">
+            <div className="flex justify-end mb-2">
+              <button
+                onClick={() => setMobileOpen(false)}
+                className="p-1.5 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            {sidebarContent}
+          </div>
+        </div>
+      )}
+    </>
+  )
+}

@@ -18,6 +18,7 @@ from app.services.cloudbeaver_sync import sync_cloudbeaver_datasources
 from app.services.zip_handler import safe_extract_zip
 from app.services.template_composer import TemplateComposer
 from app.services.portainer import portainer
+from app.services.user_home import ensure_user_home
 from app.api.projects import get_next_available_port, resolve_app_root_paths, write_starter_template
 from app.api.deployments import PUBLIC_BASE_DOMAIN
 
@@ -459,7 +460,7 @@ async def finish_step4_and_publish(
         raise HTTPException(status_code=404, detail="Project tidak ditemukan.")
 
     allocated_port = project["allocated_port"]
-    container_name = f"miraigrid_{nim}_{project['name']}_app"
+    container_name = f"app_{nim}_{project['name']}"
 
     # Check if deployment already exists
     dep_c = await db.execute("SELECT * FROM web_deployments WHERE project_id = ?", (body.project_id,))

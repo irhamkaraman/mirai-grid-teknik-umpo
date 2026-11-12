@@ -521,54 +521,87 @@ export default function AdminView({ onNavigate }) {
                         </td>
                         {/* Storage */}
                         <td className="p-4 text-center">
-                          <button
-                            type="button"
-                            onClick={() => openLimitPage(u)}
-                            title="Klik untuk konfigurasi limit Storage & Database akun ini"
-                            className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-xl bg-[#1C0F0A] hover:bg-[#2A170F] border border-[#3E2316] hover:border-[#C49767]/60 text-[#DFCDB5] hover:text-[#FAF5EC] transition font-mono text-[11px]"
-                          >
-                            <HardDrive className="h-3 w-3 text-[#C49767]" />
-                            <span>
-                              {u.max_disk_mb >= 1000
-                                ? `${(u.max_disk_mb / 1000).toFixed(u.max_disk_mb % 1000 === 0 ? 0 : 1)} GB`
-                                : `${u.max_disk_mb || 500} MB`}
+                          {u.role === 'admin' ? (
+                            <span 
+                              title="Akun Administrator memiliki akses penyimpanan Host Penuh (Tanpa Batasan)"
+                              className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-xl bg-emerald-950/50 border border-emerald-700/60 text-emerald-400 font-mono text-[11px] font-bold shadow-sm"
+                            >
+                              <HardDrive className="h-3 w-3 text-emerald-400" />
+                              <span>Tanpa Batas</span>
+                              <span className="text-emerald-700">|</span>
+                              <Database className="h-3 w-3 text-emerald-400" />
+                              <span>DB ∞</span>
                             </span>
-                            <span className="text-[#A47E65]">|</span>
-                            <Database className="h-3 w-3 text-[#E8C58D]" />
-                            <span>
-                              DB {u.max_database_disk_mb >= 1000
-                                ? `${(u.max_database_disk_mb / 1000).toFixed(u.max_database_disk_mb % 1000 === 0 ? 0 : 1)} GB`
-                                : `${u.max_database_disk_mb || 100} MB`}
-                            </span>
-                          </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => openLimitPage(u)}
+                              title="Klik untuk konfigurasi limit Storage & Database akun ini"
+                              className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-xl bg-[#1C0F0A] hover:bg-[#2A170F] border border-[#3E2316] hover:border-[#C49767]/60 text-[#DFCDB5] hover:text-[#FAF5EC] transition font-mono text-[11px]"
+                            >
+                              <HardDrive className="h-3 w-3 text-[#C49767]" />
+                              <span>
+                                {u.max_disk_mb >= 1000
+                                  ? `${(u.max_disk_mb / 1000).toFixed(u.max_disk_mb % 1000 === 0 ? 0 : 1)} GB`
+                                  : `${u.max_disk_mb || 500} MB`}
+                              </span>
+                              <span className="text-[#A47E65]">|</span>
+                              <Database className="h-3 w-3 text-[#E8C58D]" />
+                              <span>
+                                DB {u.max_database_disk_mb >= 1000
+                                  ? `${(u.max_database_disk_mb / 1000).toFixed(u.max_database_disk_mb % 1000 === 0 ? 0 : 1)} GB`
+                                  : `${u.max_database_disk_mb || 100} MB`}
+                              </span>
+                            </button>
+                          )}
                         </td>
                         {/* RAM */}
                         <td className="p-4 text-center">
-                          <button
-                            type="button"
-                            onClick={() => openLimitPage(u)}
-                            title="Klik untuk ubah limit RAM akun ini"
-                            className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-xl bg-[#1C0F0A] hover:bg-[#2A170F] border border-[#3E2316] hover:border-emerald-500/60 text-[#DFCDB5] hover:text-[#FAF5EC] transition font-mono text-[11px]"
-                          >
-                            <Cpu className="h-3 w-3 text-emerald-400" />
-                            <span>
-                              {u.max_memory_mb >= 1024
-                                ? `${(u.max_memory_mb / 1024).toFixed(u.max_memory_mb % 1024 === 0 ? 0 : 1)} GB`
-                                : `${u.max_memory_mb || 512} MB`}
+                          {u.role === 'admin' ? (
+                            <span 
+                              title="Akun Administrator memiliki alokasi memori Host Penuh"
+                              className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-xl bg-emerald-950/50 border border-emerald-700/60 text-emerald-400 font-mono text-[11px] font-bold shadow-sm"
+                            >
+                              <Cpu className="h-3 w-3 text-emerald-400" />
+                              <span>Host RAM</span>
                             </span>
-                          </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => openLimitPage(u)}
+                              title="Klik untuk ubah limit RAM akun ini"
+                              className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-xl bg-[#1C0F0A] hover:bg-[#2A170F] border border-[#3E2316] hover:border-emerald-500/60 text-[#DFCDB5] hover:text-[#FAF5EC] transition font-mono text-[11px]"
+                            >
+                              <Cpu className="h-3 w-3 text-emerald-400" />
+                              <span>
+                                {u.max_memory_mb >= 1024
+                                  ? `${(u.max_memory_mb / 1024).toFixed(u.max_memory_mb % 1024 === 0 ? 0 : 1)} GB`
+                                  : `${u.max_memory_mb || 512} MB`}
+                              </span>
+                            </button>
+                          )}
                         </td>
                         {/* CPU */}
                         <td className="p-4 text-center">
-                          <button
-                            type="button"
-                            onClick={() => openLimitPage(u)}
-                            title="Klik untuk ubah limit CPU akun ini"
-                            className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-xl bg-[#1C0F0A] hover:bg-[#2A170F] border border-[#3E2316] hover:border-cyan-500/60 text-[#DFCDB5] hover:text-[#FAF5EC] transition font-mono text-[11px]"
-                          >
-                            <Sliders className="h-3 w-3 text-cyan-400" />
-                            <span>{u.max_cpu_cores ?? 1.0} Core</span>
-                          </button>
+                          {u.role === 'admin' ? (
+                            <span 
+                              title="Akun Administrator memiliki akses komputasi CPU Host Penuh"
+                              className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-xl bg-emerald-950/50 border border-emerald-700/60 text-emerald-400 font-mono text-[11px] font-bold shadow-sm"
+                            >
+                              <Sliders className="h-3 w-3 text-emerald-400" />
+                              <span>Host CPU</span>
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => openLimitPage(u)}
+                              title="Klik untuk ubah limit CPU akun ini"
+                              className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-xl bg-[#1C0F0A] hover:bg-[#2A170F] border border-[#3E2316] hover:border-cyan-500/60 text-[#DFCDB5] hover:text-[#FAF5EC] transition font-mono text-[11px]"
+                            >
+                              <Sliders className="h-3 w-3 text-cyan-400" />
+                              <span>{u.max_cpu_cores ?? 1.0} Core</span>
+                            </button>
+                          )}
                         </td>
                         <td className="p-4">
                           <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-semibold ${

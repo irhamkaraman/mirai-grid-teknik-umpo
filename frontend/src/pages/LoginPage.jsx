@@ -36,6 +36,15 @@ export default function LoginPage({ onLoginSuccess }) {
       })
       const data = response.data
       localStorage.setItem('miraigrid_token', data.access_token)
+      try {
+        if (window.location.hostname.includes('miraigrid.web.id')) {
+          document.cookie = `miraigrid_token=${data.access_token}; path=/; domain=.miraigrid.web.id; max-age=86400; SameSite=Lax; Secure`
+        } else {
+          document.cookie = `miraigrid_token=${data.access_token}; path=/; max-age=86400; SameSite=Lax`
+        }
+      } catch (e) {
+        console.error('Cookie set error:', e)
+      }
       localStorage.setItem(
         'miraigrid_user',
         JSON.stringify({
@@ -58,11 +67,20 @@ export default function LoginPage({ onLoginSuccess }) {
 
       onLoginSuccess(data)
     } catch (err) {
-      const errMsg =
-        err.response?.data?.detail ||
-        'Gagal masuk. Periksa kembali NIM/Username dan Password Anda.'
+      let errMsg = 'Gagal masuk. Periksa kembali NIM/Username dan Password Anda.'
+      if (err.response?.data?.detail) {
+        errMsg = err.response.data.detail
+      } else if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
+        errMsg = 'Koneksi ke server timeout. Silakan periksa koneksi jaringan kampus Anda dan coba lagi.'
+      } else if (err.message === 'Network Error' || !err.response) {
+        errMsg = 'Gagal terhubung ke server API MiraiGrid. Pastikan koneksi jaringan aktif.'
+      }
+
       setError(errMsg)
-      toast.error(errMsg)
+      toast.error('Gagal Otentikasi Masuk', {
+        description: errMsg,
+        duration: 6000
+      })
     } finally {
       setLoading(false)
     }

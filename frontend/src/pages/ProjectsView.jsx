@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { useLocation } from 'react-router-dom'
-import { Plus, Play, Square, RotateCw, Trash2, Edit2, ExternalLink, Layers, AlertCircle, Terminal, Search, RefreshCw, ChevronLeft, ChevronRight, Globe, Copy, Check, Folder } from 'lucide-react'
+import { Plus, Play, Square, RotateCw, Trash2, Edit2, ExternalLink, Layers, AlertCircle, Terminal, Search, RefreshCw, ChevronLeft, ChevronRight, Globe, Copy, Check, Folder, ShieldCheck, GraduationCap, Users } from 'lucide-react'
 import { toast } from 'sonner'
 import { api } from '../api/client'
 import { SkeletonTable, Spinner } from '../components/Skeletons'
@@ -139,6 +139,33 @@ export default function ProjectsView({ user: propUser }) {
     return filteredProjects.slice(start, start + itemsPerPage)
   }, [filteredProjects, currentPage, itemsPerPage])
 
+  // Grouping per Akun untuk Tampilan Administrator (Sekat Pemisah Antar Akun)
+  const paginatedAccountGroups = useMemo(() => {
+    if (!isAdmin) return null
+
+    const map = new Map()
+    paginatedProjects.forEach((proj) => {
+      const uname = proj.owner_username || 'user'
+      if (!map.has(uname)) {
+        map.set(uname, {
+          username: uname,
+          name: proj.owner_name || uname,
+          role: proj.owner_role || (uname === 'admin' ? 'admin' : 'student'),
+          projects: []
+        })
+      }
+      map.get(uname).projects.push(proj)
+    })
+
+    const groups = Array.from(map.values())
+    groups.sort((a, b) => {
+      if (a.username === 'admin') return -1
+      if (b.username === 'admin') return 1
+      return a.username.localeCompare(b.username)
+    })
+    return groups
+  }, [paginatedProjects, isAdmin])
+
   const handleControl = async (projectId, action) => {
     setControlLoadingId(projectId)
     const actionLabel = action === 'start' ? 'Menyalakan' : action === 'stop' ? 'Menghentikan' : 'Me-restart'
@@ -237,6 +264,223 @@ export default function ProjectsView({ user: propUser }) {
           fetchProjects()
         }}
       />
+    )
+  }
+
+  // Helper Render Baris Project
+  const renderProjectRow = (proj, isGrouped = false) => {
+    const isRunning = proj.status === 'running'
+    const isBusy = controlLoadingId === proj.id
+    const appCfg = proj.app_config || {}
+    const projOwner = proj.owner_username || 'user'
+    const isGitRepo = appCfg.is_git_repo || (appCfg.app_root && String(appCfg.app_root).includes('/repositories/'))
+    let appRoot = `/home/${projOwner}/${proj.name}`
+    if (appCfg.display_app_root) {
+      appRoot = appCfg.display_app_root
+    } else if (appCfg.app_root) {
+      if (String(appCfg.app_root).startsWith('/')) {
+        appRoot = appCfg.app_root
+      } else {
+        appRoot = `/home/${projOwner}/${proj.name}/${String(appCfg.app_root).replace(/^\/+/g, '')}`
+      }
+    }
+    const mode = appCfg.app_mode || 'development'
+
+    return (
+      <tr key={proj.id} className={`hover:bg-[#361E13] transition group ${isGrouped ? 'bg-[#23120A]/70' : ''}`}>
+        {/* 1. App URI */}
+        <td className={`p-4 ${isGrouped ? 'pl-6' : ''}`}>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => setActiveProjectDetail(proj)}
+              className="font-bold text-sm text-[#E8DCB8] hover:underline font-mono text-left flex items-center space-x-1.5"
+            >
+              <span>{proj.name}</span>
+              <ExternalLink className="h-3 w-3 text-[#A47E65]" />
+            </button>
+            {isGrouped && (
+              <span className="font-mono text-[10px] text-[#C49767]/80 bg-[#140A05] px-2 py-0.5 rounded border border-[#3E2316]">
+                Port :{proj.allocated_port}
+              </span>
+            )}
+          </div>
+          <div className="text-[10px] font-mono text-[#DFCDB5]/60 mt-0.5 truncate max-w-xs">
+            {proj.public_url || proj.access_url}
+          </div>
+
+          {/* Public Web Subdomain / Publish Web Button */}
+          {proj.public_url ? (
+            <div className="mt-2 flex items-center space-x-1.5 flex-wrap">
+              <a
+                href={proj.public_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`inline-flex items-center space-x-1 px-2.5 py-1 rounded-lg text-[11px] font-mono transition border ${
+                  proj.is_published
+                    ? 'bg-emerald-950/70 border-emerald-700/60 text-emerald-300 hover:bg-emerald-900/80 hover:text-emerald-200 shadow-sm'
+                    : 'bg-stone-900/60 border-stone-700/50 text-stone-400'
+                }`}
+                title="Buka Website Resmi Publik"
+              >
+                <Globe className={`h-3 w-3 ${proj.is_published ? 'text-emerald-400' : 'text-stone-400'} shrink-0`} />
+                <span className="truncate max-w-[210px] font-semibold">{proj.public_subdomain}</span>
+                <ExternalLink className="h-2.5 w-2.5 shrink-0 opacity-70" />
+              </a>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleCopyLink(proj.public_url, proj.id)
+                }}
+                title="Salin Link Publik"
+                className="p-1 rounded-lg bg-[#1C0F0A] hover:bg-[#382115] text-[#DFCDB5] border border-[#3E2316] transition"
+              >
+                {copiedId === proj.id ? (
+                  <Check className="h-3 w-3 text-emerald-400" />
+                ) : (
+                  <Copy className="h-3 w-3 text-[#C49767]" />
+                )}
+              </button>
+              <span className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${
+                proj.is_published ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-stone-800 text-stone-400'
+              }`}>
+                {proj.is_published ? 'Online' : 'Stopped'}
+              </span>
+            </div>
+          ) : (
+            <div className="mt-2">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handlePublishWeb(proj.id)
+                }}
+                disabled={publishLoadingId === proj.id}
+                className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-xl text-[11px] font-semibold bg-[#3A2216] hover:bg-[#5A3521] text-[#FAF5EC] border border-[#683E24] transition shadow-sm"
+                title="Generate subdomain & publikasikan web ini ke internet (web-xxxx-nim.miraigrid.web.id)"
+              >
+                <Globe className="h-3 w-3 text-amber-400" />
+                <span>{publishLoadingId === proj.id ? 'Mengenerate Subdomain...' : 'Deploy / Publish Web'}</span>
+              </button>
+            </div>
+          )}
+        </td>
+
+        {/* 2. App Root Directory (Clickable -> Direct to File Manager) */}
+        <td className="p-4 font-mono text-[11px]">
+          <button
+            type="button"
+            onClick={() => {
+              const subpath = appRoot.replace(new RegExp(`^/home/[^/]+/?`), '')
+              setActiveFileManagerProject({
+                id: 'root',
+                name: 'Storage',
+                is_home_root: true,
+                owner_username: projOwner,
+                virtual_path: `/home/${projOwner}`,
+                initial_path: subpath
+              })
+            }}
+            className="group inline-flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl bg-[#201008] hover:bg-[#341B0E] border border-[#4D2D1E] hover:border-[#C49767] text-[#DFCDB5] hover:text-[#FAF5EC] transition text-left cursor-pointer shadow-sm hover:shadow"
+            title="Buka direktori ini langsung di File Manager"
+          >
+            <Folder className="h-3.5 w-3.5 text-[#C49767] group-hover:scale-110 transition-transform shrink-0" />
+            <span className="truncate max-w-[220px] underline decoration-dotted decoration-[#C49767]/60 group-hover:decoration-solid">{appRoot}</span>
+            <ExternalLink className="h-3 w-3 text-[#C49767] opacity-60 group-hover:opacity-100 transition-opacity ml-1 shrink-0" />
+            {isGitRepo && (
+              <span className="px-1.5 py-0.2 rounded text-[9px] bg-[#C49767]/20 border border-[#C49767]/40 text-[#E8DCB8] font-sans font-medium ml-1">
+                Git™ Repo
+              </span>
+            )}
+          </button>
+        </td>
+
+        {/* 3. Mode */}
+        <td className="p-4 font-mono text-xs text-[#DFCDB5]">
+          <span className="capitalize">{mode}</span>
+        </td>
+
+        {/* 4. Status */}
+        <td className="p-4">
+          <div className="flex items-center space-x-2">
+            <span className={`h-2 w-2 rounded-full ${isRunning ? 'bg-emerald-400 animate-pulse' : 'bg-rose-500'}`}></span>
+            <span className="font-mono text-xs">
+              {isRunning ? `started (v${proj.version})` : 'stopped'}
+            </span>
+          </div>
+        </td>
+
+        {/* 5. Actions */}
+        <td className="p-4 text-right">
+          <div className="inline-flex items-center space-x-1.5">
+            {isBusy ? (
+              <div className="p-1.5">
+                <Spinner size="xs" />
+              </div>
+            ) : isRunning ? (
+              <button
+                onClick={() => handleControl(proj.id, 'stop')}
+                title="Stop Application"
+                className="p-1.5 rounded-lg text-[#DFCDB5] hover:text-amber-400 hover:bg-[#3A2115] transition"
+              >
+                <Square className="h-4 w-4" />
+              </button>
+            ) : (
+              <button
+                onClick={() => handleControl(proj.id, 'start')}
+                title="Start Application"
+                className="p-1.5 rounded-lg text-[#DFCDB5] hover:text-emerald-400 hover:bg-[#3A2115] transition"
+              >
+                <Play className="h-4 w-4" />
+              </button>
+            )}
+
+            <button
+              onClick={() => handleControl(proj.id, 'restart')}
+              title="Restart Application"
+              className="p-1.5 rounded-lg text-[#DFCDB5] hover:text-white hover:bg-[#3A2115] transition"
+            >
+              <RotateCw className="h-4 w-4" />
+            </button>
+
+            <button
+              onClick={() => setActiveConsoleProject(proj)}
+              title="Buka Console Container (CLI)"
+              className="p-1.5 rounded-lg text-[#DFCDB5] hover:text-[#E8DCB8] hover:bg-[#3A2115] transition"
+            >
+              <Terminal className="h-4 w-4" />
+            </button>
+
+            {proj.deployment_id && (
+              <button
+                onClick={() => handleToggleDeployment(proj.deployment_id)}
+                title={proj.is_published ? 'Hentikan Publikasi Web (Subdomain Off)' : 'Aktifkan Kembali Publikasi Web'}
+                className={`p-1.5 rounded-lg transition ${
+                  proj.is_published
+                    ? 'text-emerald-400 hover:text-emerald-300 hover:bg-[#1E3022]'
+                    : 'text-stone-400 hover:text-amber-400 hover:bg-[#3A2115]'
+                }`}
+              >
+                <Globe className="h-4 w-4" />
+              </button>
+            )}
+
+            <button
+              onClick={() => setActiveProjectDetail(proj)}
+              title="Buka Halaman Detail Konfigurasi"
+              className="p-1.5 rounded-lg text-[#E8DCB8] hover:text-white hover:bg-[#5A3521] transition"
+            >
+              <Edit2 className="h-4 w-4" />
+            </button>
+
+            <button
+              onClick={() => triggerDelete(proj.id, proj.name)}
+              title="Destroy Application"
+              className="p-1.5 rounded-lg text-[#DFCDB5] hover:text-rose-400 hover:bg-[#3A2115] transition"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </div>
+        </td>
+      </tr>
     )
   }
 
@@ -399,221 +643,97 @@ export default function ProjectsView({ user: propUser }) {
                       Tidak ada project yang cocok dengan pencarian atau filter yang dipilih.
                     </td>
                   </tr>
-                ) : (
-                  paginatedProjects.map((proj) => {
-                    const isRunning = proj.status === 'running'
-                  const isBusy = controlLoadingId === proj.id
-                  const appCfg = proj.app_config || {}
-                  const projOwner = proj.owner_username || 'user'
-                  const isGitRepo = appCfg.is_git_repo || (appCfg.app_root && String(appCfg.app_root).includes('/repositories/'))
-                  let appRoot = `/home/${projOwner}/${proj.name}`
-                  if (appCfg.display_app_root) {
-                    appRoot = appCfg.display_app_root
-                  } else if (appCfg.app_root) {
-                    if (String(appCfg.app_root).startsWith('/')) {
-                      appRoot = appCfg.app_root
-                    } else {
-                      appRoot = `/home/${projOwner}/${proj.name}/${String(appCfg.app_root).replace(/^\/+/g, '')}`
-                    }
-                  }
-                  const mode = appCfg.app_mode || 'development'
+                ) : isAdmin && paginatedAccountGroups ? (
+                  paginatedAccountGroups.map((group) => {
+                    const runningCount = group.projects.filter(p => p.status === 'running').length
+                    const onlineCount = group.projects.filter(p => p.public_url).length
 
-                  return (
-                    <tr key={proj.id} className="hover:bg-[#361E13] transition group">
-                      {/* 1. App URI */}
-                      <td className="p-4">
-                        <button
-                          onClick={() => setActiveProjectDetail(proj)}
-                          className="font-bold text-sm text-[#E8DCB8] hover:underline font-mono text-left flex items-center space-x-1.5"
-                        >
-                          <span>{proj.name}</span>
-                          <ExternalLink className="h-3 w-3 text-[#A47E65]" />
-                        </button>
-                        <div className="text-[10px] font-mono text-[#DFCDB5]/60 mt-0.5 truncate max-w-xs">
-                          {proj.public_url || proj.access_url}
-                        </div>
+                    return (
+                      <React.Fragment key={`group-${group.username}`}>
+                        {/* Sekat Pemisah Antar Akun (Account Divider Bar) */}
+                        <tr className="bg-gradient-to-r from-[#1E0F08] via-[#2A160D] to-[#1E0F08] border-t-2 border-b border-[#4D2D1E]">
+                          <td colSpan="5" className="px-5 py-3.5">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                              {/* Identitas Akun */}
+                              <div className="flex items-center space-x-3">
+                                <div className={`h-8 w-8 rounded-xl flex items-center justify-center font-bold text-xs shadow-inner ${
+                                  group.role === 'admin'
+                                    ? 'bg-[#C49767]/20 border border-[#C49767]/50 text-[#FAF5EC]'
+                                    : 'bg-[#5C3B29]/30 border border-[#8A5835]/50 text-[#E8DCB8]'
+                                }`}>
+                                  {group.role === 'admin' ? (
+                                    <ShieldCheck className="h-4 w-4 text-[#C49767]" />
+                                  ) : (
+                                    <GraduationCap className="h-4 w-4 text-emerald-400" />
+                                  )}
+                                </div>
+                                <div>
+                                  <div className="flex items-center space-x-2 flex-wrap">
+                                    <span className="font-serif font-bold text-sm text-[#FAF5EC] tracking-wide">
+                                      {group.name}
+                                    </span>
+                                    <span className="font-mono text-xs font-semibold px-2 py-0.5 rounded-lg bg-[#140A05] text-[#C49767] border border-[#3E2316]">
+                                      {group.username}
+                                    </span>
+                                    <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full ${
+                                      group.role === 'admin'
+                                        ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
+                                        : 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
+                                    }`}>
+                                      {group.role === 'admin' ? 'Administrator' : 'Mahasiswa'}
+                                    </span>
+                                  </div>
+                                  <p className="text-[10px] text-[#A47E65] font-sans mt-0.5">
+                                    Ruang terisolasi per akun • Sandbox cgroups v2 & alokasi resource mandiri
+                                  </p>
+                                </div>
+                              </div>
 
-                        {/* Public Web Subdomain / Publish Web Button */}
-                        {proj.public_url ? (
-                          <div className="mt-2 flex items-center space-x-1.5 flex-wrap">
-                            <a
-                              href={proj.public_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className={`inline-flex items-center space-x-1 px-2.5 py-1 rounded-lg text-[11px] font-mono transition border ${
-                                proj.is_published
-                                  ? 'bg-emerald-950/70 border-emerald-700/60 text-emerald-300 hover:bg-emerald-900/80 hover:text-emerald-200'
-                                  : 'bg-stone-900/60 border-stone-700/50 text-stone-400'
-                              }`}
-                              title="Buka Website Resmi Publik"
-                            >
-                              <Globe className={`h-3 w-3 ${proj.is_published ? 'text-emerald-400' : 'text-stone-400'} shrink-0`} />
-                              <span className="truncate max-w-[210px] font-semibold">{proj.public_subdomain}</span>
-                              <ExternalLink className="h-2.5 w-2.5 shrink-0 opacity-70" />
-                            </a>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                handleCopyLink(proj.public_url, proj.id)
-                              }}
-                              title="Salin Link Publik"
-                              className="p-1 rounded-lg bg-[#1C0F0A] hover:bg-[#382115] text-[#DFCDB5] border border-[#3E2316] transition"
-                            >
-                              {copiedId === proj.id ? (
-                                <Check className="h-3 w-3 text-emerald-400" />
-                              ) : (
-                                <Copy className="h-3 w-3 text-[#C49767]" />
-                              )}
-                            </button>
-                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${
-                              proj.is_published ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-stone-800 text-stone-400'
-                            }`}>
-                              {proj.is_published ? 'Online' : 'Stopped'}
-                            </span>
-                          </div>
-                        ) : (
-                          <div className="mt-2">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                handlePublishWeb(proj.id)
-                              }}
-                              disabled={publishLoadingId === proj.id}
-                              className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-xl text-[11px] font-semibold bg-[#3A2216] hover:bg-[#5A3521] text-[#FAF5EC] border border-[#683E24] transition shadow-sm"
-                              title="Generate subdomain & publikasikan web ini ke internet (web-xxxx-nim.miraigrid.web.id)"
-                            >
-                              <Globe className="h-3 w-3 text-amber-400" />
-                              <span>{publishLoadingId === proj.id ? 'Mengenerate Subdomain...' : 'Deploy / Publish Web'}</span>
-                            </button>
-                          </div>
-                        )}
-                      </td>
-
-                      {/* 2. App Root Directory (Clickable -> Direct to File Manager) */}
-                      <td className="p-4 font-mono text-[11px]">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const subpath = appRoot.replace(new RegExp(`^/home/[^/]+/?`), '')
-                            setActiveFileManagerProject({
-                              id: 'root',
-                              name: 'Storage',
-                              is_home_root: true,
-                              owner_username: projOwner,
-                              virtual_path: `/home/${projOwner}`,
-                              initial_path: subpath
-                            })
-                          }}
-                          className="group inline-flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl bg-[#201008] hover:bg-[#341B0E] border border-[#4D2D1E] hover:border-[#C49767] text-[#DFCDB5] hover:text-[#FAF5EC] transition text-left cursor-pointer shadow-sm hover:shadow"
-                          title="Buka direktori ini langsung di File Manager"
-                        >
-                          <Folder className="h-3.5 w-3.5 text-[#C49767] group-hover:scale-110 transition-transform shrink-0" />
-                          <span className="truncate max-w-[220px] underline decoration-dotted decoration-[#C49767]/60 group-hover:decoration-solid">{appRoot}</span>
-                          <ExternalLink className="h-3 w-3 text-[#C49767] opacity-60 group-hover:opacity-100 transition-opacity ml-1 shrink-0" />
-                          {isGitRepo && (
-                            <span className="px-1.5 py-0.2 rounded text-[9px] bg-[#C49767]/20 border border-[#C49767]/40 text-[#E8DCB8] font-sans font-medium ml-1">
-                              Git™ Repo
-                            </span>
-                          )}
-                        </button>
-                      </td>
-
-                      {/* 3. Mode */}
-                      <td className="p-4 font-mono text-xs text-[#DFCDB5]">
-                        <span className="capitalize">{mode}</span>
-                      </td>
-
-                      {/* 4. Status */}
-                      <td className="p-4">
-                        <div className="flex items-center space-x-2">
-                          <span className={`h-2 w-2 rounded-full ${isRunning ? 'bg-emerald-400 animate-pulse' : 'bg-rose-500'}`}></span>
-                          <span className="font-mono text-xs">
-                            {isRunning ? `started (v${proj.version})` : 'stopped'}
-                          </span>
-                        </div>
-                      </td>
-
-                      {/* 5. Actions (Stop/Start, Restart, Edit/Detail, Delete) */}
-                      <td className="p-4 text-right">
-                        <div className="inline-flex items-center space-x-1.5">
-                          {/* Stop / Start Icon */}
-                          {isBusy ? (
-                            <div className="p-1.5">
-                              <Spinner size="xs" />
+                              {/* Metrik & Quick Shortcut Akun */}
+                              <div className="flex items-center space-x-2 self-end sm:self-auto flex-wrap">
+                                <span className="text-[11px] font-mono px-2.5 py-1 rounded-xl bg-[#140A05] text-[#DFCDB5] border border-[#3E2316]">
+                                  {group.projects.length} Aplikasi
+                                </span>
+                                {runningCount > 0 && (
+                                  <span className="text-[11px] font-mono px-2.5 py-1 rounded-xl bg-emerald-950/60 text-emerald-300 border border-emerald-800/40">
+                                    {runningCount} Berjalan
+                                  </span>
+                                )}
+                                {onlineCount > 0 && (
+                                  <span className="text-[11px] font-mono px-2.5 py-1 rounded-xl bg-[#201008] text-amber-300 border border-amber-900/40 flex items-center space-x-1">
+                                    <Globe className="h-3 w-3 text-amber-400" />
+                                    <span>{onlineCount} Subdomain</span>
+                                  </span>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveFileManagerProject({
+                                      id: 'root',
+                                      name: 'Storage',
+                                      is_home_root: true,
+                                      owner_username: group.username,
+                                      virtual_path: `/home/${group.username}`,
+                                      initial_path: ''
+                                    })
+                                  }}
+                                  className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-xl bg-[#2B1810] hover:bg-[#3D2317] border border-[#4D2D1E] hover:border-[#C49767] text-[11px] font-medium text-[#DFCDB5] hover:text-[#FAF5EC] transition shadow-sm"
+                                  title={`Buka File Manager /home/${group.username}`}
+                                >
+                                  <Folder className="h-3 w-3 text-[#C49767]" />
+                                  <span>Storage Akun</span>
+                                </button>
+                              </div>
                             </div>
-                          ) : isRunning ? (
-                            <button
-                              onClick={() => handleControl(proj.id, 'stop')}
-                              title="Stop Application"
-                              className="p-1.5 rounded-lg text-[#DFCDB5] hover:text-amber-400 hover:bg-[#3A2115] transition"
-                            >
-                              <Square className="h-4 w-4" />
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => handleControl(proj.id, 'start')}
-                              title="Start Application"
-                              className="p-1.5 rounded-lg text-[#DFCDB5] hover:text-emerald-400 hover:bg-[#3A2115] transition"
-                            >
-                              <Play className="h-4 w-4" />
-                            </button>
-                          )}
-
-                          {/* Restart Icon */}
-                          <button
-                            onClick={() => handleControl(proj.id, 'restart')}
-                            title="Restart Application"
-                            className="p-1.5 rounded-lg text-[#DFCDB5] hover:text-white hover:bg-[#3A2115] transition"
-                          >
-                            <RotateCw className="h-4 w-4" />
-                          </button>
-
-                          {/* Terminal / Console (CLI Halaman Terpisah) */}
-                          <button
-                            onClick={() => setActiveConsoleProject(proj)}
-                            title="Buka Console Container (CLI)"
-                            className="p-1.5 rounded-lg text-[#DFCDB5] hover:text-[#E8DCB8] hover:bg-[#3A2115] transition"
-                          >
-                            <Terminal className="h-4 w-4" />
-                          </button>
-
-                          {/* Public Deployment Toggle (Start / Stop Publikasi) */}
-                          {proj.deployment_id && (
-                            <button
-                              onClick={() => handleToggleDeployment(proj.deployment_id)}
-                              title={proj.is_published ? 'Hentikan Publikasi Web (Subdomain Off)' : 'Aktifkan Kembali Publikasi Web'}
-                              className={`p-1.5 rounded-lg transition ${
-                                proj.is_published
-                                  ? 'text-emerald-400 hover:text-emerald-300 hover:bg-[#1E3022]'
-                                  : 'text-stone-400 hover:text-amber-400 hover:bg-[#3A2115]'
-                              }`}
-                            >
-                              <Globe className="h-4 w-4" />
-                            </button>
-                          )}
-
-                          {/* Edit / Detail Page (Pencil Icon) -> BUKAN MODAL! */}
-                          <button
-                            onClick={() => setActiveProjectDetail(proj)}
-                            title="Buka Halaman Detail Konfigurasi"
-                            className="p-1.5 rounded-lg text-[#E8DCB8] hover:text-white hover:bg-[#5A3521] transition"
-                          >
-                            <Edit2 className="h-4 w-4" />
-                          </button>
-
-                          {/* Delete Icon (Trash) */}
-                          <button
-                            onClick={() => triggerDelete(proj.id, proj.name)}
-                            title="Destroy Application"
-                            className="p-1.5 rounded-lg text-[#DFCDB5] hover:text-rose-400 hover:bg-[#3A2115] transition"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                }))}
+                          </td>
+                        </tr>
+                        {group.projects.map((proj) => renderProjectRow(proj, true))}
+                      </React.Fragment>
+                    )
+                  })
+                ) : (
+                  paginatedProjects.map((proj) => renderProjectRow(proj, false))
+                )}
               </tbody>
             </table>
           </div>

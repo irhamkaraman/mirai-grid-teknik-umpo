@@ -51,7 +51,7 @@ class Settings(BaseSettings):
     DEFAULT_MAX_DISK_MB: int = 500
 
     # JupyterHub SSO
-    JUPYTER_SSO_SECRET: str = Field(default="miraigrid-jupyter-sso-secret-key-32chars-minimum-labit-umpo", min_length=0)
+    JUPYTER_SSO_SECRET: str = Field(default="Z2iAuW1nKa52ZLfLCNnKbZzViQqfKeayDLai0NxQzScIpyrrKDn2Iwy1HGY9fnMP", min_length=0)
     JUPYTER_SSO_URL: str = "http://76.76.76.188:8090/hub/sso/miraigrid"
 
     @property

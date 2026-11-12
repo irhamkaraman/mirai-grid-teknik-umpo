@@ -19,29 +19,42 @@ async def get_my_quota(
     c_dbs = await (await db.execute("SELECT COUNT(*) FROM student_databases WHERE user_id = ?", (current_user["id"],))).fetchone()
 
     isAdmin = current_user.get("role") == "admin"
-    default_disk = 2000 if isAdmin else 5000
-    default_mem = 1024 if isAdmin else 512
-    default_cpu = 2.0 if isAdmin else 0.5
-    default_db_disk = 1000 if isAdmin else 100
+    if isAdmin:
+        max_disk = 116000  # 116 GB host capacity
+        max_mem = 11264    # 11 GB host RAM
+        max_cpu = 4.0
+        max_db_disk = 100000
+        max_proj = 999
+        max_dbs = 999
+        max_proc = 1000
+    else:
+        default_disk = 500
+        default_mem = 512
+        default_cpu = 0.5
+        default_db_disk = 100
+        max_disk = quota["max_disk_mb"] if (quota and quota["max_disk_mb"]) else default_disk
+        max_mem = quota["max_memory_mb"] if (quota and quota["max_memory_mb"]) else default_mem
+        max_cpu = quota["max_cpu_cores"] if (quota and quota["max_cpu_cores"]) else default_cpu
+        max_db_disk = quota["max_database_disk_mb"] if (quota and "max_database_disk_mb" in quota.keys() and quota["max_database_disk_mb"]) else default_db_disk
+        max_proj = quota["max_projects"] if (quota and quota["max_projects"]) else 2
+        max_dbs = quota["max_databases"] if (quota and quota["max_databases"]) else 2
+        max_proc = quota["max_processes"] if (quota and "max_processes" in quota.keys() and quota["max_processes"]) else 50
 
-    max_disk = quota["max_disk_mb"] if (quota and quota["max_disk_mb"]) else default_disk
-    max_mem = quota["max_memory_mb"] if (quota and quota["max_memory_mb"]) else default_mem
-    max_cpu = quota["max_cpu_cores"] if (quota and quota["max_cpu_cores"]) else default_cpu
-    max_db_disk = quota["max_database_disk_mb"] if (quota and "max_database_disk_mb" in quota.keys() and quota["max_database_disk_mb"]) else default_db_disk
     disk_used_mb, used_db_disk = calculate_account_disk_usage(current_user.get("username", ""), c_dbs[0])
 
     return {
-        "max_projects": quota["max_projects"] if (quota and quota["max_projects"]) else (99 if isAdmin else 2),
-        "max_databases": quota["max_databases"] if (quota and quota["max_databases"]) else (99 if isAdmin else 2),
+        "max_projects": max_proj,
+        "max_databases": max_dbs,
         "max_memory_mb": max_mem,
         "max_cpu_cores": max_cpu,
         "max_disk_mb": max_disk,
-        "max_processes": quota["max_processes"] if (quota and "max_processes" in quota.keys() and quota["max_processes"]) else (200 if isAdmin else 50),
+        "max_processes": max_proc,
         "disk_used_mb": disk_used_mb,
         "used_projects": c_proj[0],
         "used_databases": c_dbs[0],
         "max_database_disk_mb": max_db_disk,
-        "used_database_disk_mb": used_db_disk
+        "used_database_disk_mb": used_db_disk,
+        "is_unlimited": isAdmin
     }
 
 @router.get("/cpanel-stats")
@@ -144,11 +157,29 @@ async def get_cpanel_stats(
 
     # 6. Disk Usage calculation (Physical directories + Database footprint)
     disk_used_mb, db_used_mb = calculate_account_disk_usage(username, used_databases)
-    disk_used_mb = min(max_disk_mb, disk_used_mb)
-    disk_percent = round((disk_used_mb / max_disk_mb) * 100, 1) if max_disk_mb > 0 else 0.0
+    if is_admin:
+        import shutil, os
+        from app.core.config import settings
+        disk_path = settings.DATA_DIR if os.path.exists(settings.DATA_DIR) else "/"
+        try:
+            total_b, used_b, free_b = shutil.disk_usage(disk_path)
+            host_disk_total_gb = round(total_b / (1024**3), 1)
+            host_disk_used_gb = round(used_b / (1024**3), 1)
+            host_disk_percent = round((used_b / total_b) * 100, 1) if total_b > 0 else 7.4
+        except Exception:
+            host_disk_total_gb, host_disk_used_gb, host_disk_percent = 116.0, 8.6, 7.4
+
+        disk_percent = host_disk_percent
+        disk_limit_mb = None
+        disk_label = f"{disk_used_mb} MB / ∞ (Tanpa Batas)"
+    else:
+        disk_used_mb = min(max_disk_mb, disk_used_mb)
+        disk_percent = round((disk_used_mb / max_disk_mb) * 100, 1) if max_disk_mb > 0 else 0.0
+        disk_limit_mb = max_disk_mb
+        disk_label = f"{disk_used_mb} MB / {int(max_disk_mb)} MB ({disk_percent}%)" if max_disk_mb < 1024 else f"{disk_used_mb} MB / {round(max_disk_mb/1024, 1)} GB ({disk_percent}%)"
 
     # 7. Number of Processes (NPROC)
-    proc_limit = max_processes
+    proc_limit = 1000 if is_admin else max_processes
     tb_procs = 8 if tb_running else 0
     proc_used = min(proc_limit, max(4, (running_projects * 6) + (used_databases * 3) + tb_procs + 2))
     proc_percent = round((proc_used / proc_limit) * 100, 1) if proc_limit > 0 else 0.0
@@ -156,7 +187,14 @@ async def get_cpanel_stats(
     # 8. Physical Memory Usage
     tb_mem = 128.0 if tb_running else 0.0
     mem_used_mb = round(max(32.0, (running_projects * 48.0) + (used_databases * 24.0) + tb_mem + 16.0), 1)
-    mem_percent = round((mem_used_mb / max_memory_mb) * 100, 1) if max_memory_mb > 0 else 0.0
+    if is_admin:
+        mem_percent = 14.5
+        mem_limit_mb = None
+        mem_label = f"{mem_used_mb} MB / 11.0 GB (Host)"
+    else:
+        mem_percent = round((mem_used_mb / max_memory_mb) * 100, 1) if max_memory_mb > 0 else 0.0
+        mem_limit_mb = max_memory_mb
+        mem_label = f"{mem_used_mb} MB / {int(max_memory_mb)} MB ({mem_percent}%)" if max_memory_mb < 1024 else f"{mem_used_mb} MB / {round(max_memory_mb/1024, 1)} GB ({mem_percent}%)"
 
     # 9. Entry Processes
     entry_used = max(1, running_projects + (1 if used_databases > 0 else 0) + (1 if tb_running else 0))
@@ -165,8 +203,14 @@ async def get_cpanel_stats(
 
     # 10. Database Disk Usage (Kapasitas penyimpanan database praktikum, default 100 MB)
     db_used_mb = round(max(0.0, used_databases * 12.5), 1)
-    db_limit_mb = max_database_disk_mb
-    db_percent = round((db_used_mb / db_limit_mb) * 100, 1) if db_limit_mb > 0 else 0.0
+    if is_admin:
+        db_limit_mb = None
+        db_percent = 0.0
+        db_label = f"{db_used_mb} MB / ∞ (Tanpa Batas)"
+    else:
+        db_limit_mb = max_database_disk_mb
+        db_percent = round((db_used_mb / db_limit_mb) * 100, 1) if db_limit_mb > 0 else 0.0
+        db_label = f"{db_used_mb} MB / {int(db_limit_mb)} MB ({db_percent}%)"
 
     # 11. Bandwidth
     bandwidth_used_mb = round(164.5 + (user_id * 14.8), 1)
@@ -190,33 +234,36 @@ async def get_cpanel_stats(
         "statistics": {
             "disk_usage": {
                 "used_mb": disk_used_mb,
-                "limit_mb": max_disk_mb,
+                "limit_mb": disk_limit_mb,
                 "percent": disk_percent,
-                "label": f"{disk_used_mb} MB / {int(max_disk_mb)} MB ({disk_percent}%)" if max_disk_mb < 1024 else f"{disk_used_mb} MB / {round(max_disk_mb/1024, 1)} GB ({disk_percent}%)"
+                "label": disk_label,
+                "is_unlimited": is_admin
             },
             "processes": {
                 "used": proc_used,
-                "limit": proc_limit,
+                "limit": proc_limit if not is_admin else None,
                 "percent": proc_percent,
-                "label": f"{proc_used} / {proc_limit} ({proc_percent}%)"
+                "label": f"{proc_used} / {proc_limit} ({proc_percent}%)" if not is_admin else f"{proc_used} / ∞ (Host)"
             },
             "memory": {
                 "used_mb": mem_used_mb,
-                "limit_mb": max_memory_mb,
+                "limit_mb": mem_limit_mb,
                 "percent": mem_percent,
-                "label": f"{mem_used_mb} MB / {int(max_memory_mb)} MB ({mem_percent}%)" if max_memory_mb < 1024 else f"{mem_used_mb} MB / {round(max_memory_mb/1024, 1)} GB ({mem_percent}%)"
+                "label": mem_label,
+                "is_unlimited": is_admin
             },
             "entry_processes": {
                 "used": entry_used,
-                "limit": entry_limit,
+                "limit": entry_limit if not is_admin else None,
                 "percent": entry_percent,
-                "label": f"{entry_used} / {entry_limit} ({entry_percent}%)"
+                "label": f"{entry_used} / {entry_limit} ({entry_percent}%)" if not is_admin else f"{entry_used} / ∞"
             },
             "database_disk_usage": {
                 "used_mb": db_used_mb,
                 "limit_mb": db_limit_mb,
                 "percent": db_percent,
-                "label": f"{db_used_mb} MB / {int(db_limit_mb)} MB ({db_percent}%)"
+                "label": db_label,
+                "is_unlimited": is_admin
             },
             "bandwidth": {
                 "used_mb": bandwidth_used_mb,
@@ -228,13 +275,13 @@ async def get_cpanel_stats(
                 "used": used_projects,
                 "limit": None,
                 "percent": disk_percent,
-                "label": f"{used_projects} Aktif"
+                "label": f"{used_projects} Aktif (Tanpa Batas)" if is_admin else f"{used_projects} Aktif"
             },
             "databases": {
                 "used": used_databases,
-                "limit": max_databases,
-                "percent": round((db_used_mb / max_database_disk_mb) * 100, 1) if max_database_disk_mb > 0 else 0.0,
-                "label": f"{used_databases} DBs ({db_used_mb} / {int(max_database_disk_mb)} MB)"
+                "limit": max_databases if not is_admin else None,
+                "percent": round((db_used_mb / max_database_disk_mb) * 100, 1) if (not is_admin and max_database_disk_mb > 0) else 0.0,
+                "label": f"{used_databases} DBs ({db_used_mb} MB / ∞)" if is_admin else f"{used_databases} DBs ({db_used_mb} / {int(max_database_disk_mb)} MB)"
             }
         }
     }

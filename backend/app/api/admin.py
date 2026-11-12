@@ -652,7 +652,17 @@ async def list_users(
     query += " ORDER BY u.role ASC, u.username ASC"
     cursor = await db.execute(query, params)
     rows = await cursor.fetchall()
-    return [dict(r) for r in rows]
+    users = []
+    for r in rows:
+        d = dict(r)
+        if d.get("role") == "admin":
+            d["is_unlimited"] = True
+            d["max_disk_label"] = "Tanpa Batas"
+        else:
+            d["is_unlimited"] = False
+            d["max_disk_label"] = f"{d.get('max_disk_mb', 500)} MB"
+        users.append(d)
+    return users
 
 @router.post("/users/{user_id}/reset-password")
 async def reset_user_password(
@@ -809,6 +819,12 @@ async def get_system_capacity(
         d["max_database_disk_mb"] = d.get("max_database_disk_mb") or 100
         d["projects_list"] = [x.strip() for x in (d.get("project_names") or "").split(",") if x.strip()]
         d["databases_list"] = [x.strip() for x in (d.get("db_names") or "").split(",") if x.strip()]
+        if d.get("role") == "admin":
+            d["is_unlimited"] = True
+            d["max_disk_label"] = "Tanpa Batas"
+        else:
+            d["is_unlimited"] = False
+            d["max_disk_label"] = f"{d.get('max_disk_mb', 500)} MB"
         accounts.append(d)
 
     return {

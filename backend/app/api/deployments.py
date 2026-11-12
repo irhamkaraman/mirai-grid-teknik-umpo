@@ -7,6 +7,7 @@ import aiosqlite
 
 from app.core.config import settings
 from app.core.database import get_db
+from app.core.subdomain_auth import verify_subdomain_access
 from app.api.deps import get_current_user, get_current_user_flexible
 from app.models.schemas import DeploymentPublishRequest, DeploymentResponse
 
@@ -74,6 +75,19 @@ async def resolve_subdomain(
     if (target_host.startswith("code-") or target_host.startswith("code.") or target_host.startswith("vscode.")) and target_host.endswith(PUBLIC_BASE_DOMAIN):
         first_part = target_host.split(".")[0]
         code_username = first_part[5:].strip().lower() if first_part.startswith("code-") else "admin"
+
+        # STRICT ZERO-TRUST AUTHORIZATION CHECK
+        is_authorized, status_code, err_msg, _ = await verify_subdomain_access(
+            request=request,
+            db=db,
+            target_username=code_username,
+            platform_name="Web IDE (VS Code)"
+        )
+        if not is_authorized:
+            resp = Response(status_code=status_code, content=err_msg)
+            resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            return resp
+
         u_cursor = await db.execute("SELECT id, username FROM users WHERE LOWER(username) = ?", (code_username,))
         u_row = await u_cursor.fetchone()
         if not u_row:
@@ -91,31 +105,47 @@ async def resolve_subdomain(
         response = Response(status_code=200, content="OK")
         response.headers["X-Target-Port"] = str(target_port)
         response.headers["X-Deployment-Status"] = "active"
-        response.headers["Cache-Control"] = "public, max-age=10"
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
         return response
 
     # 2. Resolve ThingsBoard IoT Subdomains (tb-<username>.miraigrid.web.id or tb.miraigrid.web.id or thingsboard.miraigrid.web.id)
     if (target_host.startswith("tb-") or target_host.startswith("tb.") or target_host.startswith("thingsboard.")) and target_host.endswith(PUBLIC_BASE_DOMAIN):
         first_part = target_host.split(".")[0]
         tb_username = first_part[3:].strip().lower() if first_part.startswith("tb-") else "admin"
+
+        # STRICT ZERO-TRUST AUTHORIZATION CHECK
+        is_authorized, status_code, err_msg, _ = await verify_subdomain_access(
+            request=request,
+            db=db,
+            target_username=tb_username,
+            platform_name="ThingsBoard IoT Sandbox"
+        )
+        if not is_authorized:
+            resp = Response(status_code=status_code, content=err_msg)
+            resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            return resp
+
         u_cursor = await db.execute("SELECT id, username FROM users WHERE LOWER(username) = ?", (tb_username,))
         u_row = await u_cursor.fetchone()
         if not u_row:
             return Response(status_code=404, content="ThingsBoard User Not Found")
         
         target_port = 15000 + u_row["id"]
-        try:
-            from app.services.thingsboard_manager import ThingsBoardManager
-            st = await ThingsBoardManager.get_status(u_row["id"], u_row["username"], db)
-            if not st.get("running"):
-                await ThingsBoardManager.start(u_row["id"], u_row["username"], db)
-        except Exception as e:
-            print(f"[Resolve ThingsBoard] Warning: {e}")
+        x_orig_uri = request.headers.get("x-original-uri", "")
+        is_asset = bool(re.search(r'\.(js|css|png|jpg|jpeg|gif|ico|svg|woff2?|ttf|eot|map)(\?.*)?$', x_orig_uri, re.IGNORECASE))
+        if not is_asset:
+            try:
+                from app.services.thingsboard_manager import ThingsBoardManager
+                is_running = await ThingsBoardManager.is_container_running(tb_username)
+                if not is_running:
+                    await ThingsBoardManager.start(u_row["id"], u_row["username"], db)
+            except Exception as e:
+                print(f"[Resolve ThingsBoard] Warning: {e}")
 
         response = Response(status_code=200, content="OK")
         response.headers["X-Target-Port"] = str(target_port)
         response.headers["X-Deployment-Status"] = "active"
-        response.headers["Cache-Control"] = "public, max-age=5"
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
         return response
 
     # 3. Only resolve subdomains matching pattern: web-<4hex>-<nim>.miraigrid.web.id

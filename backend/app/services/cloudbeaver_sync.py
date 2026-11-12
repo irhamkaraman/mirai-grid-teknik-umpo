@@ -6,25 +6,23 @@ from app.services.portainer import portainer
 
 async def sync_cloudbeaver_datasources(db: aiosqlite.Connection) -> bool:
     """
-    Synchronizes Administrator databases into CloudBeaver's GlobalConfiguration.
+    Synchronizes Administrator and Mahasiswa databases into CloudBeaver's GlobalConfiguration
+    with strict multi-tenant reverse-proxy DAC isolation.
     
-    SECURITY DIRECTIVE & MULTI-TENANT ISOLATION (ANTI-BOCOR):
-    - In CloudBeaver Community Edition, GlobalConfiguration is a shared workspace accessible
-      by any user connecting with anonymousUserRole ("user").
-    - Mahasiswa databases MUST NEVER be registered in CloudBeaver GlobalConfiguration to avoid
-      cross-student exposure and data leakage.
-    - Mahasiswa databases are 100% strictly isolated via dedicated phpMyAdmin (MariaDB) and
-      phpPgAdmin (PostgreSQL) where database engine DAC (Discretionary Access Control) locks
-      privileges strictly to each student's credentials ('s<nim>').
-    - Only Administrator databases ('role == "admin"') are synchronized to CloudBeaver.
+    MULTI-TENANT ISOLATION ARCHITECTURE:
+    - Administrator databases: Assigned to folder 'Administrator (admin)', permissions: ['admin'].
+      Visible strictly to administrative roles.
+    - Mahasiswa databases: Assigned to folder 'Mahasiswa (<username>)', permissions: ['<username>', 'admin'].
+      Visible strictly to that student owner and administrators.
+    - 'user' (anonymous unauthenticated role) is EXCLUDED from all data source permissions so
+      unauthenticated visitors cannot see any connection.
     """
     try:
         cursor = await db.execute("""
             SELECT d.*, u.username, u.name as user_name, u.role
             FROM student_databases d
             JOIN users u ON d.user_id = u.id
-            WHERE u.role = 'admin'
-            ORDER BY d.id ASC
+            ORDER BY u.role DESC, u.username ASC, d.id ASC
         """)
         rows = await cursor.fetchall()
         
@@ -40,12 +38,26 @@ async def sync_cloudbeaver_datasources(db: aiosqlite.Connection) -> bool:
             db_name = r["db_name"]
             engine = r["engine"]
             db_user = r["db_username"]
+            username = str(r["username"])
+            role = r["role"]
+            is_admin_db = (role == "admin")
+
             try:
                 password = decrypt_secret(r["db_password_enc"])
             except Exception:
                 password = ""
             conn_id = f"{engine}-{db_name}"
-            folder_name = "Administrator (admin)"
+
+            if is_admin_db:
+                folder_name = "Administrator (admin)"
+                permissions[conn_id] = ["admin"]
+            else:
+                folder_name = f"Mahasiswa ({username})"
+                if folder_name not in folders:
+                    folders[folder_name] = {
+                        "description": f"Basis Data Mahasiswa ({username})"
+                    }
+                permissions[conn_id] = [username, "admin"]
 
             if engine == "postgres":
                 connections[conn_id] = {
@@ -99,9 +111,6 @@ async def sync_cloudbeaver_datasources(db: aiosqlite.Connection) -> bool:
                         "userPassword": password
                     }
                 }
-
-            # Permissions: Assign both admin and user so that the authenticated workspace / UI can access them
-            permissions[conn_id] = ["admin", "user"]
 
         ds_obj = {
             "folders": folders,

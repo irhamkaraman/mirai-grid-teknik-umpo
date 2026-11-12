@@ -161,6 +161,7 @@ class ProjectResponse(BaseModel):
     last_deployed_at: Optional[str] = None
     owner_username: Optional[str] = None
     owner_name: Optional[str] = None
+    owner_role: Optional[str] = None
     created_at: str
     public_subdomain: Optional[str] = None
     public_url: Optional[str] = None
@@ -181,6 +182,7 @@ class QuotaResponse(BaseModel):
     used_databases: int
     max_database_disk_mb: int = 100
     used_database_disk_mb: float = 0.0
+    is_unlimited: bool = False
 
 # Audit Log
 class AuditLogResponse(BaseModel):

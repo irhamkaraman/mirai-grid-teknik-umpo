@@ -17,6 +17,27 @@
   }
 }
 
+/* Miraigrid V2 Theme (MiG-Cloud) Overrides */
+html.theme-v2,
+body.theme-v2,
+html.theme-v2 #root {
+  background-color: #F8FAFC !important;
+  color: #0F172A !important;
+}
+
+.theme-v2 ::-webkit-scrollbar-track {
+  background: #F1F5F9;
+}
+
+.theme-v2 ::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 9999px;
+}
+
+.theme-v2 ::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
+
 /* Custom scrollbars dengan tema coklat dan krim */
 ::-webkit-scrollbar {
   width: 6px;

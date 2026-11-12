@@ -164,7 +164,7 @@ export default function StudentDashboard({
           description: 'Ngoding langsung di browser dengan Visual Studio Code lengkap dengan terminal, extensions, dan live preview.',
           badge: 'Baru • Code Server',
           badgeColor: 'bg-blue-950/80 text-blue-300 border-blue-700/60',
-          icon: Code,
+          logo: '/logos/vscode.svg',
           iconColor: 'text-[#007ACC]',
           bgGradient: 'from-[#1A2E40] to-[#121E2B]',
           action: () => onNavigate('/vscode'),
@@ -246,8 +246,16 @@ export default function StudentDashboard({
           bgGradient: 'from-[#1B363E] to-[#122328]',
           action: () => {
             const isDomain = window.location.hostname.includes('miraigrid.web.id')
+            const token = localStorage.getItem('miraigrid_token') || ''
+            if (token && isDomain) {
+              try {
+                document.cookie = `miraigrid_token=${token}; path=/; domain=.miraigrid.web.id; max-age=86400; SameSite=Lax; Secure`
+              } catch (e) {
+                console.error(e)
+              }
+            }
             const target = isDomain
-              ? 'https://cloudbeaver.miraigrid.web.id/#/'
+              ? `https://cloudbeaver.miraigrid.web.id/sso?token=${encodeURIComponent(token)}`
               : `http://${window.location.hostname}:8978/#/`
             window.open(target, '_blank', 'noopener,noreferrer')
           },
@@ -317,10 +325,19 @@ export default function StudentDashboard({
     {
       id: 'advanced',
       title: 'Advanced',
-      subtitle: 'Pusat konfigurasi lanjutan: Web Terminal terisolasi dan penjadwalan otomatisasi Cron Jobs',
+      subtitle: 'Pusat konfigurasi lanjutan: Sandbox SSH dedicated, Web Terminal terisolasi, dan penjadwalan otomatisasi Cron Jobs',
       icon: Settings,
       color: 'from-amber-600/20 to-orange-700/10 border-amber-500/30 text-amber-300',
       tools: [
+        {
+          id: 'ssh',
+          title: 'Akses SSH',
+          description: 'Akses remote SSH & SFTP dedicated per akun (ssh-<nim>.miraigrid.web.id) untuk remote terminal, port 22, dan instalasi dependencies terisolasi.',
+          icon: ShieldCheck,
+          iconColor: 'text-amber-300',
+          bgGradient: 'from-[#422216] to-[#2D160E]',
+          action: () => onNavigate('/ssh'),
+        },
         {
           id: 'terminal',
           title: 'Terminal',

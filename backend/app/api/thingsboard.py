@@ -5,6 +5,7 @@ import aiosqlite
 
 from app.core.config import settings
 from app.core.database import get_db
+from app.core.subdomain_auth import verify_subdomain_access
 from app.api.deps import get_current_user
 from app.services.thingsboard_manager import ThingsBoardManager
 
@@ -97,14 +98,37 @@ async def resolve_thingsboard_subdomain(
     username = row["username"]
     target_port = 15000 + user_id
 
-    # Auto-ensure instance is running if accessed directly
-    try:
-        status_info = await ThingsBoardManager.get_status(user_id, username, db)
-        if not status_info.get("running"):
-            await ThingsBoardManager.start(user_id, username, db)
-    except Exception as e:
-        print(f"[ThingsBoard Resolve] Warning during auto-start for {username}: {e}")
+    # Check if this is an IoT device request (HTTP/WS telemetry to /api/v1/)
+    x_orig_uri = request.headers.get("x-original-uri", "")
+    is_device_telemetry = x_orig_uri.startswith("/api/v1/") or request.query_params.get("device") == "1"
+
+    if not is_device_telemetry:
+        # STRICT ZERO-TRUST AUTHORIZATION CHECK FOR WEB USER ACCESS
+        is_authorized, status_code, err_msg, auth_user = await verify_subdomain_access(
+            request=request,
+            db=db,
+            target_username=target_user,
+            platform_name="ThingsBoard IoT Sandbox"
+        )
+        if not is_authorized:
+            resp = Response(status_code=status_code, content=err_msg)
+            resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            return resp
+
+    # High-Performance Fast-Path for static chunks & assets:
+    # Skip container readiness checks and heavy disk traversal on static assets
+    is_asset = bool(re.search(r'\.(js|css|png|jpg|jpeg|gif|ico|svg|woff2?|ttf|eot|map)(\?.*)?$', x_orig_uri, re.IGNORECASE))
+
+    if not is_asset:
+        # Auto-ensure instance is running only on main page hits
+        try:
+            is_running = await ThingsBoardManager.is_container_running(username)
+            if not is_running:
+                await ThingsBoardManager.start(user_id, username, db)
+        except Exception as e:
+            print(f"[ThingsBoard Resolve] Warning during auto-start for {username}: {e}")
 
     resp = Response(status_code=200, content="OK")
     resp.headers["X-Target-Port"] = str(target_port)
+    resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     return resp

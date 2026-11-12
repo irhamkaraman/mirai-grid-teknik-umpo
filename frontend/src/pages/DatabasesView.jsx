@@ -666,28 +666,34 @@ export default function DatabasesView({ user: propUser }) {
                         {/* 5. Web GUI (CloudBeaver Auto-Connect & phpPgAdmin/phpMyAdmin) */}
                         <td className="p-4">
                           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
-                            {/* CloudBeaver Auto-Connect (Hanya untuk Administrator - Isolasi Multi-Tenant) */}
-                            {isAdmin && (
-                              <a
-                                href={
-                                  window.location.hostname.includes('miraigrid.web.id')
-                                    ? 'https://cloudbeaver.miraigrid.web.id/#/'
-                                    : `http://${window.location.hostname}:8978/#/`
+                            {/* CloudBeaver Studio (Terisolasi Multi-Tenant via SSO) */}
+                            <a
+                              href={
+                                window.location.hostname.includes('miraigrid.web.id')
+                                  ? `https://cloudbeaver.miraigrid.web.id/sso?token=${encodeURIComponent(localStorage.getItem('miraigrid_token') || '')}`
+                                  : `http://${window.location.hostname}:8978/#/`
+                              }
+                              target="_blank"
+                              rel="noreferrer"
+                              onClick={() => {
+                                const token = localStorage.getItem('miraigrid_token')
+                                if (token && window.location.hostname.includes('miraigrid.web.id')) {
+                                  try {
+                                    document.cookie = `miraigrid_token=${token}; path=/; domain=.miraigrid.web.id; max-age=86400; SameSite=Lax; Secure`
+                                  } catch (e) {
+                                    console.error(e)
+                                  }
                                 }
-                                target="_blank"
-                                rel="noreferrer"
-                                onClick={() => {
-                                  safeCopy(db.db_password)
-                                  toast.success(`Membuka CloudBeaver! Database '${db.db_name}' terhubung otomatis. Password disalin ke clipboard.`, { duration: 5000 })
-                                }}
-                                className="inline-flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl bg-[#2E1810] hover:bg-[#3E2216] border border-[#5A3521] text-xs text-[#E8DCB8] hover:text-white transition font-medium shadow-sm"
-                                title="Buka CloudBeaver Admin Studio (Database auto-connect & password tersalin)"
-                              >
-                                <Database className="h-3.5 w-3.5 text-[#C49767]" />
-                                <span>CloudBeaver</span>
-                                <ExternalLink className="h-3 w-3 text-[#A47E65]" />
-                              </a>
-                            )}
+                                safeCopy(db.db_password)
+                                toast.success(`Membuka CloudBeaver! Database '${db.db_name}' terhubung. Password disalin ke clipboard.`, { duration: 5000 })
+                              }}
+                              className="inline-flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl bg-[#2E1810] hover:bg-[#3E2216] border border-[#5A3521] text-xs text-[#E8DCB8] hover:text-white transition font-medium shadow-sm"
+                              title="Buka CloudBeaver Visual SQL Studio (Terisolasi per Mahasiswa)"
+                            >
+                              <Database className="h-3.5 w-3.5 text-[#C49767]" />
+                              <span>CloudBeaver</span>
+                              <ExternalLink className="h-3 w-3 text-[#A47E65]" />
+                            </a>
 
                             {/* Dedicated Manager (phpPgAdmin / phpMyAdmin with Auto-Login SSO - 100% Terisolasi Anti-Bocor) */}
                             {isPg ? (
