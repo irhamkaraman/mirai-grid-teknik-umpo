@@ -18,6 +18,7 @@ import {
   List,
   Search,
   ChevronRight,
+  ChevronDown,
   ExternalLink,
   Check,
   CheckSquare,
@@ -33,7 +34,8 @@ import {
   FilePlus,
   FolderPlus,
   Layers,
-  ArrowRight
+  ArrowRight,
+  Share2
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { api } from '../api/client'
@@ -64,9 +66,12 @@ export default function DashboardV2({
   const [activeFilter, setActiveFilter] = useState('all') // all, folders, documents, media, archives
   const [localSearch, setLocalSearch] = useState('')
 
-  // Multi-selection
+  // Multi-selection & Shift+Click
   const [selectedPaths, setSelectedPaths] = useState([])
+  const [lastSelectedIndex, setLastSelectedIndex] = useState(null)
   const [clipboard, setClipboard] = useState(null) // { action: 'copy', paths: [] }
+  const [showCreateDropdown, setShowCreateDropdown] = useState(false)
+  const createDropdownRef = useRef(null)
 
   // Drag and Drop
   const [isDragOverWindow, setIsDragOverWindow] = useState(false)
@@ -143,10 +148,13 @@ export default function DashboardV2({
     }
   }
 
-  // Close context menu on global click
+  // Close context menu & create dropdown on global click
   useEffect(() => {
-    const handleGlobalClick = () => {
+    const handleGlobalClick = (e) => {
       if (contextMenu) setContextMenu(null)
+      if (createDropdownRef.current && !createDropdownRef.current.contains(e.target)) {
+        setShowCreateDropdown(false)
+      }
     }
     window.addEventListener('click', handleGlobalClick)
     return () => window.removeEventListener('click', handleGlobalClick)
@@ -188,10 +196,11 @@ export default function DashboardV2({
         }
       }
 
-      // Delete key: prompt delete
+      // Delete key: prompt delete for selected paths
       if (e.key === 'Delete') {
         if (selectedPaths.length > 0) {
           e.preventDefault()
+          setSelectedItem(null) // Clear individual selectedItem so delete modal targets selectedPaths!
           setActiveModal('delete')
         }
       }
@@ -324,20 +333,68 @@ export default function DashboardV2({
     }
   }
 
-  // Selection toggle
-  const handleToggleSelect = (itemPath, e) => {
+  // Selection toggle with Shift + Click support
+  const handleToggleSelect = (itemPath, index, e) => {
     if (e) e.stopPropagation()
-    setSelectedPaths((prev) =>
-      prev.includes(itemPath) ? prev.filter((p) => p !== itemPath) : [...prev, itemPath]
-    )
+    if (e?.shiftKey && lastSelectedIndex !== null && typeof index === 'number') {
+      const start = Math.min(lastSelectedIndex, index)
+      const end = Math.max(lastSelectedIndex, index)
+      const rangePaths = filteredItems.slice(start, end + 1).map((it) => it.path)
+      setSelectedPaths((prev) => Array.from(new Set([...prev, ...rangePaths])))
+    } else {
+      if (typeof index === 'number') setLastSelectedIndex(index)
+      setSelectedPaths((prev) =>
+        prev.includes(itemPath) ? prev.filter((p) => p !== itemPath) : [...prev, itemPath]
+      )
+    }
   }
 
   const handleSelectAll = () => {
-    if (selectedPaths.length === filteredItems.length) {
+    if (selectedPaths.length === filteredItems.length && filteredItems.length > 0) {
       setSelectedPaths([])
+      setLastSelectedIndex(null)
     } else {
       setSelectedPaths(filteredItems.map((i) => i.path))
     }
+  }
+
+  // Multi-Selection action: Share Selected
+  const handleShareSelected = () => {
+    if (selectedPaths.length === 0) return
+    const links = selectedPaths.map((p) => {
+      const clean = p.replace(/^public_html\/?/, '')
+      return `https://${primaryDomain}/${clean}`
+    }).join('\n')
+    navigator.clipboard.writeText(links)
+    toast.success(`${selectedPaths.length} tautan publik berkas disalin ke clipboard!`)
+  }
+
+  // Multi-Selection action: Download Zip Selected
+  const handleDownloadZipSelected = async () => {
+    if (selectedPaths.length === 0) return
+    const toastId = toast.loading(`Mengompresi ${selectedPaths.length} berkas ke ZIP...`)
+    try {
+      const archiveName = `miraigrid_bundle_${Date.now()}.zip`
+      await api.post('/files/compress', {
+        paths: selectedPaths,
+        destination_zip: archiveName,
+        destination_dir: currentPath,
+      })
+      toast.success('Arsip ZIP berhasil dibuat, mengunduh...', { id: toastId })
+      const zipPath = currentPath ? `${currentPath}/${archiveName}` : archiveName
+      await handleDownloadFile({ name: archiveName, path: zipPath })
+      fetchDirectory(currentPath)
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Gagal mengompresi dan mengunduh berkas.', { id: toastId })
+    }
+  }
+
+  // Breadcrumb navigate up one level
+  const handleGoUp = () => {
+    if (!currentPath) return
+    const parts = currentPath.split('/').filter(Boolean)
+    parts.pop()
+    setCurrentPath(parts.join('/'))
   }
 
   // Context Menu
@@ -615,20 +672,71 @@ export default function DashboardV2({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           {/* Left Action Buttons */}
           <div className="flex items-center flex-wrap gap-2.5">
-            {/* + Create Button (Dark Charcoal Pill) */}
-            <div className="relative inline-block text-left">
+            {/* + Create Button with Dropdown (ala Google Drive) */}
+            <div className="relative inline-block text-left" ref={createDropdownRef}>
               <button
                 type="button"
-                onClick={() => {
-                  setNewItemName('')
-                  setNewItemIsDir(false)
-                  setActiveModal('new_item')
-                }}
+                onClick={() => setShowCreateDropdown(!showCreateDropdown)}
                 className="flex items-center space-x-2 px-4 py-2.5 rounded-2xl bg-[#111827] hover:bg-black text-white text-xs font-semibold shadow-md hover:shadow-lg transition-all active:scale-95 group"
               >
-                <Plus className="h-4 w-4 text-emerald-400 group-hover:rotate-90 transition-transform duration-200" />
+                <Plus className={`h-4 w-4 text-emerald-400 transition-transform duration-200 ${showCreateDropdown ? 'rotate-45' : 'group-hover:rotate-90'}`} />
                 <span>+ Buat Baru</span>
+                <ChevronDown className={`h-3 w-3 text-gray-400 transition-transform ${showCreateDropdown ? 'rotate-180' : ''}`} />
               </button>
+
+              {showCreateDropdown && (
+                <div className="absolute left-0 mt-2 w-56 rounded-2xl bg-white border border-gray-200 shadow-2xl p-1.5 z-30 animate-in fade-in zoom-in-95 duration-150 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowCreateDropdown(false)
+                      setNewItemName('')
+                      setNewItemIsDir(false)
+                      setActiveModal('new_item')
+                    }}
+                    className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 transition text-left"
+                  >
+                    <FilePlus className="h-4 w-4 text-emerald-600" />
+                    <span>Berkas Baru (File)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowCreateDropdown(false)
+                      setNewItemName('')
+                      setNewItemIsDir(true)
+                      setActiveModal('new_item')
+                    }}
+                    className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 transition text-left"
+                  >
+                    <FolderPlus className="h-4 w-4 text-emerald-600" />
+                    <span>Folder Baru</span>
+                  </button>
+                  <div className="my-1 border-t border-gray-100" />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowCreateDropdown(false)
+                      fileInputRef.current?.click()
+                    }}
+                    className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 transition text-left"
+                  >
+                    <Upload className="h-4 w-4 text-blue-600" />
+                    <span>Unggah Berkas</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowCreateDropdown(false)
+                      zipInputRef.current?.click()
+                    }}
+                    className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 transition text-left"
+                  >
+                    <FileArchive className="h-4 w-4 text-amber-500" />
+                    <span>Unggah ZIP (Auto-Extract)</span>
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Upload Button */}
@@ -667,6 +775,45 @@ export default function DashboardV2({
               <FolderPlus className="h-4 w-4 text-gray-500" />
               <span className="hidden md:inline">Folder Baru</span>
             </button>
+
+            {/* Edit Code Button (if single editable file selected) */}
+            {selectedPaths.length === 1 && (() => {
+              const target = items.find((it) => it.path === selectedPaths[0])
+              if (!target || target.is_dir) return null
+              const ext = (target.extension || '').toLowerCase()
+              if (!['.php', '.html', '.css', '.js', '.py', '.txt', '.json', '.sql', '.md', '.env', '.ini'].includes(ext)) return null
+              return (
+                <button
+                  type="button"
+                  onClick={() => handleOpenFileEditor(target)}
+                  className="flex items-center space-x-2 px-3.5 py-2 rounded-2xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 text-xs font-semibold shadow-sm transition"
+                  title="Buka dan sunting kode berkas ini"
+                >
+                  <Edit3 className="h-4 w-4 text-emerald-600" />
+                  <span>Edit Kode</span>
+                </button>
+              )
+            })()}
+
+            {/* Download Button (if file(s) selected) */}
+            {selectedPaths.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (selectedPaths.length === 1) {
+                    const target = items.find((it) => it.path === selectedPaths[0])
+                    if (target) handleDownloadFile(target)
+                  } else {
+                    handleDownloadZipSelected()
+                  }
+                }}
+                className="flex items-center space-x-2 px-3.5 py-2 rounded-2xl bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 text-xs font-semibold shadow-sm transition"
+                title="Unduh berkas yang dipilih"
+              >
+                <Download className="h-4 w-4 text-emerald-600" />
+                <span>Unduh {selectedPaths.length > 1 ? `ZIP (${selectedPaths.length})` : ''}</span>
+              </button>
+            )}
           </div>
 
           {/* Right Action: Search & View Switcher */}
@@ -723,24 +870,38 @@ export default function DashboardV2({
 
         {/* Breadcrumb Path Navigation */}
         <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-          <nav className="flex items-center space-x-1.5 text-xs text-gray-600 overflow-x-auto py-1">
-            {breadcrumbs.map((crumb, idx) => (
-              <React.Fragment key={crumb.path}>
-                {idx > 0 && <ChevronRight className="h-3.5 w-3.5 text-gray-400 shrink-0" />}
-                <button
-                  type="button"
-                  onClick={() => setCurrentPath(crumb.path)}
-                  className={`hover:text-emerald-700 px-2 py-1 rounded-lg transition shrink-0 ${
-                    idx === breadcrumbs.length - 1
-                      ? 'font-bold text-gray-900 bg-gray-100'
-                      : 'hover:bg-gray-50'
-                  }`}
-                >
-                  {crumb.name}
-                </button>
-              </React.Fragment>
-            ))}
-          </nav>
+          <div className="flex items-center space-x-1 overflow-x-auto py-1">
+            {currentPath && (
+              <button
+                type="button"
+                onClick={handleGoUp}
+                className="flex items-center space-x-1 px-2.5 py-1 rounded-lg text-gray-500 hover:text-emerald-700 hover:bg-emerald-50 transition border border-gray-200/80 mr-1.5 shrink-0 font-medium text-xs shadow-xs"
+                title="Naik satu tingkat folder"
+              >
+                <ArrowUp className="h-3.5 w-3.5" />
+                <span>Naik</span>
+              </button>
+            )}
+
+            <nav className="flex items-center space-x-1.5 text-xs text-gray-600">
+              {breadcrumbs.map((crumb, idx) => (
+                <React.Fragment key={crumb.path}>
+                  {idx > 0 && <ChevronRight className="h-3.5 w-3.5 text-gray-400 shrink-0" />}
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPath(crumb.path)}
+                    className={`hover:text-emerald-700 px-2 py-1 rounded-lg transition shrink-0 ${
+                      idx === breadcrumbs.length - 1
+                        ? 'font-bold text-gray-900 bg-gray-100'
+                        : 'hover:bg-gray-50'
+                    }`}
+                  >
+                    {crumb.name}
+                  </button>
+                </React.Fragment>
+              ))}
+            </nav>
+          </div>
 
           <button
             type="button"
@@ -768,6 +929,17 @@ export default function DashboardV2({
             {suggestedFolders.map((sug) => (
               <div
                 key={sug.name}
+                onDragOver={(e) => {
+                  e.preventDefault()
+                  setDragOverFolder(sug.name)
+                }}
+                onDragLeave={() => {
+                  if (dragOverFolder === sug.name) setDragOverFolder(null)
+                }}
+                onDrop={(e) => {
+                  e.preventDefault()
+                  handleDropOnFolder({ path: sug.name, name: sug.name })
+                }}
                 onClick={() => {
                   if (sug.exists) {
                     setCurrentPath(sug.path)
@@ -778,7 +950,11 @@ export default function DashboardV2({
                     setActiveModal('new_item')
                   }
                 }}
-                className="bg-white border border-emerald-100/90 hover:border-emerald-400 rounded-2xl p-4 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer group relative overflow-hidden"
+                className={`bg-white rounded-2xl p-4 shadow-sm transition-all duration-200 cursor-pointer group relative overflow-hidden ${
+                  dragOverFolder === sug.name
+                    ? 'border-emerald-600 ring-4 ring-emerald-300 bg-emerald-100/50 scale-105 shadow-md'
+                    : 'border border-emerald-100/90 hover:border-emerald-400 hover:shadow-md'
+                }`}
               >
                 <div className="flex items-center justify-between mb-2">
                   <div className="h-10 w-10 rounded-xl bg-emerald-50 border border-emerald-200/80 flex items-center justify-center text-emerald-600 group-hover:scale-105 transition-transform">
@@ -791,10 +967,21 @@ export default function DashboardV2({
                       const itemMatch = items.find((it) => it.name === sug.name)
                       if (itemMatch) {
                         setSelectedItem(itemMatch)
-                        setActiveModal('info')
+                        if (window.innerWidth < 768) {
+                          setBottomSheetItem(itemMatch)
+                        } else {
+                          setContextMenu({
+                            x: e.clientX,
+                            y: e.clientY,
+                            item: itemMatch,
+                          })
+                        }
+                      } else {
+                        toast.info(`Folder "${sug.name}" belum dibuat. Klik kartu untuk membuat sekarang.`)
                       }
                     }}
-                    className="p-1 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
+                    className="p-1 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition"
+                    title="Opsi Direktori"
                   >
                     <MoreVertical className="h-4 w-4" />
                   </button>
@@ -883,26 +1070,64 @@ export default function DashboardV2({
             <span className="hidden sm:inline text-gray-300">Berkas aktif</span>
           </div>
 
-          <div className="flex items-center space-x-2 text-xs">
+          <div className="flex items-center flex-wrap gap-2 text-xs">
+            {/* Share Selected */}
             <button
+              type="button"
+              onClick={handleShareSelected}
+              className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-emerald-300 hover:text-emerald-200 rounded-xl transition flex items-center space-x-1.5"
+              title="Salin tautan publik berkas terpilih"
+            >
+              <Share2 className="h-3.5 w-3.5 text-emerald-400" />
+              <span>Bagikan Tautan</span>
+            </button>
+
+            {/* Download Zip */}
+            <button
+              type="button"
+              onClick={handleDownloadZipSelected}
+              className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-amber-300 hover:text-amber-200 rounded-xl transition flex items-center space-x-1.5"
+              title="Kompresi dan unduh semua berkas terpilih sebagai ZIP"
+            >
+              <FileArchive className="h-3.5 w-3.5 text-amber-400" />
+              <span>Unduh ZIP</span>
+            </button>
+
+            {/* Copy Ctrl+C */}
+            <button
+              type="button"
               onClick={() => {
                 setClipboard({ action: 'copy', paths: [...selectedPaths] })
                 toast.success(`${selectedPaths.length} berkas disalin ke clipboard!`)
               }}
               className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-xl transition flex items-center space-x-1.5"
+              title="Salin ke clipboard (Ctrl+C)"
             >
               <Copy className="h-3.5 w-3.5" />
-              <span>Salin (Ctrl+C)</span>
+              <span className="hidden sm:inline">Salin</span>
             </button>
+
+            {/* Delete Selected */}
             <button
-              onClick={() => setActiveModal('delete')}
+              type="button"
+              onClick={() => {
+                setSelectedItem(null) // Target selectedPaths
+                setActiveModal('delete')
+              }}
               className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl transition flex items-center space-x-1.5"
+              title="Hapus semua berkas terpilih"
             >
               <Trash2 className="h-3.5 w-3.5" />
-              <span>Hapus</span>
+              <span>Hapus Terpilih</span>
             </button>
+
+            {/* Cancel Selection */}
             <button
-              onClick={() => setSelectedPaths([])}
+              type="button"
+              onClick={() => {
+                setSelectedPaths([])
+                setLastSelectedIndex(null)
+              }}
               className="p-1.5 text-gray-400 hover:text-white rounded-lg transition"
               title="Batal Seleksi"
             >
@@ -943,7 +1168,7 @@ export default function DashboardV2({
       ) : viewMode === 'grid' ? (
         /* GRID VIEW */
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5">
-          {filteredItems.map((item) => {
+          {filteredItems.map((item, index) => {
             const isSelected = selectedPaths.includes(item.path)
             const isDropTarget = dragOverFolder === item.path
 
@@ -981,8 +1206,9 @@ export default function DashboardV2({
                   <div className="flex items-center space-x-2">
                     <button
                       type="button"
-                      onClick={(e) => handleToggleSelect(item.path, e)}
+                      onClick={(e) => handleToggleSelect(item.path, index, e)}
                       className="p-0.5 rounded text-gray-400 hover:text-emerald-600 transition"
+                      title="Pilih berkas (Tahan Shift untuk multi-seleksi)"
                     >
                       {isSelected ? (
                         <CheckSquare className="h-4 w-4 text-emerald-600 fill-emerald-100" />
@@ -1012,6 +1238,7 @@ export default function DashboardV2({
                       }
                     }}
                     className="p-1 text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition"
+                    title="Menu Aksi"
                   >
                     <MoreVertical className="h-4 w-4" />
                   </button>
@@ -1063,6 +1290,7 @@ export default function DashboardV2({
                     type="button"
                     onClick={handleSelectAll}
                     className="p-0.5 rounded text-gray-400 hover:text-emerald-600"
+                    title="Pilih Semua (Select All)"
                   >
                     {selectedPaths.length === filteredItems.length && filteredItems.length > 0 ? (
                       <CheckSquare className="h-4 w-4 text-emerald-600" />
@@ -1080,22 +1308,45 @@ export default function DashboardV2({
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {filteredItems.map((item) => {
+              {filteredItems.map((item, index) => {
                 const isSelected = selectedPaths.includes(item.path)
+                const isDropTarget = dragOverFolder === item.path
+
                 return (
                   <tr
                     key={item.path}
+                    draggable
+                    onDragStart={() => setDraggingItem(item)}
+                    onDragEnd={() => setDraggingItem(null)}
+                    onDragOver={(e) => {
+                      if (item.is_dir) {
+                        e.preventDefault()
+                        setDragOverFolder(item.path)
+                      }
+                    }}
+                    onDragLeave={() => {
+                      if (dragOverFolder === item.path) setDragOverFolder(null)
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault()
+                      if (item.is_dir) handleDropOnFolder(item)
+                    }}
                     onClick={() => handleItemOpen(item)}
                     onContextMenu={(e) => handleContextMenu(e, item)}
-                    className={`hover:bg-emerald-50/40 transition cursor-pointer ${
-                      isSelected ? 'bg-emerald-50/70 font-semibold' : ''
+                    className={`hover:bg-emerald-50/40 transition cursor-pointer select-none ${
+                      isSelected
+                        ? 'bg-emerald-50/70 font-semibold'
+                        : isDropTarget
+                        ? 'bg-emerald-100 ring-2 ring-emerald-400 font-semibold'
+                        : ''
                     }`}
                   >
                     <td className="p-3.5" onClick={(e) => e.stopPropagation()}>
                       <button
                         type="button"
-                        onClick={(e) => handleToggleSelect(item.path, e)}
+                        onClick={(e) => handleToggleSelect(item.path, index, e)}
                         className="p-0.5 text-gray-400 hover:text-emerald-600"
+                        title="Pilih (Tahan Shift untuk multi-seleksi)"
                       >
                         {isSelected ? (
                           <CheckSquare className="h-4 w-4 text-emerald-600" />
@@ -1126,7 +1377,7 @@ export default function DashboardV2({
                           <button
                             type="button"
                             onClick={() => handleDownloadFile(item)}
-                            className="p-1.5 text-gray-400 hover:text-emerald-600 rounded-lg hover:bg-gray-100"
+                            className="p-1.5 text-gray-400 hover:text-emerald-600 rounded-lg hover:bg-gray-100 transition"
                             title="Unduh"
                           >
                             <Download className="h-4 w-4" />
@@ -1136,13 +1387,17 @@ export default function DashboardV2({
                           type="button"
                           onClick={(e) => {
                             setSelectedItem(item)
-                            setContextMenu({
-                              x: e.clientX,
-                              y: e.clientY,
-                              item,
-                            })
+                            if (window.innerWidth < 768) {
+                              setBottomSheetItem(item)
+                            } else {
+                              setContextMenu({
+                                x: e.clientX,
+                                y: e.clientY,
+                                item,
+                              })
+                            }
                           }}
-                          className="p-1.5 text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-100"
+                          className="p-1.5 text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition"
                           title="Menu Aksi"
                         >
                           <MoreVertical className="h-4 w-4" />
@@ -1298,7 +1553,7 @@ export default function DashboardV2({
               )}
 
               {!bottomSheetItem.is_dir &&
-                ['.php', '.html', '.css', '.js', '.py', '.txt', '.json', '.sql'].includes(
+                ['.php', '.html', '.css', '.js', '.py', '.txt', '.json', '.sql', '.md', '.env', '.ini'].includes(
                   bottomSheetItem.extension
                 ) && (
                   <button
@@ -1325,6 +1580,19 @@ export default function DashboardV2({
                 <Edit3 className="h-4 w-4 text-gray-500" />
                 <span>Ganti Nama</span>
               </button>
+
+              {!bottomSheetItem.is_dir && (
+                <button
+                  onClick={() => {
+                    handleDuplicateItem(bottomSheetItem)
+                    setBottomSheetItem(null)
+                  }}
+                  className="p-3 bg-gray-50 hover:bg-gray-100 rounded-2xl flex items-center space-x-2 text-gray-700 font-medium"
+                >
+                  <Copy className="h-4 w-4 text-gray-500" />
+                  <span>Duplikat</span>
+                </button>
+              )}
 
               <button
                 onClick={() => {
@@ -1361,6 +1629,14 @@ export default function DashboardV2({
                 <span>Hapus</span>
               </button>
             </div>
+
+            <button
+              type="button"
+              onClick={() => setBottomSheetItem(null)}
+              className="w-full py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold text-xs rounded-2xl transition"
+            >
+              Tutup
+            </button>
           </div>
         </div>
       )}
@@ -1454,25 +1730,51 @@ export default function DashboardV2({
             </div>
 
             {/* Editor Body */}
-            <div className="flex-1 p-4 bg-[#1E1E1E] text-gray-100 font-mono text-xs overflow-hidden flex flex-col">
+            <div className="flex-1 bg-[#1E1E1E] text-gray-100 font-mono text-xs overflow-hidden flex flex-col">
               {editorLoading ? (
                 <div className="flex-1 flex items-center justify-center">
                   <Spinner className="h-8 w-8 text-emerald-400" />
                 </div>
               ) : (
-                <textarea
-                  value={editorContent}
-                  onChange={(e) => setEditorContent(e.target.value)}
-                  onKeyDown={(e) => {
-                    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-                      e.preventDefault()
-                      handleSaveFile()
-                    }
-                  }}
-                  className="w-full h-full bg-transparent text-gray-100 resize-none outline-none font-mono text-xs leading-relaxed custom-scrollbar"
-                  spellCheck="false"
-                  placeholder="Ketik kode di sini..."
-                />
+                <div className="flex-1 flex overflow-hidden">
+                  {/* Line numbers gutter */}
+                  <div
+                    aria-hidden="true"
+                    className="w-12 bg-[#181818] py-4 text-right pr-3 select-none text-gray-600 font-mono text-xs border-r border-gray-800/80 overflow-hidden shrink-0"
+                  >
+                    {editorContent.split('\n').map((_, idx) => (
+                      <div key={idx} className="leading-relaxed">
+                        {idx + 1}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Textarea code input */}
+                  <textarea
+                    value={editorContent}
+                    onChange={(e) => setEditorContent(e.target.value)}
+                    onKeyDown={(e) => {
+                      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                        e.preventDefault()
+                        handleSaveFile()
+                      } else if (e.key === 'Tab') {
+                        e.preventDefault()
+                        const target = e.target
+                        const start = target.selectionStart
+                        const end = target.selectionEnd
+                        const value = target.value
+                        const newValue = value.substring(0, start) + '  ' + value.substring(end)
+                        setEditorContent(newValue)
+                        setTimeout(() => {
+                          target.selectionStart = target.selectionEnd = start + 2
+                        }, 0)
+                      }
+                    }}
+                    className="flex-1 p-4 bg-transparent text-gray-100 resize-none outline-none font-mono text-xs leading-relaxed custom-scrollbar whitespace-pre"
+                    spellCheck="false"
+                    placeholder="Ketik kode di sini..."
+                  />
+                </div>
               )}
             </div>
 

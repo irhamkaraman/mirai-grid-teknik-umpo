@@ -233,6 +233,9 @@ export default function App() {
   // 1. STANDALONE LAYOUT FOR FILE MANAGER (Latar Belakang Krim Cerah Sesuai Dasbor)
   const isStandaloneFilesView = location.pathname.startsWith('/files')
   if (isStandaloneFilesView) {
+    if (theme === 'v2') {
+      return <Navigate to="/dashboard" replace />
+    }
     return (
       <div className="h-screen w-screen bg-[#E6D7BE] p-2.5 sm:p-4 md:p-6 flex flex-col font-sans overflow-hidden select-none m-0">
         <Toaster

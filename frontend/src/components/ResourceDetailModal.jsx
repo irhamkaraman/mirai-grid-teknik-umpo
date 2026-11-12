@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   X,
   Cpu,
@@ -11,36 +11,79 @@ import {
   Layers,
   Info,
   CheckCircle2,
-  ExternalLink
+  ExternalLink,
+  Wifi,
+  Network
 } from 'lucide-react'
+import { api } from '../api/client'
 
 export default function ResourceDetailModal({
   isOpen,
   onClose,
-  quota,
-  databases = [],
-  projects = [],
+  quota: initialQuota,
+  databases: initialDatabases = [],
+  projects: initialProjects = [],
   user
 }) {
+  const [liveQuota, setLiveQuota] = useState(initialQuota)
+  const [liveDatabases, setLiveDatabases] = useState(initialDatabases)
+  const [liveProjects, setLiveProjects] = useState(initialProjects)
+
+  useEffect(() => {
+    if (initialQuota) setLiveQuota(initialQuota)
+  }, [initialQuota])
+
+  useEffect(() => {
+    if (initialDatabases.length > 0) setLiveDatabases(initialDatabases)
+  }, [initialDatabases])
+
+  useEffect(() => {
+    if (initialProjects.length > 0) setLiveProjects(initialProjects)
+  }, [initialProjects])
+
+  useEffect(() => {
+    if (isOpen) {
+      Promise.allSettled([
+        api.get('/quotas/my-quota'),
+        api.get('/projects'),
+        api.get('/databases'),
+      ]).then(([resQuota, resProjects, resDatabases]) => {
+        if (resQuota.status === 'fulfilled' && resQuota.value.data) {
+          setLiveQuota(resQuota.value.data)
+        }
+        if (resProjects.status === 'fulfilled' && Array.isArray(resProjects.value.data)) {
+          setLiveProjects(resProjects.value.data)
+        }
+        if (resDatabases.status === 'fulfilled' && Array.isArray(resDatabases.value.data)) {
+          setLiveDatabases(resDatabases.value.data)
+        }
+      }).catch(() => {})
+    }
+  }, [isOpen])
+
   if (!isOpen) return null
 
-  const diskTotalMb = quota?.max_disk_mb || 500
-  const diskUsedMb = quota?.disk_used_mb !== undefined && quota?.disk_used_mb !== null
-    ? parseFloat(quota.disk_used_mb.toFixed(1))
+  const activeQuota = liveQuota || initialQuota
+  const activeDatabases = liveDatabases.length > 0 ? liveDatabases : initialDatabases
+  const activeProjects = liveProjects.length > 0 ? liveProjects : initialProjects
+
+  const diskTotalMb = activeQuota?.max_disk_mb || 500
+  const diskUsedMb = activeQuota?.disk_used_mb !== undefined && activeQuota?.disk_used_mb !== null
+    ? parseFloat(activeQuota.disk_used_mb.toFixed(1))
     : 157.9
   const diskPercent = Math.min(100, Math.round((diskUsedMb / diskTotalMb) * 100))
 
-  const ramMaxMb = quota?.max_memory_mb || 256
-  // Realistic estimate or live value:
-  const ramUsedMb = quota?.used_memory_mb ?? 88.0
+  const ramMaxMb = activeQuota?.max_memory_mb || 256
+  // Live or estimated RAM
+  const ramUsedMb = activeQuota?.used_memory_mb ?? 88.0
   const ramPercent = Math.min(100, Math.round((ramUsedMb / ramMaxMb) * 100))
 
-  const maxProcesses = quota?.max_processes || 50
-  const currentProcesses = quota?.used_processes ?? (projects.length > 0 ? 11 : 4)
+  const maxProcesses = activeQuota?.max_processes || 50
+  const currentProcesses = activeQuota?.used_processes ?? (activeProjects.length > 0 ? 11 : 4)
   const processPercent = Math.min(100, Math.round((currentProcesses / maxProcesses) * 100))
 
-  const dbStorageMaxMb = quota?.max_database_disk_mb || 100
-  const dbStorageUsedMb = quota?.used_database_disk_mb ?? parseFloat((databases.length * 12.5).toFixed(1))
+  const dbStorageMaxMb = activeQuota?.max_database_disk_mb || 100
+  const dbStorageUsedMb = activeQuota?.used_database_disk_mb ?? parseFloat((activeDatabases.length > 0 ? activeDatabases.length * 12.5 : 12.5).toFixed(1))
   const dbStoragePercent = Math.min(100, Math.round((dbStorageUsedMb / dbStorageMaxMb) * 100))
 
   const username = user?.username || 'mahasiswa'
@@ -200,16 +243,24 @@ export default function ResourceDetailModal({
           <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 space-y-3">
             <h4 className="text-xs font-bold text-gray-800 uppercase tracking-wider flex items-center space-x-2">
               <Server className="h-4 w-4 text-emerald-600" />
-              <span>Informasi Server & Jaringan Lab</span>
+              <span>Informasi Server, Port & Alokasi Jaringan</span>
             </h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
               <div className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-gray-200/70">
-                <span className="text-gray-500">Internal Server IP</span>
-                <span className="font-mono font-semibold text-gray-900">10.10.10.10</span>
+                <span className="text-gray-500">Shared IP Gateway</span>
+                <span className="font-mono font-semibold text-gray-900">10.10.10.10 (Shared Container)</span>
               </div>
               <div className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-gray-200/70">
                 <span className="text-gray-500">Tailscale Mesh Gateway</span>
                 <span className="font-mono font-semibold text-gray-900">100.122.201.18</span>
+              </div>
+              <div className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-gray-200/70">
+                <span className="text-gray-500">Port Mapping Ingress</span>
+                <span className="font-mono font-semibold text-gray-900">Port 80 (HTTP) / 443 (HTTPS) / Dynamic WS</span>
+              </div>
+              <div className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-gray-200/70">
+                <span className="text-gray-500">Alokasi Bandwidth</span>
+                <span className="font-mono font-semibold text-emerald-700">1 Gbps Intranet (Unmetered LAN)</span>
               </div>
               <div className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-gray-200/70">
                 <span className="text-gray-500">Ingress Reverse Proxy</span>
