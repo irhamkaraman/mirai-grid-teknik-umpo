@@ -25,42 +25,13 @@ class ThingsBoardManager:
 
     @staticmethod
     async def get_user_quotas(user_id: int, db: Optional[aiosqlite.Connection] = None) -> Dict[str, Any]:
-        """Fetch RAM, CPU, and storage quotas assigned to user from single source of truth."""
-        default_quotas = {
-            "ram_quota_mb": 512,
-            "cpu_quota": 0.5,
+        """Fetch ThingsBoard dedicated IoT Sandbox quotas (guaranteed production specs)."""
+        is_admin = (user_id == 1)
+        return {
+            "ram_quota_mb": 3072 if is_admin else 2048,
+            "cpu_quota": 3.0 if is_admin else 2.0,
             "storage_quota_mb": 1000
         }
-        query = "SELECT max_memory_mb, max_cpu_cores, max_disk_mb FROM quotas WHERE user_id = ?"
-        if db is None:
-            db_path = settings.DATABASE_PATH
-            try:
-                async with aiosqlite.connect(db_path) as local_db:
-                    local_db.row_factory = aiosqlite.Row
-                    cursor = await local_db.execute(query, (user_id,))
-                    row = await cursor.fetchone()
-                    if row:
-                        return {
-                            "ram_quota_mb": row["max_memory_mb"] or 512,
-                            "cpu_quota": row["max_cpu_cores"] or 0.5,
-                            "storage_quota_mb": row["max_disk_mb"] or 1000
-                        }
-            except Exception:
-                pass
-            return default_quotas
-
-        try:
-            cursor = await db.execute(query, (user_id,))
-            row = await cursor.fetchone()
-            if row:
-                return {
-                    "ram_quota_mb": row["max_memory_mb"] or 512,
-                    "cpu_quota": row["max_cpu_cores"] or 0.5,
-                    "storage_quota_mb": row["max_disk_mb"] or 1000
-                }
-        except Exception:
-            pass
-        return default_quotas
 
     @staticmethod
     def ensure_storage_dir(username: str, quotas: Optional[Dict[str, Any]] = None) -> str:
@@ -95,10 +66,10 @@ class ThingsBoardManager:
             print(f"[ThingsBoard] Warning adjusting permissions: {e}")
 
         q = quotas or {}
-        cpu = q.get("cpu_quota", 0.5)
-        ram = q.get("ram_quota_mb", 512)
+        cpu = q.get("cpu_quota", 2.0)
+        ram = q.get("ram_quota_mb", 2048)
         disk = q.get("storage_quota_mb", 1000)
-        heap = min(512, int(ram * 0.65))
+        heap = min(1024, max(512, int(ram * 0.5)))
 
         # 1. Template thingsboard.conf
         conf_file = os.path.join(conf_dir, "thingsboard.conf")
@@ -271,7 +242,7 @@ COAP_PORT=5683
                     sso_url = f"https://{subdomain}"
                     if is_running:
                         ready = await cls.is_http_ready(port)
-                        if ready and fetch_tokens:
+                        if ready:
                             jwt_tok, ref_tok = await cls.get_tenant_tokens(port)
                             if jwt_tok:
                                 sso_url = f"https://{subdomain}/sso?token={jwt_tok}&refresh_token={ref_tok}"
@@ -359,9 +330,9 @@ COAP_PORT=5683
             cpu_quota = 3.0    # 3 CPU Cores
             heap_max = 1536    # 1.5 GB Heap for ThingsBoard JVM
         else:
-            ram_mb = max(1024, user_ram)
-            cpu_quota = max(0.5, user_cpu)
-            heap_max = min(768, max(256, int(ram_mb * 0.6)))
+            ram_mb = max(2048, user_ram)
+            cpu_quota = max(2.0, user_cpu)
+            heap_max = min(1024, max(512, int(ram_mb * 0.5)))
 
         target_mem = ram_mb * 1024 * 1024
         target_cpus = int(cpu_quota * 1e9)
@@ -407,6 +378,7 @@ COAP_PORT=5683
                         "9090/tcp": [{"HostIp": "0.0.0.0", "HostPort": str(port)}]
                     },
                     "Memory": ram_mb * 1024 * 1024,
+                    "MemorySwap": (ram_mb + 1024) * 1024 * 1024,
                     "NanoCpus": int(cpu_quota * 1e9),
                     "RestartPolicy": {"Name": "unless-stopped"}
                 }

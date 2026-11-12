@@ -108,13 +108,13 @@ export default function ThingsBoardView({ user, onNavigate }) {
             // Smooth progress increments during initialization
             if (pollCount < 3) {
               setInitStep(2)
-              setInitProgress(Math.min(60, 35 + pollCount * 10))
-            } else if (pollCount < 8) {
+              setInitProgress(Math.min(50, 25 + pollCount * 10))
+            } else if (pollCount < 10) {
               setInitStep(3)
-              setInitProgress(Math.min(88, 60 + (pollCount - 3) * 6))
+              setInitProgress(Math.min(85, 50 + (pollCount - 3) * 5))
             } else {
               setInitStep(4)
-              setInitProgress(95)
+              setInitProgress(Math.min(95, 85 + (pollCount - 10) * 2))
             }
           }
         } catch (e) {
@@ -165,9 +165,9 @@ export default function ThingsBoardView({ user, onNavigate }) {
   const isReady = status?.ready === true && !loading
 
   const quotas = status?.quotas || {
-    ram_quota_mb: 512,
-    cpu_quota: 0.5,
-    storage_quota_mb: 1024
+    ram_quota_mb: 2048,
+    cpu_quota: 2.0,
+    storage_quota_mb: 1000
   }
 
   // 1. EMBEDDED VIEW (Bila mahasiswa memilih 'Buka di Sini' di dalam panel)
