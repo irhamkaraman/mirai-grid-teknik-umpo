@@ -40,21 +40,27 @@ async def query_docker_container_stats(container_name: str) -> Optional[Dict[str
 
         parts = data.split(b"\r\n\r\n", 1)
         if len(parts) > 1:
+            header_part = parts[0].decode("utf-8", errors="replace")
+            # Enforce HTTP 200 OK verification - reject 404, 500, or stopped containers
+            if "200 OK" not in header_part:
+                return None
+
             body = parts[1].decode("utf-8", errors="replace")
+            js = None
             try:
                 js = json.loads(body)
             except Exception:
-                lines = body.split("\r\n")
-                json_str = ""
-                for line in lines:
-                    line_s = line.strip()
-                    if line_s.startswith("{") and line_s.endswith("}"):
-                        json_str = line_s
-                        break
-                if json_str:
-                    js = json.loads(json_str)
-                else:
-                    return None
+                # Handle Docker chunked transfer encoding by isolating JSON payload
+                s_idx = body.find("{")
+                e_idx = body.rfind("}")
+                if s_idx != -1 and e_idx != -1 and e_idx > s_idx:
+                    try:
+                        js = json.loads(body[s_idx:e_idx + 1])
+                    except Exception:
+                        pass
+
+            if not js or not isinstance(js, dict):
+                return None
 
             mem_stats = js.get("memory_stats", {})
             # cgroup v2 / v1 memory usage in MB
@@ -111,64 +117,69 @@ async def fetch_student_metrics(user: dict, db: aiosqlite.Connection) -> dict:
 
     # 4. Student Web Deployments and containers
     dep_cur = await db.execute(
-        "SELECT * FROM web_deployments WHERE user_id = ? AND status = 'active' ORDER BY id ASC LIMIT 1",
+        "SELECT * FROM web_deployments WHERE user_id = ? AND status = 'active' ORDER BY id ASC",
         (user_id,)
     )
-    dep_row = await dep_cur.fetchone()
-    primary_domain = dep_row["subdomain"] if dep_row else f"{username}.miraigrid.web.id"
+    dep_rows = await dep_cur.fetchall()
+    primary_domain = dep_rows[0]["subdomain"] if dep_rows else f"{username}.miraigrid.web.id"
 
-    # Identify tenant container candidates
+    # Identify tenant container candidates across active deployments and projects
     candidate_containers = []
-    if dep_row and dep_row["container_name"]:
-        candidate_containers.append(dep_row["container_name"])
+    for d in dep_rows:
+        if d["container_name"]:
+            candidate_containers.append(d["container_name"])
+
+    proj_cur = await db.execute(
+        "SELECT * FROM projects WHERE user_id = ? AND status = 'running' ORDER BY id DESC",
+        (user_id,)
+    )
+    proj_rows = await proj_cur.fetchall()
+    for p in proj_rows:
+        candidate_containers.append(f"app_{username}_{p['name']}")
+
     if is_admin:
         candidate_containers.append("app_admin_simru-teknik")
     else:
         candidate_containers.append(f"app_{username}_public_html")
 
-    # Check ThingsBoard container for this student
+    # Student dedicated service containers
     tb_container = f"tb_{username}"
+    vscode_container = f"vscode_{username}"
 
     # Query Docker stats asynchronously for student-isolated containers
     live_ram_mb = 0.0
     live_pids = 0
     containers_found = 0
 
+    # Query web workspace containers first
     for c_name in set(candidate_containers):
         stats = await query_docker_container_stats(c_name)
-        if stats:
+        if stats is not None:
             containers_found += 1
             live_ram_mb += stats["ram_used_mb"]
             live_pids += stats["pids"]
 
-    # If no web workspace container found, check ThingsBoard container
+    # If no web workspace container active, check student's VS Code or ThingsBoard container
     if containers_found == 0:
-        tb_stats = await query_docker_container_stats(tb_container)
-        if tb_stats:
-            live_ram_mb += tb_stats["ram_used_mb"]
-            live_pids += tb_stats["pids"]
-    else:
-        tb_stats = None
-
-    # Baseline fallback if container is stopped / not deployed yet
-    if containers_found == 0 and not tb_stats:
-        # Subtle baseline representation (0.0 MB or idle)
-        live_ram_mb = 0.0
-        live_pids = 0
+        vs_stats = await query_docker_container_stats(vscode_container)
+        if vs_stats is not None:
+            containers_found += 1
+            live_ram_mb += vs_stats["ram_used_mb"]
+            live_pids += vs_stats["pids"]
+        else:
+            tb_stats = await query_docker_container_stats(tb_container)
+            if tb_stats is not None:
+                containers_found += 1
+                live_ram_mb += tb_stats["ram_used_mb"]
+                live_pids += tb_stats["pids"]
 
     live_ram_mb = round(live_ram_mb, 1)
     ram_percent = min(100.0, round((live_ram_mb / max_mem_mb) * 100, 1)) if max_mem_mb > 0 else 0.0
     process_percent = min(100.0, round((live_pids / max_processes) * 100, 1)) if max_processes > 0 else 0.0
 
     # Determine internal port & runtime
-    p_cur = await db.execute(
-        "SELECT * FROM projects WHERE user_id = ? AND status = 'running' ORDER BY id DESC LIMIT 1",
-        (user_id,)
-    )
-    proj_row = await p_cur.fetchone()
-
-    if proj_row:
-        p_dict = dict(proj_row)
+    if proj_rows:
+        p_dict = dict(proj_rows[0])
         port = p_dict.get("allocated_port") or p_dict.get("port") or 10000
         tpl = p_dict.get("template_type", "app")
         runtime_map = {
@@ -180,8 +191,8 @@ async def fetch_student_metrics(user: dict, db: aiosqlite.Connection) -> dict:
         }
         runtime_label = runtime_map.get(tpl, tpl.upper())
         internal_port_str = f"Port {port} ({runtime_label})"
-    elif dep_row:
-        port = dep_row["target_port"]
+    elif dep_rows:
+        port = dep_rows[0]["target_port"]
         internal_port_str = f"Port {port} (Web Runtime)"
     else:
         internal_port_str = "Port dinamis terisolasi (PHP 8.x / Node / Python)"
@@ -297,12 +308,17 @@ async def websocket_resources(
 
     try:
         while True:
-            # Re-query metrics in student-isolated scope
-            async with aiosqlite.connect(settings.DATABASE_PATH) as db:
-                db.row_factory = aiosqlite.Row
-                metrics_data = await fetch_student_metrics(user_dict, db)
+            try:
+                # Re-query metrics in student-isolated scope
+                async with aiosqlite.connect(settings.DATABASE_PATH) as db:
+                    db.row_factory = aiosqlite.Row
+                    metrics_data = await fetch_student_metrics(user_dict, db)
 
-            await websocket.send_json(metrics_data)
+                await websocket.send_json(metrics_data)
+            except WebSocketDisconnect:
+                break
+            except Exception as loop_err:
+                print(f"[WS Resources Telemetry Loop Warning for {user_dict.get('username')}]: {loop_err}")
 
             # Wait 2.5 seconds or receive client ping/pong
             try:
@@ -311,6 +327,8 @@ async def websocket_resources(
                     await websocket.send_json({"type": "pong", "timestamp": int(time.time())})
             except asyncio.TimeoutError:
                 pass
+            except WebSocketDisconnect:
+                break
     except WebSocketDisconnect:
         pass
     except Exception as e:

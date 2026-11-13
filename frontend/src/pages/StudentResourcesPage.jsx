@@ -44,14 +44,14 @@ export default function StudentResourcesPage({ user, onNavigate }) {
         const qRes = await api.get('/quotas/my-quota')
         if (qRes.data) {
           const q = qRes.data
-          const ramMax = q.max_memory_mb || 256
-          const ramUsed = q.used_memory_mb || 12.0
-          const diskMax = q.max_disk_mb || 500
-          const diskUsed = q.disk_used_mb || 157.9
-          const dbMax = q.max_database_disk_mb || 100
-          const dbUsed = q.used_database_disk_mb || 12.5
-          const procMax = q.max_processes || 50
-          const procUsed = q.used_processes || 6
+          const ramMax = q.max_memory_mb ?? 256
+          const ramUsed = q.used_memory_mb ?? 0.0
+          const diskMax = q.max_disk_mb ?? 500
+          const diskUsed = q.disk_used_mb ?? 0.0
+          const dbMax = q.max_database_disk_mb ?? 100
+          const dbUsed = q.used_database_disk_mb ?? 0.0
+          const procMax = q.max_processes ?? 50
+          const procUsed = q.used_processes ?? 0
 
           setData({
             nim,
@@ -190,36 +190,36 @@ export default function StudentResourcesPage({ user, onNavigate }) {
     setTimeout(() => setIsRefreshing(false), 500)
   }
 
-  // Fallback default values while loading
+  // Baseline default values while initial telemetry is establishing
   const ramMetric = data?.metrics?.ram || {
-    used_mb: 12.0,
+    used_mb: 0.0,
     max_mb: 256.0,
-    percent: 4.7,
+    percent: 0.0,
     description: 'Batas memori cgroup v2 per container. Dilindungi OOM Killer agar tidak saling mengganggu dengan mahasiswa lain.'
   }
 
   const cpuMetric = data?.metrics?.cpu || {
     cores: 0.5,
     cores_label: '0.5 Cores',
-    process_count: 6,
+    process_count: 0,
     max_processes: 50,
-    percent: 12.0,
+    percent: 0.0,
     description: 'Jumlah sub-proses PHP/Node.js/Python yang sedang berjalan bersamaan di dalam workspace.'
   }
 
   const diskMetric = data?.metrics?.disk || {
-    used_mb: 157.9,
+    used_mb: 0.0,
     max_mb: 500.0,
-    percent: 31.6,
+    percent: 0.0,
     path: `/home/${nim}`,
     description: `Kapasitas penyimpanan untuk source code, assets, dan unggahan di folder /home/${nim}.`
   }
 
   const dbMetric = data?.metrics?.database || {
-    used_mb: 12.5,
+    used_mb: 0.0,
     max_mb: 100.0,
-    percent: 12.5,
-    count: 1,
+    percent: 0.0,
+    count: 0,
     description: 'Alokasi ruang tabel mandiri pada MariaDB 11 & PostgreSQL 16.'
   }
 
@@ -448,10 +448,10 @@ export default function StudentResourcesPage({ user, onNavigate }) {
             <div className="space-y-1.5 pt-1">
               <div className="flex items-baseline justify-between">
                 <span className={`text-xl sm:text-2xl font-bold font-mono ${isV2 ? 'text-slate-900' : 'text-[#FAF5EC]'}`}>
-                  {cpuMetric.process_count} <span className="text-xs font-normal text-slate-400">Proses</span>
+                  {cpuMetric.process_count} <span className="text-xs font-normal text-slate-400">/ {cpuMetric.max_processes} Proses</span>
                 </span>
-                <span className={`text-xs font-mono ${isV2 ? 'text-slate-500' : 'text-[#D0B8A2]'}`}>
-                  / {cpuMetric.max_processes} Max
+                <span className={`text-xs font-mono font-medium ${isV2 ? 'text-slate-500' : 'text-[#D0B8A2]'}`}>
+                  Alokasi: {cpuMetric.cores_label}
                 </span>
               </div>
 
