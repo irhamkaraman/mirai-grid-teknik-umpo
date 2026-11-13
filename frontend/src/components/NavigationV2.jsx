@@ -85,6 +85,13 @@ export default function NavigationV2({
       activeCheck: (p) => p.startsWith('/thingsboard') || p.startsWith('/vscode') || p.startsWith('/terminal') || p.startsWith('/redis'),
     },
     {
+      id: 'resources',
+      label: 'Resource & Kuota',
+      path: '/resources',
+      icon: Activity,
+      activeCheck: (p) => p.startsWith('/resources'),
+    },
+    {
       id: 'about',
       label: 'Tentang Sistem',
       path: '/about',
@@ -339,7 +346,11 @@ export default function NavigationV2({
               <button
                 type="button"
                 onClick={() => {
-                  onOpenResources()
+                  if (onOpenResources) {
+                    onOpenResources()
+                  } else {
+                    navigate('/resources')
+                  }
                   if (isMobile) setMobileOpen(false)
                 }}
                 className="w-full py-1.5 px-2.5 bg-white hover:bg-emerald-50 border border-gray-200 hover:border-emerald-300 rounded-lg text-[11px] font-bold text-gray-700 hover:text-emerald-700 transition flex items-center justify-center space-x-1.5 shadow-sm"
@@ -352,7 +363,7 @@ export default function NavigationV2({
             <div className="flex flex-col items-center space-y-2">
               <button
                 type="button"
-                onClick={onOpenResources}
+                onClick={onOpenResources || (() => navigate('/resources'))}
                 title={`Detail Resource: ${diskPercent}% terpakai`}
                 className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 hover:scale-105 transition"
               >

@@ -22,6 +22,7 @@ import DatabaseWizardPage from './pages/DatabaseWizardPage'
 import GitVersionControlView from './pages/GitVersionControlView'
 import AccountConfigPage from './pages/AccountConfigPage'
 import AboutPage from './pages/AboutPage'
+import StudentResourcesPage from './pages/StudentResourcesPage'
 import TerminalPage from './pages/TerminalPage'
 import SSHAccessPage from './pages/SSHAccessPage'
 import CronJobsPage from './pages/CronJobsPage'
@@ -357,7 +358,7 @@ export default function App() {
           isCollapsed={isCollapsed}
           setIsCollapsed={handleToggleCollapse}
           quota={userQuota}
-          onOpenResources={() => setShowResourceModal(true)}
+          onOpenResources={() => navigate('/resources')}
           mobileOpen={mobileNavOpen}
           setMobileOpen={setMobileNavOpen}
         />
@@ -512,7 +513,7 @@ export default function App() {
                     onNavigate={(path) => navigate(path.startsWith('/') ? path : '/' + path)}
                     searchQuery={searchQuery}
                     setSearchQuery={setSearchQuery}
-                    onOpenResources={() => setShowResourceModal(true)}
+                    onOpenResources={() => navigate('/resources')}
                   />
                 ) : (
                   <StudentDashboard
@@ -565,6 +566,14 @@ export default function App() {
             <Route
               path="/cron-jobs"
               element={<Navigate to="/cron" replace />}
+            />
+            <Route
+              path="/resources"
+              element={<StudentResourcesPage user={user} onNavigate={(path) => navigate(path.startsWith('/') ? path : '/' + path)} />}
+            />
+            <Route
+              path="/dashboard/resources"
+              element={<Navigate to="/resources" replace />}
             />
             <Route
               path="/about"

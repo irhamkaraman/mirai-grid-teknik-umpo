@@ -19,6 +19,7 @@ from app.api.file_manager_router import router as files_router
 from app.api.jupyter import router as jupyter_router
 from app.api.thingsboard import router as thingsboard_router
 from app.api.ssh_router import router as ssh_router
+from app.api.resources import router as resources_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -71,6 +72,7 @@ app.include_router(files_router, prefix="/api")
 app.include_router(jupyter_router, prefix="/api")
 app.include_router(thingsboard_router, prefix="/api")
 app.include_router(ssh_router, prefix="/api")
+app.include_router(resources_router, prefix="/api")
 
 if __name__ == "__main__":
     import uvicorn

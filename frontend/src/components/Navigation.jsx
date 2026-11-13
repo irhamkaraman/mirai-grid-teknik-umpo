@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Wrench, Users, Server, ChevronLeft, ChevronRight, Info, Code, Loader2 } from 'lucide-react'
+import { Wrench, Users, Server, ChevronLeft, ChevronRight, Info, Code, Loader2, Activity } from 'lucide-react'
 import { launchJupyterLab } from '../api/jupyter'
 
 export function JupyterIcon({ className = "h-4 w-4" }) {
@@ -64,6 +64,7 @@ export default function Navigation({ userRole, isCollapsed, setIsCollapsed }) {
       id: 'system',
       label: 'Sistem',
       items: [
+        { id: 'resources', label: 'Resource & Kuota', path: '/resources', icon: Activity },
         { id: 'about', label: 'Tentang', path: '/about', icon: Info },
       ],
     },
