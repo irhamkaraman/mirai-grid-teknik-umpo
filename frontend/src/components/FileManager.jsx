@@ -4,7 +4,7 @@ import {
   Copy, Move, Key, Eye, Archive, FileArchive, RefreshCw, X, ChevronRight,
   ChevronDown, Search, ArrowUp, CheckSquare, Square, CornerUpLeft, Settings,
   Check, FileCode, Sliders, AlertCircle, Save, HardDrive, Terminal,
-  ExternalLink, FileSpreadsheet, Image as ImageIcon, GitBranch, Layers
+  FileSpreadsheet, Image as ImageIcon, GitBranch, Layers
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { api } from '../api/client'

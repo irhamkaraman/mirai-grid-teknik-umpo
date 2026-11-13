@@ -19,7 +19,6 @@ import {
   Search,
   ChevronRight,
   ChevronDown,
-  ExternalLink,
   Check,
   CheckSquare,
   Square,
@@ -34,8 +33,7 @@ import {
   FilePlus,
   FolderPlus,
   Layers,
-  ArrowRight,
-  Share2
+  ArrowRight
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { api } from '../api/client'
@@ -49,7 +47,6 @@ export default function DashboardV2({
   onOpenResources = () => {}
 }) {
   const username = user?.username || 'user'
-  const primaryDomain = `${username}.miraigrid.web.id`
 
   // State
   const [currentPath, setCurrentPath] = useState('')
@@ -358,17 +355,6 @@ export default function DashboardV2({
     }
   }
 
-  // Multi-Selection action: Share Selected
-  const handleShareSelected = () => {
-    if (selectedPaths.length === 0) return
-    const links = selectedPaths.map((p) => {
-      const clean = p.replace(/^public_html\/?/, '')
-      return `https://${primaryDomain}/${clean}`
-    }).join('\n')
-    navigator.clipboard.writeText(links)
-    toast.success(`${selectedPaths.length} tautan publik berkas disalin ke clipboard!`)
-  }
-
   // Multi-Selection action: Download Zip Selected
   const handleDownloadZipSelected = async () => {
     if (selectedPaths.length === 0) return
@@ -582,15 +568,6 @@ export default function DashboardV2({
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Gagal memproses arsip ZIP.', { id: toastId })
     }
-  }
-
-  // Copy public link to clipboard
-  const handleCopyPublicLink = (item) => {
-    const publicUrl = `https://${primaryDomain}/${item.path.replace(/^public_html\/?/, '')}`
-    navigator.clipboard.writeText(publicUrl)
-    toast.success('Tautan publik disalin ke clipboard!', {
-      description: publicUrl,
-    })
   }
 
   // Drag and Drop move item to folder
@@ -1071,17 +1048,6 @@ export default function DashboardV2({
           </div>
 
           <div className="flex items-center flex-wrap gap-2 text-xs">
-            {/* Share Selected */}
-            <button
-              type="button"
-              onClick={handleShareSelected}
-              className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-emerald-300 hover:text-emerald-200 rounded-lg transition flex items-center space-x-1.5"
-              title="Salin tautan publik berkas terpilih"
-            >
-              <Share2 className="h-3.5 w-3.5 text-emerald-400" />
-              <span>Bagikan Tautan</span>
-            </button>
-
             {/* Download Zip */}
             <button
               type="button"
@@ -1479,17 +1445,6 @@ export default function DashboardV2({
 
           <button
             onClick={() => {
-              handleCopyPublicLink(contextMenu.item)
-              setContextMenu(null)
-            }}
-            className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl hover:bg-gray-100 transition text-left"
-          >
-            <ExternalLink className="h-4 w-4 text-gray-500" />
-            <span>Salin Tautan Publik</span>
-          </button>
-
-          <button
-            onClick={() => {
               setSelectedItem(contextMenu.item)
               setActiveModal('info')
               setContextMenu(null)
@@ -1593,17 +1548,6 @@ export default function DashboardV2({
                   <span>Duplikat</span>
                 </button>
               )}
-
-              <button
-                onClick={() => {
-                  handleCopyPublicLink(bottomSheetItem)
-                  setBottomSheetItem(null)
-                }}
-                className="p-3 bg-gray-50 hover:bg-gray-100 rounded-2xl flex items-center space-x-2 text-gray-700 font-medium"
-              >
-                <ExternalLink className="h-4 w-4 text-gray-500" />
-                <span>Salin Link</span>
-              </button>
 
               <button
                 onClick={() => {
@@ -1840,14 +1784,7 @@ export default function DashboardV2({
               </div>
             </div>
 
-            <div className="pt-2 flex justify-end space-x-2">
-              <button
-                type="button"
-                onClick={() => handleCopyPublicLink(selectedItem)}
-                className="px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg text-xs font-semibold transition"
-              >
-                Salin Tautan Publik
-              </button>
+            <div className="pt-2 flex justify-end">
               <button
                 type="button"
                 onClick={() => setActiveModal(null)}
