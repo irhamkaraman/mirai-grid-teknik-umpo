@@ -16,6 +16,7 @@ import {
   MoreVertical,
   Grid,
   List,
+  LayoutGrid,
   Search,
   ChevronRight,
   ChevronDown,
@@ -30,10 +31,15 @@ import {
   X,
   Save,
   ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
   FilePlus,
   FolderPlus,
   Layers,
-  ArrowRight
+  ArrowRight,
+  User,
+  Calendar,
+  SlidersHorizontal,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { api } from '../api/client'
@@ -56,19 +62,26 @@ export default function DashboardV2({
   const [databases, setDatabases] = useState([])
   const [projects, setProjects] = useState([])
 
-  // View & Filter
+  // View & Filter (Google Drive Style)
   const [viewMode, setViewMode] = useState(() => {
     return localStorage.getItem('mig_cloud_view_mode') || 'grid'
   })
-  const [activeFilter, setActiveFilter] = useState('all') // all, folders, documents, media, archives
+  const [typeFilter, setTypeFilter] = useState('all') // all, folders, documents, media, archives
+  const [dateFilter, setDateFilter] = useState('all') // all, today, 7days, 30days
+  const [ownerFilter, setOwnerFilter] = useState('all') // all, me
+  const [activeDropdown, setActiveDropdown] = useState(null) // 'jenis', 'dimodifikasi', 'pemilik', null
   const [localSearch, setLocalSearch] = useState('')
+
+  // Sorting
+  const [sortField, setSortField] = useState('name') // name, modified, size
+  const [sortOrder, setSortOrder] = useState('asc') // asc, desc
 
   // Multi-selection & Shift+Click
   const [selectedPaths, setSelectedPaths] = useState([])
   const [lastSelectedIndex, setLastSelectedIndex] = useState(null)
   const [clipboard, setClipboard] = useState(null) // { action: 'copy', paths: [] }
-  const [showCreateDropdown, setShowCreateDropdown] = useState(false)
-  const createDropdownRef = useRef(null)
+  const fabRef = useRef(null)
+  const filterDropdownRef = useRef(null)
 
   // Drag and Drop
   const [isDragOverWindow, setIsDragOverWindow] = useState(false)
@@ -145,12 +158,15 @@ export default function DashboardV2({
     }
   }
 
-  // Close context menu & create dropdown on global click
+  // Close context menu, FAB, and filter dropdown on global click
   useEffect(() => {
     const handleGlobalClick = (e) => {
       if (contextMenu) setContextMenu(null)
-      if (createDropdownRef.current && !createDropdownRef.current.contains(e.target)) {
-        setShowCreateDropdown(false)
+      if (fabRef.current && !fabRef.current.contains(e.target)) {
+        setFabOpen(false)
+      }
+      if (filterDropdownRef.current && !filterDropdownRef.current.contains(e.target)) {
+        setActiveDropdown(null)
       }
     }
     window.addEventListener('click', handleGlobalClick)
@@ -220,7 +236,35 @@ export default function DashboardV2({
     return crumbs
   }, [currentPath])
 
-  // Filtering items by filter tabs & search
+  // Sort click handlers
+  const handleSortByName = () => {
+    if (sortField === 'name') {
+      setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortField('name')
+      setSortOrder('asc')
+    }
+  }
+
+  const handleSortByModified = () => {
+    if (sortField === 'modified') {
+      setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortField('modified')
+      setSortOrder('desc')
+    }
+  }
+
+  const handleSortBySize = () => {
+    if (sortField === 'size') {
+      setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortField('size')
+      setSortOrder('desc')
+    }
+  }
+
+  // Filtering & Sorting items by filter chips, search & sort state (Google Drive Real-time)
   const filteredItems = useMemo(() => {
     let result = [...items]
     const q = (localSearch || searchQuery).trim().toLowerCase()
@@ -228,54 +272,69 @@ export default function DashboardV2({
       result = result.filter((it) => it.name.toLowerCase().includes(q))
     }
 
-    if (activeFilter === 'folders') {
+    // 1. Jenis Filter
+    if (typeFilter === 'folders') {
       result = result.filter((it) => it.is_dir)
-    } else if (activeFilter === 'documents') {
+    } else if (typeFilter === 'documents') {
       result = result.filter((it) => {
         if (it.is_dir) return false
-        const ext = it.extension || ''
+        const ext = (it.extension || '').toLowerCase()
         return ['.php', '.html', '.css', '.js', '.py', '.txt', '.json', '.sql', '.md', '.env', '.ini'].includes(ext)
       })
-    } else if (activeFilter === 'media') {
+    } else if (typeFilter === 'media') {
       result = result.filter((it) => {
         if (it.is_dir) return false
-        const ext = it.extension || ''
+        const ext = (it.extension || '').toLowerCase()
         return ['.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp', '.ico', '.mp4'].includes(ext)
       })
-    } else if (activeFilter === 'archives') {
+    } else if (typeFilter === 'archives') {
       result = result.filter((it) => {
         if (it.is_dir) return false
-        const ext = it.extension || ''
+        const ext = (it.extension || '').toLowerCase()
         return ['.zip', '.tar', '.gz', '.rar', '.7z'].includes(ext)
       })
     }
-    return result
-  }, [items, activeFilter, localSearch, searchQuery])
 
-  // Suggested default folders (only when at root directory)
-  const isAtRoot = currentPath === ''
-  const suggestedFolderNames = ['public_html', 'database_backups', 'app_source', 'logs']
-
-  const suggestedFolders = useMemo(() => {
-    if (!isAtRoot) return []
-    return suggestedFolderNames.map((name) => {
-      const match = items.find((it) => it.is_dir && it.name === name)
-      return {
-        name,
-        path: name,
-        exists: Boolean(match),
-        description:
-          name === 'public_html'
-            ? 'Root Web Hosting'
-            : name === 'database_backups'
-            ? 'Backup SQL Database'
-            : name === 'app_source'
-            ? 'Repositori & Source Code'
-            : 'Server & Error Logs',
-        size: match ? `${match.size || 4096} B` : 'Standar Folder',
+    // 2. Dimodifikasi Filter
+    if (dateFilter !== 'all') {
+      const nowSeconds = Math.floor(Date.now() / 1000)
+      if (dateFilter === 'today') {
+        const oneDayAgo = nowSeconds - 86400
+        result = result.filter((it) => (it.modified || 0) >= oneDayAgo)
+      } else if (dateFilter === '7days') {
+        const sevenDaysAgo = nowSeconds - 7 * 86400
+        result = result.filter((it) => (it.modified || 0) >= sevenDaysAgo)
+      } else if (dateFilter === '30days') {
+        const thirtyDaysAgo = nowSeconds - 30 * 86400
+        result = result.filter((it) => (it.modified || 0) >= thirtyDaysAgo)
       }
+    }
+
+    // 3. Pemilik Filter (All items in student workspace belong to student "me")
+    // If ownerFilter === 'me' or 'all', items are shown
+
+    // 4. Sorting (Folders stay on top or sorted)
+    result.sort((a, b) => {
+      if (a.is_dir && !b.is_dir) return -1
+      if (!a.is_dir && b.is_dir) return 1
+
+      if (sortField === 'name') {
+        const cmp = a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
+        return sortOrder === 'asc' ? cmp : -cmp
+      }
+      if (sortField === 'modified') {
+        const diff = (a.modified || 0) - (b.modified || 0)
+        return sortOrder === 'asc' ? diff : -diff
+      }
+      if (sortField === 'size') {
+        const diff = (a.size || 0) - (b.size || 0)
+        return sortOrder === 'asc' ? diff : -diff
+      }
+      return 0
     })
-  }, [isAtRoot, items])
+
+    return result
+  }, [items, typeFilter, dateFilter, ownerFilter, localSearch, searchQuery, sortField, sortOrder])
 
   // Helpers
   const formatBytes = (bytes) => {
@@ -300,19 +359,19 @@ export default function DashboardV2({
 
   const getFileIcon = (item) => {
     if (item.is_dir) {
-      return <Folder className="h-6 w-6 text-emerald-500 fill-emerald-500/20" />
+      return <Folder className="h-5 w-5 text-slate-500 fill-slate-100" />
     }
     const ext = (item.extension || '').toLowerCase()
     if (['.php', '.html', '.js', '.py', '.css', '.json', '.sql'].includes(ext)) {
-      return <FileCode className="h-6 w-6 text-emerald-600" />
+      return <FileCode className="h-5 w-5 text-slate-700" />
     }
     if (['.zip', '.tar', '.gz'].includes(ext)) {
-      return <FileArchive className="h-6 w-6 text-amber-600" />
+      return <FileArchive className="h-5 w-5 text-amber-600" />
     }
     if (['.png', '.jpg', '.jpeg', '.svg', '.webp'].includes(ext)) {
-      return <ImageIcon className="h-6 w-6 text-blue-500" />
+      return <ImageIcon className="h-5 w-5 text-blue-500" />
     }
-    return <FileText className="h-6 w-6 text-gray-500" />
+    return <FileText className="h-5 w-5 text-slate-500" />
   }
 
   // Navigation into directory
@@ -644,407 +703,285 @@ export default function DashboardV2({
         </div>
       )}
 
-      {/* 1. TOP ACTION BAR (Quick Actions ala Google Drive) */}
-      <div className="bg-white border border-gray-200/90 rounded-xl p-4 sm:p-5 shadow-sm space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          {/* Left Action Buttons */}
-          <div className="flex items-center flex-wrap gap-2.5">
-            {/* + Create Button with Dropdown (ala Google Drive) */}
-            <div className="relative inline-block text-left" ref={createDropdownRef}>
-              <button
-                type="button"
-                onClick={() => setShowCreateDropdown(!showCreateDropdown)}
-                className="flex items-center space-x-2 px-4 py-2.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow-sm hover:shadow transition-all active:scale-95 group"
-              >
-                <Plus className={`h-4 w-4 text-emerald-400 transition-transform duration-200 ${showCreateDropdown ? 'rotate-45' : 'group-hover:rotate-90'}`} />
-                <span>+ Buat Baru</span>
-                <ChevronDown className={`h-3 w-3 text-gray-400 transition-transform ${showCreateDropdown ? 'rotate-180' : ''}`} />
-              </button>
-
-              {showCreateDropdown && (
-                <div className="absolute left-0 mt-2 w-56 rounded-xl bg-white border border-gray-200 shadow-2xl p-1.5 z-30 animate-in fade-in zoom-in-95 duration-150 text-xs">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowCreateDropdown(false)
-                      setNewItemName('')
-                      setNewItemIsDir(false)
-                      setActiveModal('new_item')
-                    }}
-                    className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-lg text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 transition text-left"
-                  >
-                    <FilePlus className="h-4 w-4 text-emerald-600" />
-                    <span>Berkas Baru (File)</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowCreateDropdown(false)
-                      setNewItemName('')
-                      setNewItemIsDir(true)
-                      setActiveModal('new_item')
-                    }}
-                    className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-lg text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 transition text-left"
-                  >
-                    <FolderPlus className="h-4 w-4 text-emerald-600" />
-                    <span>Folder Baru</span>
-                  </button>
-                  <div className="my-1 border-t border-gray-100" />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowCreateDropdown(false)
-                      fileInputRef.current?.click()
-                    }}
-                    className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-lg text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 transition text-left"
-                  >
-                    <Upload className="h-4 w-4 text-blue-600" />
-                    <span>Unggah Berkas</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowCreateDropdown(false)
-                      zipInputRef.current?.click()
-                    }}
-                    className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-lg text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 transition text-left"
-                  >
-                    <FileArchive className="h-4 w-4 text-amber-500" />
-                    <span>Unggah ZIP (Auto-Extract)</span>
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Upload Button */}
+      {/* 1. BREADCRUMB PATH & SEARCH BAR */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border border-slate-200/90 rounded-xl px-4 py-2.5 shadow-xs">
+        {/* Breadcrumb Path Navigation */}
+        <div className="flex items-center space-x-1 overflow-x-auto py-0.5 no-scrollbar">
+          {currentPath && (
             <button
               type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="flex items-center space-x-2 px-3.5 py-2 rounded-lg bg-white hover:bg-emerald-50/70 border border-gray-200 hover:border-emerald-300 text-gray-700 hover:text-emerald-700 text-xs font-semibold shadow-xs transition active:scale-95"
+              onClick={handleGoUp}
+              className="flex items-center space-x-1 px-2.5 py-1 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition border border-slate-200 mr-1.5 shrink-0 font-medium text-xs shadow-xs"
+              title="Naik satu tingkat folder"
             >
-              <Upload className="h-4 w-4 text-emerald-600" />
-              <span className="hidden sm:inline">Unggah Berkas</span>
-              <span className="inline sm:hidden">Unggah</span>
+              <ArrowUp className="h-3.5 w-3.5" />
+              <span>Naik</span>
             </button>
+          )}
 
-            {/* Upload ZIP Auto-Extract */}
-            <button
-              type="button"
-              onClick={() => zipInputRef.current?.click()}
-              className="flex items-center space-x-2 px-3.5 py-2 rounded-lg bg-white hover:bg-emerald-50/70 border border-gray-200 hover:border-emerald-300 text-gray-700 hover:text-emerald-700 text-xs font-semibold shadow-xs transition active:scale-95"
-              title="Unggah arsip ZIP dan otomatis ekstrak ke folder ini"
-            >
-              <FileArchive className="h-4 w-4 text-amber-500" />
-              <span className="hidden sm:inline">Unggah ZIP (Auto-Extract)</span>
-              <span className="inline sm:hidden">ZIP</span>
-            </button>
-
-            {/* Folder Baru Button */}
-            <button
-              type="button"
-              onClick={() => {
-                setNewItemName('')
-                setNewItemIsDir(true)
-                setActiveModal('new_item')
-              }}
-              className="flex items-center space-x-2 px-3.5 py-2 rounded-lg bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 text-xs font-semibold shadow-xs transition"
-            >
-              <FolderPlus className="h-4 w-4 text-gray-500" />
-              <span className="hidden md:inline">Folder Baru</span>
-            </button>
-
-            {/* Edit Code Button (if single editable file selected) */}
-            {selectedPaths.length === 1 && (() => {
-              const target = items.find((it) => it.path === selectedPaths[0])
-              if (!target || target.is_dir) return null
-              const ext = (target.extension || '').toLowerCase()
-              if (!['.php', '.html', '.css', '.js', '.py', '.txt', '.json', '.sql', '.md', '.env', '.ini'].includes(ext)) return null
-              return (
+          <nav className="flex items-center space-x-1.5 text-xs text-slate-600">
+            {breadcrumbs.map((crumb, idx) => (
+              <React.Fragment key={crumb.path}>
+                {idx > 0 && <ChevronRight className="h-3.5 w-3.5 text-slate-400 shrink-0" />}
                 <button
                   type="button"
-                  onClick={() => handleOpenFileEditor(target)}
-                  className="flex items-center space-x-2 px-3.5 py-2 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 text-xs font-semibold shadow-xs transition"
-                  title="Buka dan sunting kode berkas ini"
+                  onClick={() => setCurrentPath(crumb.path)}
+                  className={`hover:text-slate-900 px-2 py-1 rounded-lg transition shrink-0 ${
+                    idx === breadcrumbs.length - 1
+                      ? 'font-bold text-slate-900 bg-slate-100'
+                      : 'hover:bg-slate-50'
+                  }`}
                 >
-                  <Edit3 className="h-4 w-4 text-emerald-600" />
-                  <span>Edit Kode</span>
+                  {crumb.name}
                 </button>
-              )
-            })()}
-
-            {/* Download Button (if file(s) selected) */}
-            {selectedPaths.length > 0 && (
-              <button
-                type="button"
-                onClick={() => {
-                  if (selectedPaths.length === 1) {
-                    const target = items.find((it) => it.path === selectedPaths[0])
-                    if (target) handleDownloadFile(target)
-                  } else {
-                    handleDownloadZipSelected()
-                  }
-                }}
-                className="flex items-center space-x-2 px-3.5 py-2 rounded-lg bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 text-xs font-semibold shadow-xs transition"
-                title="Unduh berkas yang dipilih"
-              >
-                <Download className="h-4 w-4 text-emerald-600" />
-                <span>Unduh {selectedPaths.length > 1 ? `ZIP (${selectedPaths.length})` : ''}</span>
-              </button>
-            )}
-          </div>
-
-          {/* Right Action: Search & View Switcher */}
-          <div className="flex items-center space-x-3">
-            {/* Quick Search in Current Folder */}
-            <div className="relative w-full sm:w-56">
-              <Search className="h-3.5 w-3.5 absolute left-3 top-2.5 text-gray-400" />
-              <input
-                type="text"
-                value={localSearch}
-                onChange={(e) => setLocalSearch(e.target.value)}
-                placeholder="Saring berkas di sini..."
-                className="w-full bg-gray-50 border border-gray-200 focus:border-emerald-500 focus:bg-white rounded-lg pl-9 pr-3 py-1.5 text-xs text-gray-800 placeholder-gray-400 outline-none transition font-sans"
-              />
-              {localSearch && (
-                <button
-                  onClick={() => setLocalSearch('')}
-                  className="absolute right-2.5 top-2 text-gray-400 hover:text-gray-600"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              )}
-            </div>
-
-            {/* View Mode Switcher Toggle */}
-            <div className="flex items-center bg-gray-100 p-1 rounded-lg border border-gray-200/80">
-              <button
-                type="button"
-                onClick={() => handleToggleViewMode('grid')}
-                className={`p-1.5 rounded-md transition ${
-                  viewMode === 'grid'
-                    ? 'bg-white text-emerald-700 shadow-sm font-bold'
-                    : 'text-gray-500 hover:text-gray-800'
-                }`}
-                title="Tampilan Kotak Grid"
-              >
-                <Grid className="h-4 w-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => handleToggleViewMode('list')}
-                className={`p-1.5 rounded-md transition ${
-                  viewMode === 'list'
-                    ? 'bg-white text-emerald-700 shadow-sm font-bold'
-                    : 'text-gray-500 hover:text-gray-800'
-                }`}
-                title="Tampilan Tabel List"
-              >
-                <List className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
+              </React.Fragment>
+            ))}
+          </nav>
         </div>
 
-        {/* Breadcrumb Path Navigation */}
-        <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-          <div className="flex items-center space-x-1 overflow-x-auto py-1">
-            {currentPath && (
+        <div className="flex items-center space-x-2 shrink-0">
+          {/* Quick Search in Current Folder */}
+          <div className="relative w-full sm:w-56">
+            <Search className="h-3.5 w-3.5 absolute left-3 top-2.5 text-slate-400" />
+            <input
+              type="text"
+              value={localSearch}
+              onChange={(e) => setLocalSearch(e.target.value)}
+              placeholder="Saring berkas di sini..."
+              className="w-full bg-slate-50 border border-slate-200 focus:border-slate-400 focus:bg-white rounded-lg pl-9 pr-7 py-1.5 text-xs text-slate-800 placeholder-slate-400 outline-none transition font-sans"
+            />
+            {localSearch && (
               <button
-                type="button"
-                onClick={handleGoUp}
-                className="flex items-center space-x-1 px-2.5 py-1 rounded-lg text-gray-500 hover:text-emerald-700 hover:bg-emerald-50 transition border border-gray-200/80 mr-1.5 shrink-0 font-medium text-xs shadow-xs"
-                title="Naik satu tingkat folder"
+                onClick={() => setLocalSearch('')}
+                className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600"
               >
-                <ArrowUp className="h-3.5 w-3.5" />
-                <span>Naik</span>
+                <X className="h-3 w-3" />
               </button>
             )}
-
-            <nav className="flex items-center space-x-1.5 text-xs text-gray-600">
-              {breadcrumbs.map((crumb, idx) => (
-                <React.Fragment key={crumb.path}>
-                  {idx > 0 && <ChevronRight className="h-3.5 w-3.5 text-gray-400 shrink-0" />}
-                  <button
-                    type="button"
-                    onClick={() => setCurrentPath(crumb.path)}
-                    className={`hover:text-emerald-700 px-2 py-1 rounded-lg transition shrink-0 ${
-                      idx === breadcrumbs.length - 1
-                        ? 'font-bold text-gray-900 bg-gray-100'
-                        : 'hover:bg-gray-50'
-                    }`}
-                  >
-                    {crumb.name}
-                  </button>
-                </React.Fragment>
-              ))}
-            </nav>
           </div>
 
+          {/* Refresh Button */}
           <button
             type="button"
             onClick={() => fetchDirectory(currentPath)}
-            className="p-1.5 rounded-lg text-gray-400 hover:text-emerald-700 hover:bg-emerald-50 transition shrink-0"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition shrink-0"
             title="Refresh Direktori"
           >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin text-emerald-600' : ''}`} />
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin text-slate-700' : ''}`} />
           </button>
         </div>
       </div>
 
-      {/* 2. SUGGESTED FOLDERS (Grid Folder Hijau Segar ala Google Drive) */}
-      {isAtRoot && !localSearch && !searchQuery && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 flex items-center space-x-2">
-              <Folder className="h-4 w-4 text-emerald-600" />
-              <span>Direktori Standar Lab (Suggested Folders)</span>
-            </h3>
-            <span className="text-[11px] text-gray-400">Akses cepat direktori kerja</span>
-          </div>
+      {/* 2. HEADER KONTROL, FILTER CHIPS, & TOGGLE TATA LETAK (Google Drive Style) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative select-none">
+        {/* Sisi Kiri: Filter Chips Dropdown Real-time */}
+        <div className="flex items-center flex-wrap gap-2" ref={filterDropdownRef}>
+          {/* Filter Chip: Jenis */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setActiveDropdown(activeDropdown === 'jenis' ? null : 'jenis')}
+              className={`rounded-lg border px-3 py-1.5 text-xs font-medium flex items-center gap-1.5 transition ${
+                typeFilter !== 'all'
+                  ? 'border-slate-400 bg-slate-100 text-slate-900 font-semibold'
+                  : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              <SlidersHorizontal className="h-3.5 w-3.5 text-slate-500" />
+              <span>
+                {typeFilter === 'all'
+                  ? 'Jenis'
+                  : typeFilter === 'folders'
+                  ? 'Jenis: Folder'
+                  : typeFilter === 'documents'
+                  ? 'Jenis: Dokumen & Kode'
+                  : typeFilter === 'media'
+                  ? 'Jenis: Gambar/Media'
+                  : 'Jenis: Arsip ZIP'}
+              </span>
+              <ChevronDown className={`h-3 w-3 text-slate-400 transition-transform ${activeDropdown === 'jenis' ? 'rotate-180' : ''}`} />
+            </button>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-            {suggestedFolders.map((sug) => (
-              <div
-                key={sug.name}
-                onDragOver={(e) => {
-                  e.preventDefault()
-                  setDragOverFolder(sug.name)
-                }}
-                onDragLeave={() => {
-                  if (dragOverFolder === sug.name) setDragOverFolder(null)
-                }}
-                onDrop={(e) => {
-                  e.preventDefault()
-                  handleDropOnFolder({ path: sug.name, name: sug.name })
-                }}
-                onClick={() => {
-                  if (sug.exists) {
-                    setCurrentPath(sug.path)
-                  } else {
-                    // Create folder if missing
-                    setNewItemName(sug.name)
-                    setNewItemIsDir(true)
-                    setActiveModal('new_item')
-                  }
-                }}
-                className={`bg-white rounded-xl p-4 shadow-xs transition-all duration-200 cursor-pointer group relative overflow-hidden ${
-                  dragOverFolder === sug.name
-                    ? 'border-emerald-600 ring-4 ring-emerald-300 bg-emerald-100/50 scale-105 shadow-md'
-                    : 'border border-emerald-100/90 hover:border-emerald-400 hover:shadow-xs'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <div className="h-10 w-10 rounded-lg bg-emerald-50 border border-emerald-200/80 flex items-center justify-center text-emerald-600 group-hover:scale-105 transition-transform">
-                    <Folder className="h-5 w-5 fill-emerald-500/20" />
-                  </div>
+            {activeDropdown === 'jenis' && (
+              <div className="absolute left-0 mt-1.5 w-52 rounded-xl bg-white border border-slate-200 shadow-xl p-1 z-30 animate-in fade-in zoom-in-95 duration-100 text-xs">
+                {[
+                  { id: 'all', label: 'Semua' },
+                  { id: 'folders', label: 'Folder' },
+                  { id: 'documents', label: 'Dokumen & Kode' },
+                  { id: 'media', label: 'Gambar/Media' },
+                  { id: 'archives', label: 'Arsip ZIP' },
+                ].map((opt) => (
                   <button
+                    key={opt.id}
                     type="button"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      const itemMatch = items.find((it) => it.name === sug.name)
-                      if (itemMatch) {
-                        setSelectedItem(itemMatch)
-                        if (window.innerWidth < 768) {
-                          setBottomSheetItem(itemMatch)
-                        } else {
-                          setContextMenu({
-                            x: e.clientX,
-                            y: e.clientY,
-                            item: itemMatch,
-                          })
-                        }
-                      } else {
-                        toast.info(`Folder "${sug.name}" belum dibuat. Klik kartu untuk membuat sekarang.`)
-                      }
+                    onClick={() => {
+                      setTypeFilter(opt.id)
+                      setActiveDropdown(null)
                     }}
-                    className="p-1 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition"
-                    title="Opsi Direktori"
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition ${
+                      typeFilter === opt.id
+                        ? 'bg-slate-100 text-slate-900 font-semibold'
+                        : 'text-slate-700 hover:bg-slate-50'
+                    }`}
                   >
-                    <MoreVertical className="h-4 w-4" />
+                    <span>{opt.label}</span>
+                    {typeFilter === opt.id && <Check className="h-3.5 w-3.5 text-slate-800" />}
                   </button>
-                </div>
-
-                <div className="space-y-0.5">
-                  <h4 className="text-sm font-bold text-gray-900 group-hover:text-emerald-700 transition truncate">
-                    {sug.name}
-                  </h4>
-                  <p className="text-[11px] text-gray-500 truncate">{sug.description}</p>
-                </div>
-
-                <div className="mt-3 flex items-center justify-between text-[11px] font-mono text-gray-400 pt-2 border-t border-gray-100">
-                  <span>{sug.exists ? 'Tersedia' : 'Klik untuk buat'}</span>
-                  <span className="text-emerald-600 font-semibold group-hover:translate-x-1 transition-transform">
-                    Buka &rarr;
-                  </span>
-                </div>
+                ))}
               </div>
-            ))}
+            )}
           </div>
-        </div>
-      )}
 
-      {/* 3. HORIZONTAL SCROLLABLE PILL FILTERS */}
-      <div className="flex items-center space-x-2 overflow-x-auto pb-1 pt-1 no-scrollbar select-none">
-        <button
-          onClick={() => setActiveFilter('all')}
-          className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition shrink-0 ${
-            activeFilter === 'all'
-              ? 'bg-emerald-600 text-white shadow-sm'
-              : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
-          }`}
-        >
-          Semua Berkas ({items.length})
-        </button>
-        <button
-          onClick={() => setActiveFilter('folders')}
-          className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition shrink-0 ${
-            activeFilter === 'folders'
-              ? 'bg-emerald-600 text-white shadow-sm'
-              : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
-          }`}
-        >
-          Folder ({items.filter((i) => i.is_dir).length})
-        </button>
-        <button
-          onClick={() => setActiveFilter('documents')}
-          className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition shrink-0 ${
-            activeFilter === 'documents'
-              ? 'bg-emerald-600 text-white shadow-sm'
-              : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
-          }`}
-        >
-          Dokumen & Kode
-        </button>
-        <button
-          onClick={() => setActiveFilter('media')}
-          className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition shrink-0 ${
-            activeFilter === 'media'
-              ? 'bg-emerald-600 text-white shadow-sm'
-              : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
-          }`}
-        >
-          Media & Gambar
-        </button>
-        <button
-          onClick={() => setActiveFilter('archives')}
-          className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition shrink-0 ${
-            activeFilter === 'archives'
-              ? 'bg-emerald-600 text-white shadow-sm'
-              : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
-          }`}
-        >
-          Arsip ZIP
-        </button>
+          {/* Filter Chip: Dimodifikasi */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setActiveDropdown(activeDropdown === 'dimodifikasi' ? null : 'dimodifikasi')}
+              className={`rounded-lg border px-3 py-1.5 text-xs font-medium flex items-center gap-1.5 transition ${
+                dateFilter !== 'all'
+                  ? 'border-slate-400 bg-slate-100 text-slate-900 font-semibold'
+                  : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              <Calendar className="h-3.5 w-3.5 text-slate-500" />
+              <span>
+                {dateFilter === 'all'
+                  ? 'Dimodifikasi'
+                  : dateFilter === 'today'
+                  ? 'Dimodifikasi: Hari Ini'
+                  : dateFilter === '7days'
+                  ? 'Dimodifikasi: 7 Hari Terakhir'
+                  : 'Dimodifikasi: 30 Hari Terakhir'}
+              </span>
+              <ChevronDown className={`h-3 w-3 text-slate-400 transition-transform ${activeDropdown === 'dimodifikasi' ? 'rotate-180' : ''}`} />
+            </button>
+
+            {activeDropdown === 'dimodifikasi' && (
+              <div className="absolute left-0 mt-1.5 w-52 rounded-xl bg-white border border-slate-200 shadow-xl p-1 z-30 animate-in fade-in zoom-in-95 duration-100 text-xs">
+                {[
+                  { id: 'all', label: 'Semua Waktu' },
+                  { id: 'today', label: 'Hari Ini' },
+                  { id: '7days', label: '7 Hari Terakhir' },
+                  { id: '30days', label: '30 Hari Terakhir' },
+                ].map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => {
+                      setDateFilter(opt.id)
+                      setActiveDropdown(null)
+                    }}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition ${
+                      dateFilter === opt.id
+                        ? 'bg-slate-100 text-slate-900 font-semibold'
+                        : 'text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span>{opt.label}</span>
+                    {dateFilter === opt.id && <Check className="h-3.5 w-3.5 text-slate-800" />}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Filter Chip: Pemilik */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setActiveDropdown(activeDropdown === 'pemilik' ? null : 'pemilik')}
+              className={`rounded-lg border px-3 py-1.5 text-xs font-medium flex items-center gap-1.5 transition ${
+                ownerFilter !== 'all'
+                  ? 'border-slate-400 bg-slate-100 text-slate-900 font-semibold'
+                  : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              <User className="h-3.5 w-3.5 text-slate-500" />
+              <span>{ownerFilter === 'all' ? 'Pemilik' : 'Pemilik: Saya / Mahasiswa'}</span>
+              <ChevronDown className={`h-3 w-3 text-slate-400 transition-transform ${activeDropdown === 'pemilik' ? 'rotate-180' : ''}`} />
+            </button>
+
+            {activeDropdown === 'pemilik' && (
+              <div className="absolute left-0 mt-1.5 w-52 rounded-xl bg-white border border-slate-200 shadow-xl p-1 z-30 animate-in fade-in zoom-in-95 duration-100 text-xs">
+                {[
+                  { id: 'all', label: 'Semua Pemilik' },
+                  { id: 'me', label: 'Saya / Mahasiswa' },
+                ].map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => {
+                      setOwnerFilter(opt.id)
+                      setActiveDropdown(null)
+                    }}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-left transition ${
+                      ownerFilter === opt.id
+                        ? 'bg-slate-100 text-slate-900 font-semibold'
+                        : 'text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span>{opt.label}</span>
+                    {ownerFilter === opt.id && <Check className="h-3.5 w-3.5 text-slate-800" />}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Reset Filters button */}
+          {(typeFilter !== 'all' || dateFilter !== 'all' || ownerFilter !== 'all') && (
+            <button
+              type="button"
+              onClick={() => {
+                setTypeFilter('all')
+                setDateFilter('all')
+                setOwnerFilter('all')
+              }}
+              className="px-2.5 py-1 text-xs text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition"
+              title="Reset semua filter"
+            >
+              Reset
+            </button>
+          )}
+        </div>
+
+        {/* Sisi Kanan: Tata Letak & View Switcher */}
+        <div className="flex items-center self-end sm:self-auto bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+          <button
+            type="button"
+            onClick={() => handleToggleViewMode('list')}
+            className={`p-1.5 rounded-md transition ${
+              viewMode === 'list'
+                ? 'bg-white text-slate-900 shadow-xs font-semibold'
+                : 'text-slate-500 hover:text-slate-800'
+            }`}
+            title="Tampilan Tabel List"
+          >
+            <List className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => handleToggleViewMode('grid')}
+            className={`p-1.5 rounded-md transition ${
+              viewMode === 'grid'
+                ? 'bg-white text-slate-900 shadow-xs font-semibold'
+                : 'text-slate-500 hover:text-slate-800'
+            }`}
+            title="Tampilan Kotak Grid"
+          >
+            <LayoutGrid className="h-4 w-4" />
+          </button>
+        </div>
       </div>
 
-      {/* 4. MULTI-SELECTION FLOATING ACTION BAR */}
+      {/* 3. MULTI-SELECTION FLOATING ACTION BAR */}
       {selectedPaths.length > 0 && (
-        <div className="sticky top-4 z-20 bg-gray-900 text-white px-5 py-3 rounded-xl shadow-xl flex items-center justify-between animate-in slide-in-from-top duration-200">
+        <div className="sticky top-4 z-20 bg-slate-900 text-white px-5 py-3 rounded-xl shadow-xl flex items-center justify-between animate-in slide-in-from-top duration-200">
           <div className="flex items-center space-x-3 text-xs">
-            <span className="font-mono bg-emerald-500/30 text-emerald-300 font-bold px-2 py-0.5 rounded-full border border-emerald-400/30">
+            <span className="font-mono bg-slate-800 text-slate-200 font-bold px-2.5 py-0.5 rounded-full border border-slate-700">
               {selectedPaths.length} dipilih
             </span>
-            <span className="hidden sm:inline text-gray-300">Berkas aktif</span>
+            <span className="hidden sm:inline text-slate-300">Berkas aktif</span>
           </div>
 
           <div className="flex items-center flex-wrap gap-2 text-xs">
@@ -1052,7 +989,7 @@ export default function DashboardV2({
             <button
               type="button"
               onClick={handleDownloadZipSelected}
-              className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-amber-300 hover:text-amber-200 rounded-lg transition flex items-center space-x-1.5"
+              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-amber-300 hover:text-amber-200 rounded-lg transition flex items-center space-x-1.5"
               title="Kompresi dan unduh semua berkas terpilih sebagai ZIP"
             >
               <FileArchive className="h-3.5 w-3.5 text-amber-400" />
@@ -1066,7 +1003,7 @@ export default function DashboardV2({
                 setClipboard({ action: 'copy', paths: [...selectedPaths] })
                 toast.success(`${selectedPaths.length} berkas disalin ke clipboard!`)
               }}
-              className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-lg transition flex items-center space-x-1.5"
+              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg transition flex items-center space-x-1.5"
               title="Salin ke clipboard (Ctrl+C)"
             >
               <Copy className="h-3.5 w-3.5" />
@@ -1077,7 +1014,7 @@ export default function DashboardV2({
             <button
               type="button"
               onClick={() => {
-                setSelectedItem(null) // Target selectedPaths
+                setSelectedItem(null)
                 setActiveModal('delete')
               }}
               className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg transition flex items-center space-x-1.5"
@@ -1094,7 +1031,7 @@ export default function DashboardV2({
                 setSelectedPaths([])
                 setLastSelectedIndex(null)
               }}
-              className="p-1.5 text-gray-400 hover:text-white rounded-lg transition"
+              className="p-1.5 text-slate-400 hover:text-white rounded-lg transition"
               title="Batal Seleksi"
             >
               <X className="h-4 w-4" />
@@ -1103,7 +1040,7 @@ export default function DashboardV2({
         </div>
       )}
 
-      {/* 5. INTERACTIVE FILE LIST / GRID */}
+      {/* 4. INTERACTIVE FILE LIST / GRID */}
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           <SkeletonCard />
@@ -1113,20 +1050,20 @@ export default function DashboardV2({
         </div>
       ) : filteredItems.length === 0 ? (
         /* Empty State */
-        <div className="bg-white border border-gray-200 rounded-xl p-8 sm:p-12 text-center text-gray-600 flex flex-col items-center justify-center space-y-4 shadow-sm">
-          <div className="h-16 w-16 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600">
+        <div className="bg-white border border-slate-200 rounded-xl p-8 sm:p-12 text-center text-slate-600 flex flex-col items-center justify-center space-y-4 shadow-xs">
+          <div className="h-16 w-16 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-500">
             <Folder className="h-8 w-8 stroke-[1.5]" />
           </div>
           <div className="max-w-md space-y-1">
-            <h4 className="text-base font-bold text-gray-900">Folder ini masih kosong</h4>
-            <p className="text-xs text-gray-500 leading-relaxed">
-              Tarik berkas PHP, HTML, JavaScript, atau ZIP kamu ke area ini atau klik tombol Unggah di atas untuk memulai praktikum!
+            <h4 className="text-base font-bold text-slate-900">Folder ini masih kosong</h4>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Tarik berkas PHP, HTML, JavaScript, atau ZIP kamu ke area ini atau gunakan tombol aksi di pojok kanan bawah untuk memulai praktikum!
             </p>
           </div>
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-sm transition"
+            className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold shadow-xs transition"
           >
             Unggah Berkas Sekarang
           </button>
@@ -1161,10 +1098,10 @@ export default function DashboardV2({
                 onContextMenu={(e) => handleContextMenu(e, item)}
                 className={`group relative bg-white rounded-xl p-4 border transition-all duration-200 cursor-pointer select-none hover:-translate-y-0.5 ${
                   isSelected
-                    ? 'border-emerald-500 ring-2 ring-emerald-500/20 bg-emerald-50/40 shadow-sm'
+                    ? 'border-slate-400 ring-2 ring-slate-200 bg-slate-50/70 shadow-xs'
                     : isDropTarget
-                    ? 'border-emerald-600 ring-4 ring-emerald-300 bg-emerald-100/50 scale-105'
-                    : 'border-gray-200/90 hover:border-emerald-300 hover:shadow-md'
+                    ? 'border-emerald-600 ring-4 ring-emerald-200 bg-emerald-50 scale-102'
+                    : 'border-slate-200/90 hover:border-slate-300 hover:shadow-md'
                 }`}
               >
                 {/* Header Card: Checkbox + Icon + Options Menu */}
@@ -1173,16 +1110,16 @@ export default function DashboardV2({
                     <button
                       type="button"
                       onClick={(e) => handleToggleSelect(item.path, index, e)}
-                      className="p-0.5 rounded text-gray-400 hover:text-emerald-600 transition"
+                      className="p-0.5 rounded text-slate-400 hover:text-slate-700 transition"
                       title="Pilih berkas (Tahan Shift untuk multi-seleksi)"
                     >
                       {isSelected ? (
-                        <CheckSquare className="h-4 w-4 text-emerald-600 fill-emerald-100" />
+                        <CheckSquare className="h-4 w-4 text-slate-900" />
                       ) : (
                         <Square className="h-4 w-4 opacity-40 group-hover:opacity-100" />
                       )}
                     </button>
-                    <div className="p-1 rounded-lg bg-gray-50 group-hover:bg-emerald-50 transition">
+                    <div className="p-1 rounded-lg bg-slate-50 group-hover:bg-slate-100 transition">
                       {getFileIcon(item)}
                     </div>
                   </div>
@@ -1192,7 +1129,6 @@ export default function DashboardV2({
                     onClick={(e) => {
                       e.stopPropagation()
                       setSelectedItem(item)
-                      // On mobile opens bottom sheet, on desktop opens modal info
                       if (window.innerWidth < 768) {
                         setBottomSheetItem(item)
                       } else {
@@ -1203,7 +1139,7 @@ export default function DashboardV2({
                         })
                       }
                     }}
-                    className="p-1 text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition"
+                    className="p-1 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition"
                     title="Menu Aksi"
                   >
                     <MoreVertical className="h-4 w-4" />
@@ -1213,19 +1149,19 @@ export default function DashboardV2({
                 {/* File Name & Info */}
                 <div className="space-y-1">
                   <h4
-                    className="text-xs font-bold text-gray-900 group-hover:text-emerald-700 transition truncate"
+                    className="text-xs font-semibold text-slate-900 group-hover:text-slate-700 transition truncate"
                     title={item.name}
                   >
                     {item.name}
                   </h4>
-                  <div className="flex items-center justify-between text-[11px] text-gray-400 font-mono">
+                  <div className="flex items-center justify-between text-[11px] text-slate-400 font-mono">
                     <span>{item.is_dir ? 'Folder' : formatBytes(item.size)}</span>
                     <span>{item.permissions || '0755'}</span>
                   </div>
                 </div>
 
                 {/* Footer Modified Date */}
-                <div className="mt-3 pt-2 border-t border-gray-100 text-[10px] text-gray-400 flex items-center justify-between">
+                <div className="mt-3 pt-2 border-t border-slate-100 text-[10px] text-slate-400 flex items-center justify-between">
                   <span>{formatDate(item.modified)}</span>
                   {!item.is_dir && (
                     <button
@@ -1234,7 +1170,7 @@ export default function DashboardV2({
                         e.stopPropagation()
                         handleDownloadFile(item)
                       }}
-                      className="opacity-0 group-hover:opacity-100 text-emerald-600 hover:text-emerald-800 transition"
+                      className="opacity-0 group-hover:opacity-100 text-slate-600 hover:text-slate-900 transition"
                       title="Unduh Berkas"
                     >
                       <Download className="h-3.5 w-3.5" />
@@ -1247,33 +1183,84 @@ export default function DashboardV2({
         </div>
       ) : (
         /* LIST VIEW (Table ala Google Drive) */
-        <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+        <div className="bg-white border border-slate-200/90 rounded-2xl overflow-hidden shadow-xs">
           <table className="w-full text-xs text-left">
-            <thead className="bg-gray-50 border-b border-gray-200 text-gray-500 font-medium">
+            <thead className="bg-slate-50/70 border-b border-slate-200/80 text-slate-500 font-medium">
               <tr>
-                <th className="p-3.5 w-10">
+                <th className="py-3 px-4 w-10">
                   <button
                     type="button"
                     onClick={handleSelectAll}
-                    className="p-0.5 rounded text-gray-400 hover:text-emerald-600"
+                    className="p-0.5 rounded text-slate-400 hover:text-slate-700"
                     title="Pilih Semua (Select All)"
                   >
                     {selectedPaths.length === filteredItems.length && filteredItems.length > 0 ? (
-                      <CheckSquare className="h-4 w-4 text-emerald-600" />
+                      <CheckSquare className="h-4 w-4 text-slate-900" />
                     ) : (
                       <Square className="h-4 w-4" />
                     )}
                   </button>
                 </th>
-                <th className="p-3.5">Nama Berkas</th>
-                <th className="p-3.5">Ukuran</th>
-                <th className="p-3.5">Tipe / Ekstensi</th>
-                <th className="p-3.5">Terakhir Diubah</th>
-                <th className="p-3.5">Izin (Perm)</th>
-                <th className="p-3.5 text-right">Aksi</th>
+                <th
+                  className="py-3 px-4 cursor-pointer select-none group text-xs font-medium text-slate-500 uppercase tracking-wider"
+                  onClick={handleSortByName}
+                >
+                  <div className="flex items-center space-x-1.5">
+                    <span>Nama</span>
+                    {sortField === 'name' ? (
+                      sortOrder === 'asc' ? (
+                        <ArrowUp className="h-3.5 w-3.5 text-slate-700" />
+                      ) : (
+                        <ArrowDown className="h-3.5 w-3.5 text-slate-700" />
+                      )
+                    ) : (
+                      <ArrowUpDown className="h-3.5 w-3.5 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    )}
+                  </div>
+                </th>
+                <th className="py-3 px-4 hidden md:table-cell text-xs font-medium text-slate-500 uppercase tracking-wider">
+                  Pemilik
+                </th>
+                <th
+                  className="py-3 px-4 hidden md:table-cell cursor-pointer select-none group text-xs font-medium text-slate-500 uppercase tracking-wider"
+                  onClick={handleSortByModified}
+                >
+                  <div className="flex items-center space-x-1.5">
+                    <span>Tanggal Diubah</span>
+                    {sortField === 'modified' ? (
+                      sortOrder === 'asc' ? (
+                        <ArrowUp className="h-3.5 w-3.5 text-slate-700" />
+                      ) : (
+                        <ArrowDown className="h-3.5 w-3.5 text-slate-700" />
+                      )
+                    ) : (
+                      <ArrowUpDown className="h-3.5 w-3.5 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    )}
+                  </div>
+                </th>
+                <th
+                  className="py-3 px-4 hidden md:table-cell cursor-pointer select-none group text-xs font-medium text-slate-500 uppercase tracking-wider"
+                  onClick={handleSortBySize}
+                >
+                  <div className="flex items-center space-x-1.5">
+                    <span>Ukuran File</span>
+                    {sortField === 'size' ? (
+                      sortOrder === 'asc' ? (
+                        <ArrowUp className="h-3.5 w-3.5 text-slate-700" />
+                      ) : (
+                        <ArrowDown className="h-3.5 w-3.5 text-slate-700" />
+                      )
+                    ) : (
+                      <ArrowUpDown className="h-3.5 w-3.5 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    )}
+                  </div>
+                </th>
+                <th className="py-3 px-4 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
+                  Aksi
+                </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-slate-100">
               {filteredItems.map((item, index) => {
                 const isSelected = selectedPaths.includes(item.path)
                 const isDropTarget = dragOverFolder === item.path
@@ -1299,52 +1286,63 @@ export default function DashboardV2({
                     }}
                     onClick={() => handleItemOpen(item)}
                     onContextMenu={(e) => handleContextMenu(e, item)}
-                    className={`hover:bg-emerald-50/40 transition cursor-pointer select-none ${
+                    className={`py-3 px-4 border-b border-slate-100 hover:bg-slate-50/80 transition-colors cursor-pointer select-none ${
                       isSelected
-                        ? 'bg-emerald-50/70 font-semibold'
+                        ? 'bg-slate-100/80 font-medium'
                         : isDropTarget
-                        ? 'bg-emerald-100 ring-2 ring-emerald-400 font-semibold'
+                        ? 'bg-emerald-50 ring-2 ring-emerald-400'
                         : ''
                     }`}
                   >
-                    <td className="p-3.5" onClick={(e) => e.stopPropagation()}>
+                    <td className="py-3 px-4 w-10" onClick={(e) => e.stopPropagation()}>
                       <button
                         type="button"
                         onClick={(e) => handleToggleSelect(item.path, index, e)}
-                        className="p-0.5 text-gray-400 hover:text-emerald-600"
+                        className="p-0.5 text-slate-400 hover:text-slate-700"
                         title="Pilih (Tahan Shift untuk multi-seleksi)"
                       >
                         {isSelected ? (
-                          <CheckSquare className="h-4 w-4 text-emerald-600" />
+                          <CheckSquare className="h-4 w-4 text-slate-900" />
                         ) : (
                           <Square className="h-4 w-4" />
                         )}
                       </button>
                     </td>
-                    <td className="p-3.5">
-                      <div className="flex items-center space-x-2.5">
+                    <td className="py-3 px-4">
+                      <div className="flex items-center space-x-3">
                         <div className="shrink-0">{getFileIcon(item)}</div>
-                        <span className="font-semibold text-gray-900 truncate max-w-xs sm:max-w-md">
-                          {item.name}
-                        </span>
+                        <div className="overflow-hidden">
+                          <span className="font-medium text-slate-900 truncate block max-w-xs sm:max-w-md">
+                            {item.name}
+                          </span>
+                          <div className="text-[11px] text-slate-400 font-mono mt-0.5 md:hidden">
+                            {formatDate(item.modified)} | {item.is_dir ? 'Folder' : formatBytes(item.size)}
+                          </div>
+                        </div>
                       </div>
                     </td>
-                    <td className="p-3.5 font-mono text-gray-500">
+                    <td className="py-3 px-4 hidden md:table-cell">
+                      <div className="flex items-center space-x-2">
+                        <div className="h-5 w-5 rounded-full bg-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-700 shrink-0">
+                          S
+                        </div>
+                        <span className="text-slate-600 text-xs">Saya</span>
+                      </div>
+                    </td>
+                    <td className="py-3 px-4 hidden md:table-cell font-mono text-slate-500 text-xs">
+                      {formatDate(item.modified)}
+                    </td>
+                    <td className="py-3 px-4 hidden md:table-cell font-mono text-slate-500 text-xs">
                       {item.is_dir ? '-' : formatBytes(item.size)}
                     </td>
-                    <td className="p-3.5 text-gray-500 font-mono text-[11px]">
-                      {item.is_dir ? 'Direktori' : item.extension || 'File'}
-                    </td>
-                    <td className="p-3.5 text-gray-500">{formatDate(item.modified)}</td>
-                    <td className="p-3.5 font-mono text-gray-500">{item.permissions || '0755'}</td>
-                    <td className="p-3.5 text-right" onClick={(e) => e.stopPropagation()}>
+                    <td className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-end space-x-1">
                         {!item.is_dir && (
                           <button
                             type="button"
                             onClick={() => handleDownloadFile(item)}
-                            className="p-1.5 text-gray-400 hover:text-emerald-600 rounded-lg hover:bg-gray-100 transition"
-                            title="Unduh"
+                            className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition hidden sm:inline-flex"
+                            title="Unduh Berkas"
                           >
                             <Download className="h-4 w-4" />
                           </button>
@@ -1363,7 +1361,7 @@ export default function DashboardV2({
                               })
                             }
                           }}
-                          className="p-1.5 text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition"
+                          className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition"
                           title="Menu Aksi"
                         >
                           <MoreVertical className="h-4 w-4" />
@@ -1585,53 +1583,59 @@ export default function DashboardV2({
         </div>
       )}
 
-      {/* 8. MOBILE FLOATING ACTION BUTTON (+) */}
-      <div className="fixed bottom-6 right-6 md:hidden z-40">
+      {/* 8. FLOATING ACTION BUTTON (FAB) EXPANDABLE (Google Drive Modern Minimalist Style) */}
+      <div className="fixed bottom-8 right-8 z-50 select-none" ref={fabRef}>
+        {/* Speed Dial Menu */}
         {fabOpen && (
-          <div className="mb-3 space-y-2 flex flex-col items-end animate-in slide-in-from-bottom-2 duration-150">
+          <div className="absolute bottom-16 right-0 mb-2 w-64 bg-white rounded-2xl border border-slate-200/90 shadow-2xl p-1.5 z-50 animate-in slide-in-from-bottom-2 duration-150">
             <button
-              onClick={() => {
-                setFabOpen(false)
-                fileInputRef.current?.click()
-              }}
-              className="flex items-center space-x-2 px-4 py-2.5 rounded-full bg-white text-gray-800 text-xs font-semibold shadow-lg border border-gray-200"
-            >
-              <Upload className="h-4 w-4 text-emerald-600" />
-              <span>Unggah Berkas</span>
-            </button>
-            <button
-              onClick={() => {
-                setFabOpen(false)
-                zipInputRef.current?.click()
-              }}
-              className="flex items-center space-x-2 px-4 py-2.5 rounded-full bg-white text-gray-800 text-xs font-semibold shadow-lg border border-gray-200"
-            >
-              <FileArchive className="h-4 w-4 text-amber-500" />
-              <span>Unggah ZIP (Auto-Extract)</span>
-            </button>
-            <button
+              type="button"
               onClick={() => {
                 setFabOpen(false)
                 setNewItemName('')
                 setNewItemIsDir(true)
                 setActiveModal('new_item')
               }}
-              className="flex items-center space-x-2 px-4 py-2.5 rounded-full bg-white text-gray-800 text-xs font-semibold shadow-lg border border-gray-200"
+              className="w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition text-left text-xs font-medium"
             >
-              <FolderPlus className="h-4 w-4 text-emerald-600" />
+              <FolderPlus className="h-4 w-4 text-slate-700" />
               <span>Folder Baru</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setFabOpen(false)
+                fileInputRef.current?.click()
+              }}
+              className="w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition text-left text-xs font-medium"
+            >
+              <Upload className="h-4 w-4 text-slate-700" />
+              <span>Upload File</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setFabOpen(false)
+                zipInputRef.current?.click()
+              }}
+              className="w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition text-left text-xs font-medium"
+            >
+              <FileArchive className="h-4 w-4 text-slate-700" />
+              <span>Upload Folder / ZIP (Auto-Extract)</span>
             </button>
           </div>
         )}
 
+        {/* Circular Floating Action Button */}
         <button
+          type="button"
           onClick={() => setFabOpen(!fabOpen)}
-          className={`h-14 w-14 rounded-full flex items-center justify-center text-white shadow-2xl transition-transform duration-200 ${
-            fabOpen ? 'bg-gray-800 rotate-45' : 'bg-emerald-600 active:scale-95'
-          }`}
-          title="Menu Aksi Cepat"
+          className="w-14 h-14 rounded-full bg-slate-900 text-white shadow-xl hover:bg-slate-800 transition-all flex items-center justify-center focus:outline-none"
+          title="Menu Aksi Buat & Unggah"
         >
-          <Plus className="h-6 w-6" />
+          <Plus className={`h-6 w-6 transition-transform duration-200 ${fabOpen ? 'rotate-45' : ''}`} />
         </button>
       </div>
 
