@@ -217,6 +217,13 @@ export default function DashboardV2({
           setActiveModal('delete')
         }
       }
+
+      // Escape key: close FAB, active dropdowns, context menu
+      if (e.key === 'Escape') {
+        setFabOpen(false)
+        setActiveDropdown(null)
+        setContextMenu(null)
+      }
     }
 
     window.addEventListener('keydown', handleKeyDown)
@@ -278,19 +285,19 @@ export default function DashboardV2({
     } else if (typeFilter === 'documents') {
       result = result.filter((it) => {
         if (it.is_dir) return false
-        const ext = (it.extension || '').toLowerCase()
+        const ext = (it.extension || (it.name?.includes('.') ? '.' + it.name.split('.').pop() : '')).toLowerCase()
         return ['.php', '.html', '.css', '.js', '.py', '.txt', '.json', '.sql', '.md', '.env', '.ini'].includes(ext)
       })
     } else if (typeFilter === 'media') {
       result = result.filter((it) => {
         if (it.is_dir) return false
-        const ext = (it.extension || '').toLowerCase()
+        const ext = (it.extension || (it.name?.includes('.') ? '.' + it.name.split('.').pop() : '')).toLowerCase()
         return ['.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp', '.ico', '.mp4'].includes(ext)
       })
     } else if (typeFilter === 'archives') {
       result = result.filter((it) => {
         if (it.is_dir) return false
-        const ext = (it.extension || '').toLowerCase()
+        const ext = (it.extension || (it.name?.includes('.') ? '.' + it.name.split('.').pop() : '')).toLowerCase()
         return ['.zip', '.tar', '.gz', '.rar', '.7z'].includes(ext)
       })
     }
@@ -300,13 +307,13 @@ export default function DashboardV2({
       const nowSeconds = Math.floor(Date.now() / 1000)
       if (dateFilter === 'today') {
         const oneDayAgo = nowSeconds - 86400
-        result = result.filter((it) => (it.modified || 0) >= oneDayAgo)
+        result = result.filter((it) => (it.modified || it.last_modified || 0) >= oneDayAgo)
       } else if (dateFilter === '7days') {
         const sevenDaysAgo = nowSeconds - 7 * 86400
-        result = result.filter((it) => (it.modified || 0) >= sevenDaysAgo)
+        result = result.filter((it) => (it.modified || it.last_modified || 0) >= sevenDaysAgo)
       } else if (dateFilter === '30days') {
         const thirtyDaysAgo = nowSeconds - 30 * 86400
-        result = result.filter((it) => (it.modified || 0) >= thirtyDaysAgo)
+        result = result.filter((it) => (it.modified || it.last_modified || 0) >= thirtyDaysAgo)
       }
     }
 
@@ -323,7 +330,9 @@ export default function DashboardV2({
         return sortOrder === 'asc' ? cmp : -cmp
       }
       if (sortField === 'modified') {
-        const diff = (a.modified || 0) - (b.modified || 0)
+        const aMod = a.modified || a.last_modified || 0
+        const bMod = b.modified || b.last_modified || 0
+        const diff = aMod - bMod
         return sortOrder === 'asc' ? diff : -diff
       }
       if (sortField === 'size') {
@@ -361,7 +370,7 @@ export default function DashboardV2({
     if (item.is_dir) {
       return <Folder className="h-5 w-5 text-slate-500 fill-slate-100" />
     }
-    const ext = (item.extension || '').toLowerCase()
+    const ext = (item.extension || (item.name?.includes('.') ? '.' + item.name.split('.').pop() : '')).toLowerCase()
     if (['.php', '.html', '.js', '.py', '.css', '.json', '.sql'].includes(ext)) {
       return <FileCode className="h-5 w-5 text-slate-700" />
     }
@@ -380,7 +389,7 @@ export default function DashboardV2({
       setCurrentPath(item.path)
     } else {
       // Check if file is editable
-      const ext = (item.extension || '').toLowerCase()
+      const ext = (item.extension || (item.name?.includes('.') ? '.' + item.name.split('.').pop() : '')).toLowerCase()
       if (['.php', '.html', '.css', '.js', '.py', '.txt', '.json', '.sql', '.md', '.env', '.ini'].includes(ext)) {
         handleOpenFileEditor(item)
       } else {
@@ -1055,18 +1064,37 @@ export default function DashboardV2({
             <Folder className="h-8 w-8 stroke-[1.5]" />
           </div>
           <div className="max-w-md space-y-1">
-            <h4 className="text-base font-bold text-slate-900">Folder ini masih kosong</h4>
+            <h4 className="text-base font-bold text-slate-900">
+              {items.length === 0 ? 'Folder ini masih kosong' : 'Tidak ada berkas yang cocok dengan filter'}
+            </h4>
             <p className="text-xs text-slate-500 leading-relaxed">
-              Tarik berkas PHP, HTML, JavaScript, atau ZIP kamu ke area ini atau gunakan tombol aksi di pojok kanan bawah untuk memulai praktikum!
+              {items.length === 0
+                ? 'Tarik berkas PHP, HTML, JavaScript, atau ZIP kamu ke area ini atau gunakan tombol aksi di pojok kanan bawah untuk memulai praktikum!'
+                : 'Coba sesuaikan jenis berkas, rentang tanggal diubah, atau kata kunci pencarian kamu.'}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold shadow-xs transition"
-          >
-            Unggah Berkas Sekarang
-          </button>
+          {items.length === 0 ? (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold shadow-xs transition"
+            >
+              Unggah Berkas Sekarang
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                setTypeFilter('all')
+                setDateFilter('all')
+                setOwnerFilter('all')
+                setLocalSearch('')
+              }}
+              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-xs font-semibold shadow-xs transition"
+            >
+              Reset Semua Filter
+            </button>
+          )}
         </div>
       ) : viewMode === 'grid' ? (
         /* GRID VIEW */
@@ -1587,7 +1615,7 @@ export default function DashboardV2({
       <div className="fixed bottom-8 right-8 z-50 select-none" ref={fabRef}>
         {/* Speed Dial Menu */}
         {fabOpen && (
-          <div className="absolute bottom-16 right-0 mb-2 w-64 bg-white rounded-2xl border border-slate-200/90 shadow-2xl p-1.5 z-50 animate-in slide-in-from-bottom-2 duration-150">
+          <div className="absolute bottom-16 right-0 mb-2 w-72 bg-white rounded-2xl border border-slate-200/90 shadow-2xl p-1.5 z-50 animate-in slide-in-from-bottom-2 duration-150">
             <button
               type="button"
               onClick={() => {
@@ -1623,7 +1651,7 @@ export default function DashboardV2({
               className="w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-slate-700 hover:bg-slate-100 hover:text-slate-900 transition text-left text-xs font-medium"
             >
               <FileArchive className="h-4 w-4 text-slate-700" />
-              <span>Upload Folder / ZIP (Auto-Extract)</span>
+              <span className="whitespace-nowrap">Upload Folder / ZIP (Auto-Extract)</span>
             </button>
           </div>
         )}
