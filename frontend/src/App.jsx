@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
 import { Toaster } from 'sonner'
-import { Search, X, Menu } from 'lucide-react'
+import { Search, X, Menu, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import Navigation from './components/Navigation'
 import NavigationV2 from './components/NavigationV2'
 import ThemeToggle from './components/ThemeToggle'
@@ -356,82 +356,135 @@ export default function App() {
         />
       )}
 
+      {/* Top Header Bar for Theme V2 (Solid Cloud Theme Header) */}
+      {isV2 && (
+        <header
+          className={`h-16 bg-white/95 backdrop-blur-md border-b border-gray-200/80 sticky top-0 z-20 px-4 sm:px-8 flex items-center justify-between shadow-xs transition-all duration-300 ease-in-out ${
+            isCollapsed ? 'md:ml-20' : 'md:ml-64'
+          }`}
+        >
+          <div className="flex items-center space-x-3 w-full max-w-sm sm:max-w-md">
+            {/* Mobile Hamburger on v2 */}
+            <button
+              type="button"
+              onClick={() => setMobileNavOpen(true)}
+              className="md:hidden p-2 rounded-xl bg-gray-50 border border-gray-200 text-gray-700 hover:bg-gray-100 transition shadow-xs shrink-0"
+              title="Buka Menu Navigasi"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+
+            {/* Desktop Sidebar Expand Toggle Button in Header (shown ONLY when collapsed) */}
+            {isCollapsed && (
+              <button
+                type="button"
+                onClick={() => handleToggleCollapse(false)}
+                className="hidden md:flex p-2 rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition shrink-0"
+                title="Perlebar Sidebar"
+              >
+                <PanelLeftOpen className="h-4 w-4" />
+              </button>
+            )}
+
+            {/* Live Search Bar */}
+            <div className="relative w-full">
+              <Search className="h-4 w-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value)
+                  if (location.pathname !== '/dashboard' && e.target.value) {
+                    navigate('/dashboard')
+                  }
+                }}
+                placeholder="Cari berkas, tools, database, konfigurasi (/)..."
+                className="w-full bg-gray-50/80 hover:bg-gray-100/70 focus:bg-white border border-gray-200/80 focus:border-emerald-500 rounded-xl pl-9 pr-8 py-2 text-xs outline-none transition shadow-xs text-gray-900 placeholder-gray-400 font-sans"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-0.5"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Right actions: Theme Toggle + Profile Avatar */}
+          <div className="flex items-center space-x-2.5 sm:space-x-3 shrink-0">
+            <ThemeToggle theme={theme} onToggle={handleToggleTheme} />
+            <ProfileAvatar
+              user={user}
+              onLogout={handleLogout}
+              onChangePassword={() => {
+                setIsMandatoryPasswordChange(false)
+                setShowPasswordModal(true)
+              }}
+            />
+          </div>
+        </header>
+      )}
+
       {/* Main Content Area */}
       <main
         className={`flex-1 transition-all duration-300 ease-in-out p-4 sm:p-6 md:p-8 pb-24 md:pb-12 ${
-          isCollapsed ? 'md:ml-[110px]' : 'md:ml-[290px]'
+          isV2
+            ? isCollapsed
+              ? 'md:ml-20'
+              : 'md:ml-64'
+            : isCollapsed
+            ? 'md:ml-[110px]'
+            : 'md:ml-[290px]'
         }`}
       >
         <div className="w-full">
-          {/* Header Navbar: Input Pencarian di samping Icon Profil & Theme Switcher */}
-          <header className="flex items-center justify-between gap-4 pb-5 pt-1">
-            <div className="flex items-center space-x-3 w-full max-w-sm sm:max-w-md">
-              {/* Mobile Hamburger on v2 */}
-              {isV2 && (
-                <button
-                  type="button"
-                  onClick={() => setMobileNavOpen(true)}
-                  className="md:hidden p-2 rounded-2xl bg-white border border-gray-200 text-gray-700 hover:bg-gray-100 transition shadow-sm shrink-0"
-                  title="Buka Menu Navigasi"
-                >
-                  <Menu className="h-5 w-5" />
-                </button>
-              )}
-
-              {/* Live Search Bar Tools */}
-              <div className="relative w-full">
-                <Search
-                  className={`h-4 w-4 absolute left-3.5 top-2.5 ${
-                    isV2 ? 'text-gray-400' : 'text-[#A47E65]'
-                  }`}
-                />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value)
-                    if (location.pathname !== '/dashboard' && e.target.value) {
-                      navigate('/dashboard')
-                    }
-                  }}
-                  placeholder={
-                    isV2
-                      ? 'Cari berkas, tools, database, konfigurasi (/)...'
-                      : 'Cari tools, php, python, file, wizard (/)...'
-                  }
-                  className={`w-full ${
-                    isV2
-                      ? 'bg-white border-gray-200 focus:border-emerald-500 text-gray-900 placeholder-gray-400'
-                      : 'bg-[#2B1810] border-[#4D2D1E] focus:border-[#C49767] text-[#FAF5EC] placeholder-[#A47E65]'
-                  } border rounded-2xl pl-10 pr-9 py-2 text-xs outline-none transition shadow-sm font-sans`}
-                />
-                {searchQuery && (
-                  <button
-                    type="button"
-                    onClick={() => setSearchQuery('')}
-                    className={`absolute right-3 top-2 ${
-                      isV2 ? 'text-gray-400 hover:text-gray-600' : 'text-[#A47E65] hover:text-[#FAF5EC]'
-                    } p-0.5`}
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                )}
+          {/* Header Navbar for V1 ONLY */}
+          {!isV2 && (
+            <header className="flex items-center justify-between gap-4 pb-5 pt-1">
+              <div className="flex items-center space-x-3 w-full max-w-sm sm:max-w-md">
+                <div className="relative w-full">
+                  <Search className="h-4 w-4 absolute left-3.5 top-2.5 text-[#A47E65]" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value)
+                      if (location.pathname !== '/dashboard' && e.target.value) {
+                        navigate('/dashboard')
+                      }
+                    }}
+                    placeholder="Cari tools, php, python, file, wizard (/)..."
+                    className="w-full bg-[#2B1810] border-[#4D2D1E] focus:border-[#C49767] text-[#FAF5EC] placeholder-[#A47E65] border rounded-2xl pl-10 pr-9 py-2 text-xs outline-none transition shadow-sm font-sans"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-3 top-2 text-[#A47E65] hover:text-[#FAF5EC] p-0.5"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
 
-            {/* Right actions: Theme Toggle + Profile Avatar */}
-            <div className="flex items-center space-x-2.5 sm:space-x-3 shrink-0">
-              <ThemeToggle theme={theme} onToggle={handleToggleTheme} />
-              <ProfileAvatar
-                user={user}
-                onLogout={handleLogout}
-                onChangePassword={() => {
-                  setIsMandatoryPasswordChange(false)
-                  setShowPasswordModal(true)
-                }}
-              />
-            </div>
-          </header>
+              {/* Right actions: Theme Toggle + Profile Avatar */}
+              <div className="flex items-center space-x-2.5 sm:space-x-3 shrink-0">
+                <ThemeToggle theme={theme} onToggle={handleToggleTheme} />
+                <ProfileAvatar
+                  user={user}
+                  onLogout={handleLogout}
+                  onChangePassword={() => {
+                    setIsMandatoryPasswordChange(false)
+                    setShowPasswordModal(true)
+                  }}
+                />
+              </div>
+            </header>
+          )}
 
           {/* Declarative URL Routes */}
           <Routes>

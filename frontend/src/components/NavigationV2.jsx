@@ -18,7 +18,9 @@ import {
   X,
   Code,
   Terminal,
-  Cpu
+  Cpu,
+  PanelLeftClose,
+  PanelLeftOpen
 } from 'lucide-react'
 import { launchJupyterLab } from '../api/jupyter'
 
@@ -156,69 +158,84 @@ export default function NavigationV2({
     return (
       <div className="flex flex-col h-full justify-between select-none">
         {/* Top Header */}
-        <div>
-          <div className={`flex items-center mb-6 w-full ${effectiveCollapsed ? 'justify-center' : 'justify-between px-2'}`}>
-            <div
-              onClick={() => {
-                navigate('/dashboard')
-                setMobileOpen(false)
-              }}
-              className="flex items-center space-x-3 overflow-hidden cursor-pointer group"
-            >
-              <div className="h-10 w-10 rounded-2xl bg-emerald-600 flex items-center justify-center text-white shadow-md shadow-emerald-600/20 group-hover:scale-105 transition-transform shrink-0">
-                {!logoFailed ? (
-                  <img
-                    src="/logos/miraigrid-logo.svg"
-                    alt="MiraiGrid"
-                    className="h-6 w-6 object-contain invert brightness-0"
-                    onError={() => setLogoFailed(true)}
-                  />
-                ) : (
-                  <span className="font-bold text-sm">MG</span>
-                )}
-              </div>
-              {!effectiveCollapsed && (
+        <div className="flex flex-col shrink-0">
+          {!effectiveCollapsed ? (
+            <div className="h-16 px-4 border-b border-gray-200/80 flex items-center justify-between">
+              <div
+                onClick={() => {
+                  navigate('/dashboard')
+                  if (isMobile) setMobileOpen(false)
+                }}
+                className="flex items-center space-x-3 overflow-hidden cursor-pointer group"
+              >
+                <img
+                  src="/logos/miraigrid-logo.svg"
+                  alt="MiraiGrid"
+                  className="h-8 w-8 rounded-xl object-contain shadow-xs shrink-0 group-hover:scale-105 transition-transform"
+                  onError={(e) => {
+                    e.currentTarget.onerror = null
+                    e.currentTarget.src = '/logos/miraigrid-logo.png'
+                  }}
+                />
                 <div className="overflow-hidden">
                   <div className="flex items-center space-x-1.5">
-                    <h1 className="text-base font-bold text-gray-900 font-sans tracking-tight truncate">
+                    <h1 className="text-sm font-bold text-gray-900 font-sans tracking-tight truncate">
                       MiG-Cloud
                     </h1>
                     <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.2 rounded-full border border-emerald-200">
                       Active
                     </span>
                   </div>
-                  <p className="text-[11px] text-gray-500 font-medium truncate">
+                  <p className="text-[11px] text-gray-400 font-medium truncate">
                     Lab TI Cloud Workspace
                   </p>
                 </div>
+              </div>
+
+              {isMobile ? (
+                <button
+                  type="button"
+                  onClick={() => setMobileOpen(false)}
+                  title="Tutup Menu"
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition flex items-center justify-center shrink-0"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setIsCollapsed(true)}
+                  title="Perkecil Sidebar"
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition hidden md:flex items-center justify-center shrink-0"
+                >
+                  <PanelLeftClose className="h-4 w-4" />
+                </button>
               )}
             </div>
-
-            {!effectiveCollapsed && !isMobile && (
+          ) : (
+            <div className="h-16 border-b border-gray-200/80 flex items-center justify-center px-2">
               <button
-                onClick={() => setIsCollapsed(true)}
-                title="Perkecil Sidebar"
-                className="p-1.5 rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition hidden md:block"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-            )}
-          </div>
-
-          {effectiveCollapsed && !isMobile && (
-            <div className="hidden md:flex justify-center mb-4">
-              <button
+                type="button"
                 onClick={() => setIsCollapsed(false)}
                 title="Perlebar Sidebar"
-                className="p-2 rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition"
+                className="relative p-1.5 rounded-xl hover:bg-gray-100 transition group flex items-center justify-center"
               >
-                <ChevronRight className="h-4 w-4" />
+                <img
+                  src="/logos/miraigrid-logo.svg"
+                  alt="MiraiGrid"
+                  className="h-8 w-8 rounded-xl object-contain shadow-xs shrink-0 group-hover:scale-105 transition-transform"
+                  onError={(e) => {
+                    e.currentTarget.onerror = null
+                    e.currentTarget.src = '/logos/miraigrid-logo.png'
+                  }}
+                />
+                <span className="absolute -right-0.5 -top-0.5 bg-emerald-500 rounded-full h-2 w-2 ring-2 ring-white" />
               </button>
             </div>
           )}
 
           {/* Menu Navigation */}
-          <nav className="space-y-1.5 w-full">
+          <nav className="p-3 space-y-1.5 w-full overflow-y-auto">
             {menuItems.map((item) => {
               const Icon = item.icon
               const isActive = item.activeCheck(location.pathname)
@@ -230,14 +247,14 @@ export default function NavigationV2({
                     onClick={() => handleItemClick(item)}
                     title={item.label}
                     className={`w-full flex items-center ${
-                      effectiveCollapsed ? 'justify-center px-0' : 'justify-between px-3.5'
-                    } py-2.5 rounded-2xl text-xs font-semibold transition-all duration-200 ${
+                      effectiveCollapsed ? 'justify-center px-0' : 'justify-between px-3'
+                    } py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 ${
                       isActive
-                        ? 'bg-emerald-50 text-emerald-700 font-bold shadow-sm border border-emerald-100'
+                        ? 'bg-emerald-50 text-emerald-700 font-bold shadow-xs border border-emerald-100'
                         : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80 border border-transparent'
                     }`}
                   >
-                    <div className="flex items-center space-x-3 truncate">
+                    <div className={`flex items-center ${effectiveCollapsed ? 'justify-center' : 'space-x-3'} truncate`}>
                       <Icon
                         className={`h-4 w-4 shrink-0 transition-colors ${
                           isActive ? 'text-emerald-600' : 'text-gray-400 group-hover:text-gray-600'
@@ -294,7 +311,7 @@ export default function NavigationV2({
         </div>
 
         {/* Bottom Storage & Resource Widget */}
-        <div className="pt-4 border-t border-gray-100 space-y-3">
+        <div className="p-3 border-t border-gray-100 shrink-0 space-y-3">
           {!effectiveCollapsed ? (
             <div className="bg-gray-50 border border-gray-200/80 rounded-2xl p-3.5 space-y-2.5">
               <div className="flex items-center justify-between text-xs">
@@ -345,7 +362,7 @@ export default function NavigationV2({
           )}
 
           {/* Footer Links */}
-          {!effectiveCollapsed && (
+          {!effectiveCollapsed ? (
             <div className="flex items-center justify-between px-2 pt-1 text-[11px] text-gray-400">
               <button
                 onClick={() => {
@@ -359,6 +376,16 @@ export default function NavigationV2({
               </button>
               <span className="font-mono text-[10px] text-gray-300">v2.0</span>
             </div>
+          ) : (
+            <div className="flex flex-col items-center pt-1">
+              <button
+                onClick={() => navigate('/about')}
+                title="Panduan Sistem (v2.0)"
+                className="p-2 rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition flex items-center justify-center"
+              >
+                <HelpCircle className="h-4 w-4" />
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -367,10 +394,10 @@ export default function NavigationV2({
 
   return (
     <>
-      {/* Desktop Floating Sidebar */}
+      {/* Desktop Flush Full-Height Sidebar */}
       <aside
-        className={`fixed left-5 top-5 bottom-5 bg-white border border-gray-200 rounded-3xl shadow-xl p-4 z-30 hidden md:flex flex-col transition-all duration-300 ease-in-out ${
-          isCollapsed ? 'w-20 items-center' : 'w-64'
+        className={`fixed top-0 bottom-0 left-0 h-screen bg-white border-r border-gray-200/90 z-30 hidden md:flex flex-col justify-between transition-all duration-300 ease-in-out ${
+          isCollapsed ? 'w-20' : 'w-64'
         }`}
       >
         {renderSidebarContent(false)}
@@ -383,15 +410,7 @@ export default function NavigationV2({
             className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm animate-in fade-in duration-200"
             onClick={() => setMobileOpen(false)}
           />
-          <div className="relative w-72 max-w-[85vw] bg-white h-full shadow-2xl p-5 flex flex-col z-10 animate-in slide-in-from-left duration-200">
-            <div className="flex justify-end mb-2">
-              <button
-                onClick={() => setMobileOpen(false)}
-                className="p-1.5 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
+          <div className="relative w-72 max-w-[85vw] bg-white h-full shadow-2xl flex flex-col z-10 animate-in slide-in-from-left duration-200">
             {renderSidebarContent(true)}
           </div>
         </div>
