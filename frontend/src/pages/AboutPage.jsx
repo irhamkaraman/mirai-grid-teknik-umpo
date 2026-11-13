@@ -17,45 +17,50 @@ import {
   Code2,
   FileSearch,
   Sparkles,
-  Building2
+  Building2,
 } from 'lucide-react'
+import { useTheme } from '../context/ThemeContext'
+import Button from '../components/Button'
+import Card from '../components/Card'
 
 export default function AboutPage({ user, onNavigate }) {
+  const { isV2 } = useTheme()
+
   const categories = [
     {
       id: 'security',
       title: 'Keamanan & Pertahanan Siber',
       subtitle: 'Multi-layer security, WAF, IPS, malware quarantine, dan isolasi sandbox kernel',
       icon: ShieldCheck,
-      iconColor: 'text-[#F95959]',
+      iconColor: isV2 ? 'text-rose-600' : 'text-[#F95959]',
       items: [
         {
           id: 'crowdsec',
           name: 'CrowdSec IPS',
           logo: '/logos/crowdsec.svg',
           icon: ShieldAlert,
-          iconColor: 'text-[#F95959]',
+          iconColor: isV2 ? 'text-rose-600' : 'text-[#F95959]',
         },
         {
           id: 'modsecurity',
           name: 'ModSecurity WAF',
           logo: '/logos/modsecurity.svg',
           icon: ShieldCheck,
-          iconColor: 'text-[#00C0FF]',
+          iconColor: isV2 ? 'text-cyan-600' : 'text-[#00C0FF]',
         },
         {
           id: 'maldet',
           name: 'Maldet & Anti-Malware',
           logo: '/logos/maldet.svg',
           icon: FileSearch,
-          iconColor: 'text-[#10B981]',
+          iconColor: isV2 ? 'text-emerald-600' : 'text-[#10B981]',
         },
         {
           id: 'apparmor',
           name: 'AppArmor & Seccomp',
           logo: '/logos/apparmor.svg',
           icon: Lock,
-          iconColor: 'text-[#F59E0B]',
+          iconColor: isV2 ? 'text-amber-600' : 'text-[#F59E0B]',
         },
       ],
     },
@@ -64,118 +69,146 @@ export default function AboutPage({ user, onNavigate }) {
       title: 'Sistem & Virtualisasi',
       subtitle: 'Pondasi operating system, kernel namespace, container runtime, dan orkestrasi stack',
       icon: Server,
-      iconColor: 'text-[#E95420]',
+      iconColor: isV2 ? 'text-orange-600' : 'text-[#E95420]',
       items: [
         {
           id: 'ubuntu',
           name: 'Ubuntu Linux Enterprise',
           logo: '/logos/ubuntu.svg',
           icon: Server,
-          iconColor: 'text-[#E95420]',
+          iconColor: isV2 ? 'text-orange-600' : 'text-[#E95420]',
         },
         {
           id: 'lxc',
           name: 'LXC (Linux Containers)',
           logo: '/logos/lxc.svg',
           icon: Cpu,
-          iconColor: 'text-[#F29111]',
+          iconColor: isV2 ? 'text-amber-600' : 'text-[#F29111]',
         },
         {
           id: 'docker',
           name: 'Docker Engine',
           logo: '/logos/docker.svg',
           icon: Boxes,
-          iconColor: 'text-[#2496ED]',
+          iconColor: isV2 ? 'text-blue-600' : 'text-[#2496ED]',
         },
         {
           id: 'portainer',
           name: 'Portainer CE',
           logo: '/logos/portainer.svg',
           icon: Boxes,
-          iconColor: 'text-[#13BEF9]',
+          iconColor: isV2 ? 'text-sky-600' : 'text-[#13BEF9]',
         },
       ],
     },
     {
       id: 'storage',
-      title: 'Penyimpanan & Basis Data',
-      subtitle: 'Klaster multi-tenant relational database, in-memory cache, dan object storage',
+      title: 'Basis Data & Penyimpanan',
+      subtitle: 'Relational database engine, object storage, dan in-memory cache berkecepatan tinggi',
       icon: Database,
-      iconColor: 'text-[#336791]',
+      iconColor: isV2 ? 'text-emerald-600' : 'text-[#10B981]',
       items: [
         {
-          id: 'databases',
-          name: 'PostgreSQL & MariaDB',
+          id: 'postgres',
+          name: 'PostgreSQL 16',
           logo: '/logos/postgres.svg',
           icon: Database,
-          iconColor: 'text-[#336791]',
+          iconColor: isV2 ? 'text-indigo-600' : 'text-[#336791]',
+        },
+        {
+          id: 'mariadb',
+          name: 'MariaDB 11 Jammy',
+          logo: '/logos/mariadb.svg',
+          icon: Database,
+          iconColor: isV2 ? 'text-amber-700' : 'text-[#003545]',
         },
         {
           id: 'redis',
-          name: 'Redis™ In-Memory Store',
+          name: 'Redis In-Memory Cache',
           logo: '/logos/redis.svg',
-          icon: Database,
-          iconColor: 'text-red-500',
+          icon: HardDrive,
+          iconColor: isV2 ? 'text-rose-600' : 'text-[#DC382D]',
         },
         {
           id: 'minio',
-          name: 'MinIO Object Storage',
+          name: 'MinIO S3 Object Storage',
           logo: '/logos/minio.svg',
-          icon: Cloud,
-          iconColor: 'text-[#EA3B50]',
+          icon: HardDrive,
+          iconColor: isV2 ? 'text-rose-700' : 'text-[#C72C48]',
         },
       ],
     },
     {
       id: 'network',
-      title: 'Jaringan & Ingress Edge',
-      subtitle: 'Perutean HTTPS murni, edge reverse proxy cerdas, dan gateway laboratorium',
-      icon: Globe,
-      iconColor: 'text-[#009639]',
+      title: 'Jaringan & Gateway Ingress',
+      subtitle: 'Zero Trust tunnel, MikroTik dynamic routing, DNS manajemen, dan load balancer',
+      icon: Router,
+      iconColor: isV2 ? 'text-cyan-600' : 'text-[#00C0FF]',
       items: [
         {
-          id: 'nginx-cloudflare',
-          name: 'Nginx & Cloudflare Edge',
-          logo: '/logos/nginx.svg',
+          id: 'cloudflare',
+          name: 'Cloudflare Zero Trust',
+          logo: '/logos/cloudflare.svg',
           icon: Globe,
-          iconColor: 'text-[#009639]',
+          iconColor: isV2 ? 'text-amber-600' : 'text-[#F38020]',
         },
         {
           id: 'mikrotik',
           name: 'MikroTik RouterOS',
           logo: '/logos/mikrotik.svg',
           icon: Router,
-          iconColor: 'text-slate-200',
+          iconColor: isV2 ? 'text-blue-700' : 'text-[#285785]',
+        },
+        {
+          id: 'nginx',
+          name: 'Nginx Reverse Proxy',
+          logo: '/logos/nginx.svg',
+          icon: Globe,
+          iconColor: isV2 ? 'text-emerald-600' : 'text-[#009639]',
+        },
+        {
+          id: 'tailscale',
+          name: 'Tailscale Mesh VPN',
+          logo: '/logos/tailscale.svg',
+          icon: Globe,
+          iconColor: isV2 ? 'text-slate-800' : 'text-[#2D3748]',
         },
       ],
     },
     {
-      id: 'development',
-      title: 'Core API & Pengembangan',
-      subtitle: 'Arsitektur microservices asinkronus, antarmuka modern, dan version control Git',
+      id: 'runtime',
+      title: 'Lingkungan Eksekusi & IDE',
+      subtitle: 'Multi-runtime language, web code editor standalone, dan Git continuous development',
       icon: Code2,
-      iconColor: 'text-[#009688]',
+      iconColor: isV2 ? 'text-purple-600' : 'text-[#A855F7]',
       items: [
         {
-          id: 'fastapi',
-          name: 'FastAPI & Python',
-          logo: '/logos/fastapi.svg',
+          id: 'php',
+          name: 'PHP 8.2 / 8.3 & Composer',
+          logo: '/logos/php.svg',
           icon: Code2,
-          iconColor: 'text-[#009688]',
+          iconColor: isV2 ? 'text-indigo-600' : 'text-[#777BB4]',
         },
         {
-          id: 'nextjs',
-          name: 'Next.js & React',
-          logo: '/logos/react.svg',
-          icon: Layers,
-          iconColor: 'text-[#61DAFB]',
+          id: 'nodejs',
+          name: 'Node.js 20 LTS & NPM',
+          logo: '/logos/nodejs.svg',
+          icon: Code2,
+          iconColor: isV2 ? 'text-emerald-600' : 'text-[#339933]',
+        },
+        {
+          id: 'python',
+          name: 'Python 3.11 & FastAPI',
+          logo: '/logos/python.svg',
+          icon: Code2,
+          iconColor: isV2 ? 'text-blue-600' : 'text-[#3776AB]',
         },
         {
           id: 'git',
-          name: 'Git™ Version Control',
+          name: 'Git Version Control',
           logo: '/logos/git.svg',
           icon: Workflow,
-          iconColor: 'text-[#F05032]',
+          iconColor: isV2 ? 'text-orange-600' : 'text-[#F05032]',
         },
       ],
     },
@@ -183,35 +216,280 @@ export default function AboutPage({ user, onNavigate }) {
 
   const pillars = [
     {
-      title: 'Multi-Tenant Sandboxing',
-      subtitle: 'Isolasi Komputasi & File Ketat',
-      description: 'Setiap mahasiswa memiliki direktori kerja mandiri (/home/nim) dan resource terisolasi penuh, menjamin tidak adanya konflik dependensi maupun interferensi antar proyek tugas.',
-      icon: Lock,
-      color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
-    },
-    {
-      title: 'Zero-Port Public Ingress',
-      subtitle: 'Akses Domain Tanpa Port Mentah',
-      description: 'Seluruh akses web publik, dashboard, dan GUI basis data dilewatkan melalui perutean subdomain resmi HTTPS murni, menjaga keamanan infrastruktur internal dari pemindaian port.',
-      icon: ShieldCheck,
-      color: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20',
+      title: 'Enterprise Isolated Sandboxing',
+      subtitle: 'Isolasi Komputasi Multi-Tenant',
+      description:
+        'Setiap mahasiswa mendapatkan container terisolasi secara kernel namespace dan cgroup v2, menjamin lingkungan praktikum tidak saling bentrok maupun mempengaruhi server utama.',
+      icon: Layers,
+      color: isV2
+        ? 'text-cyan-600 bg-cyan-50 border-cyan-200'
+        : 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20',
     },
     {
       title: 'Independent Runtime Stacks',
       subtitle: 'Siklus Hidup Layanan Mandiri',
-      description: 'Mahasiswa dapat menjalankan aplikasi berbasis PHP, Node.js, atau Python secara independen dengan restart runtime otomatis, integrasi Git repositori, dan isolasi memori/CPU.',
+      description:
+        'Mahasiswa dapat menjalankan aplikasi berbasis PHP, Node.js, atau Python secara independen dengan restart runtime otomatis, integrasi Git repositori, dan isolasi memori/CPU.',
       icon: Workflow,
-      color: 'text-amber-400 bg-amber-500/10 border-amber-500/20',
+      color: isV2
+        ? 'text-amber-600 bg-amber-50 border-amber-200'
+        : 'text-amber-400 bg-amber-500/10 border-amber-500/20',
     },
     {
       title: 'Cloud-Native Lab Workflow',
       subtitle: 'Pengalaman Praktikum Modern',
-      description: 'Menyediakan perkakas setara platform cloud industri: Desktop File Explorer, terminal console terisolasi, manajemen cron job, dan visualisasi penggunaan storage terpusat.',
+      description:
+        'Menyediakan perkakas setara platform cloud industri: Desktop File Explorer, terminal console terisolasi, manajemen cron job, dan visualisasi penggunaan storage terpusat.',
       icon: Cloud,
-      color: 'text-rose-400 bg-rose-500/10 border-rose-500/20',
+      color: isV2
+        ? 'text-rose-600 bg-rose-50 border-rose-200'
+        : 'text-rose-400 bg-rose-500/10 border-rose-500/20',
     },
   ]
 
+  if (isV2) {
+    return (
+      <div className="w-full space-y-8 font-sans pb-12 animate-in fade-in duration-200">
+        {/* 1. TOP HEADER & BREADCRUMB */}
+        <div className="flex items-center justify-start">
+          <Button
+            variant="secondary"
+            size="sm"
+            icon={ArrowLeft}
+            onClick={() => onNavigate('/dashboard')}
+          >
+            Kembali ke Tools
+          </Button>
+        </div>
+
+        {/* 2. HERO BANNER: MODERN SAAS V2 */}
+        <div className="relative overflow-hidden rounded-xl bg-white border border-slate-200 shadow-xs p-6 sm:p-8">
+          <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+            <div className="flex items-start sm:items-center space-x-5">
+              <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-xl bg-slate-50 p-2.5 shadow-xs border border-slate-200 shrink-0 flex items-center justify-center">
+                <img
+                  src="/logos/miraigrid-logo.svg"
+                  alt="MiraiGrid Logo"
+                  className="h-full w-full object-contain"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h1 className="text-2xl sm:text-3xl font-sans font-extrabold text-slate-900 tracking-tight">
+                    MiraiGrid
+                  </h1>
+                  <span className="text-xs font-mono font-semibold px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    Cloud Infrastructure
+                  </span>
+                </div>
+                <p className="text-xs sm:text-sm text-slate-600 max-w-2xl leading-relaxed">
+                  Infrastruktur Cloud Laboratorium Teknik Informatika — Universitas Muhammadiyah Ponorogo.
+                  Platform komputasi mandiri dan PaaS modern berbasis microservices & containerization terisolasi.
+                </p>
+                <div className="flex flex-wrap items-center gap-2 pt-1 text-[11px] text-slate-500">
+                  <span className="flex items-center space-x-1">
+                    <Building2 className="h-3.5 w-3.5 text-slate-600" />
+                    <span>Fakultas Teknik UMPO</span>
+                  </span>
+                  <span>•</span>
+                  <span className="flex items-center space-x-1">
+                    <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+                    <span>Multi-Tenant Sandboxing</span>
+                  </span>
+                  <span>•</span>
+                  <span className="flex items-center space-x-1">
+                    <Globe className="h-3.5 w-3.5 text-cyan-600" />
+                    <span>Zero-Port HTTPS Ingress</span>
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="shrink-0 flex items-center gap-2.5">
+              <Button
+                variant="primary"
+                size="md"
+                icon={Sparkles}
+                onClick={() => onNavigate('/dashboard')}
+              >
+                Buka Tools Praktikum
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* 3. MODERN ENTERPRISE TECH STACK SHOWCASE */}
+        <div className="space-y-8">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+            <div className="flex items-center space-x-2.5">
+              <div className="h-7 w-7 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600">
+                <Boxes className="h-4 w-4" />
+              </div>
+              <div>
+                <h2 className="text-base font-bold text-slate-900 tracking-tight">
+                  Arsitektur & Tech Stack Modern
+                </h2>
+                <p className="text-xs text-slate-500">
+                  Teknologi komputasi awan berstandar industri yang menggerakkan infrastruktur praktikum MiraiGrid
+                </p>
+              </div>
+            </div>
+            <span className="hidden sm:inline-flex text-[11px] font-mono text-slate-600 bg-white px-3 py-1 rounded-lg border border-slate-200 shadow-2xs">
+              Enterprise Cloud Architecture
+            </span>
+          </div>
+
+          {/* Categories Grid */}
+          {categories.map((category) => {
+            const CategoryIcon = category.icon
+            return (
+              <div key={category.id} className="space-y-3.5">
+                <div className="flex items-center space-x-2.5 px-1">
+                  <div className={`p-1.5 rounded-lg bg-slate-100 border border-slate-200 ${category.iconColor}`}>
+                    <CategoryIcon className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900 tracking-tight">
+                      {category.title}
+                    </h3>
+                    <p className="text-[11px] text-slate-500 font-sans">
+                      {category.subtitle}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-4">
+                  {category.items.map((tech) => {
+                    const IconComponent = tech.icon
+                    return (
+                      <Card
+                        key={tech.id}
+                        hover
+                        padding="sm"
+                        className="flex items-center space-x-3.5 bg-white border border-slate-200/90 rounded-xl group relative overflow-hidden"
+                      >
+                        <div className="h-11 w-11 sm:h-12 sm:w-12 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center shrink-0 p-2 group-hover:border-slate-300 shadow-2xs transition-colors relative z-10">
+                          {tech.logo ? (
+                            <img
+                              src={tech.logo}
+                              alt={tech.name}
+                              className="h-full w-full object-contain"
+                              loading="lazy"
+                            />
+                          ) : (
+                            <IconComponent className={`h-6 w-6 ${tech.iconColor}`} />
+                          )}
+                        </div>
+
+                        <div className="min-w-0 flex-1 relative z-10">
+                          <h4 className="text-xs sm:text-sm font-bold text-slate-900 tracking-tight group-hover:text-emerald-700 transition-colors leading-snug">
+                            {tech.name}
+                          </h4>
+                        </div>
+                      </Card>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* 4. PILAR ARSITEKTUR INFRASTRUKTUR */}
+        <div className="space-y-4 pt-4">
+          <div className="flex items-center space-x-2.5">
+            <div className="h-7 w-7 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600">
+              <Sparkles className="h-4 w-4" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-slate-900 tracking-tight">
+                Pilar Keandalan & Keamanan Sistem
+              </h2>
+              <p className="text-xs text-slate-500">
+                Prinsip perancangan sistem terdistribusi untuk menjamin integritas data dan ketersediaan layanan
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {pillars.map((pillar, idx) => {
+              const Icon = pillar.icon
+              return (
+                <Card
+                  key={idx}
+                  hover
+                  padding="md"
+                  className="space-y-3 relative overflow-hidden group"
+                >
+                  <div className="flex items-center space-x-3.5">
+                    <div className={`h-10 w-10 rounded-lg border flex items-center justify-center shrink-0 ${pillar.color}`}>
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900">{pillar.title}</h3>
+                      <p className="text-[11px] text-slate-500 font-mono">{pillar.subtitle}</p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-slate-600 leading-relaxed font-sans">
+                    {pillar.description}
+                  </p>
+                </Card>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* 5. INFORMASI LABORATORIUM & KAMPUS */}
+        <Card className="p-6 sm:p-8 space-y-4">
+          <div className="flex items-center space-x-3">
+            <div className="h-9 w-9 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-700">
+              <Building2 className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-slate-900">
+                Laboratorium Komputer Teknik Informatika
+              </h3>
+              <p className="text-[11px] text-slate-500">
+                Fakultas Teknik • Universitas Muhammadiyah Ponorogo
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/80 space-y-1">
+              <span className="text-[10px] uppercase font-mono text-slate-400">Kampus Utama</span>
+              <p className="text-xs font-bold text-slate-900">Universitas Muhammadiyah Ponorogo</p>
+              <p className="text-[10px] text-slate-500">Jl. Budi Utomo No. 10, Ronowijayan, Ponorogo</p>
+            </div>
+
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/80 space-y-1">
+              <span className="text-[10px] uppercase font-mono text-slate-400">Fasilitas Praktikum</span>
+              <p className="text-xs font-bold text-slate-900">Infrastruktur Cloud & Jaringan</p>
+              <p className="text-[10px] text-slate-500">Dedicated Enterprise Server & Network Edge</p>
+            </div>
+
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/80 space-y-1">
+              <span className="text-[10px] uppercase font-mono text-slate-400">Portal Layanan Resmi</span>
+              <p className="text-xs font-bold text-emerald-700">miraigrid.web.id</p>
+              <p className="text-[10px] text-emerald-600">Zero-Port HTTPS Ingress (Cloudflare Tunnel)</p>
+            </div>
+          </div>
+        </Card>
+
+        {/* 6. FOOTER */}
+        <div className="p-5 rounded-xl bg-slate-50 border border-slate-200/80 text-center space-y-1">
+          <p className="text-xs text-slate-600 font-sans">
+            Infrastruktur Cloud Laboratorium Teknik Informatika • Universitas Muhammadiyah Ponorogo.
+          </p>
+          <p className="text-[10px] text-slate-400 font-mono">
+            © {new Date().getFullYear()} MiraiGrid Cloud Platform • Dedicated to Educational & Engineering Excellence.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  // V1 VINTAGE THEME RENDER (100% PRESERVED EXACTLY AS ORIGINAL)
   return (
     <div className="w-full space-y-8 font-sans pb-12">
       {/* 1. TOP HEADER & BREADCRUMB */}
@@ -285,7 +563,7 @@ export default function AboutPage({ user, onNavigate }) {
         </div>
       </div>
 
-      {/* 3. MODERN ENTERPRISE TECH STACK SHOWCASE (KATEGORI TERPISAH DENGAN LOGO & NAMA) */}
+      {/* 3. MODERN ENTERPRISE TECH STACK SHOWCASE */}
       <div className="space-y-8">
         <div className="flex items-center justify-between pb-2 border-b border-[#D8C7B2]/40">
           <div className="flex items-center space-x-2.5">
@@ -306,12 +584,10 @@ export default function AboutPage({ user, onNavigate }) {
           </span>
         </div>
 
-        {/* Masing-masing kategori ditampilkan secara terpisah */}
         {categories.map((category) => {
           const CategoryIcon = category.icon
           return (
             <div key={category.id} className="space-y-3.5">
-              {/* Category Header */}
               <div className="flex items-center space-x-2.5 px-1">
                 <div className={`p-1.5 rounded-xl bg-[#2B1810] border border-[#4D2D1E] ${category.iconColor}`}>
                   <CategoryIcon className="h-4 w-4" />
@@ -326,7 +602,6 @@ export default function AboutPage({ user, onNavigate }) {
                 </div>
               </div>
 
-              {/* Grid of Clean Minimalist Cards: Logo + Nama Saja (Tanpa Badge, Tanpa Deskripsi, Tanpa Tags) */}
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-4">
                 {category.items.map((tech) => {
                   const IconComponent = tech.icon
@@ -337,7 +612,6 @@ export default function AboutPage({ user, onNavigate }) {
                     >
                       <div className="absolute top-0 right-0 w-20 h-20 bg-[#C49767]/5 rounded-full blur-xl group-hover:bg-[#C49767]/10 transition-colors pointer-events-none" />
 
-                      {/* Logo / Icon Container */}
                       <div className="h-11 w-11 sm:h-12 sm:w-12 rounded-2xl bg-[#1C0F0A] border border-[#3E2316] flex items-center justify-center shrink-0 p-2.5 group-hover:border-[#C49767]/40 shadow-inner transition-colors relative z-10">
                         {tech.logo ? (
                           <img
@@ -351,7 +625,6 @@ export default function AboutPage({ user, onNavigate }) {
                         )}
                       </div>
 
-                      {/* Nama Teknologi Saja */}
                       <div className="min-w-0 flex-1 relative z-10">
                         <h4 className="text-xs sm:text-sm font-bold text-[#FAF5EC] tracking-tight group-hover:text-[#E8DCB8] transition-colors leading-snug">
                           {tech.name}

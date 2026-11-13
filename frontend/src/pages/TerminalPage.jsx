@@ -11,8 +11,11 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { api } from '../api/client'
+import { useTheme } from '../context/ThemeContext'
+import Button from '../components/Button'
 
 export default function TerminalPage({ user, onNavigate }) {
+  const { isV2 } = useTheme()
   const [history, setHistory] = useState([])
   const [inputVal, setInputVal] = useState('')
   const [cmdHistory, setCmdHistory] = useState([])
@@ -228,6 +231,181 @@ export default function TerminalPage({ user, onNavigate }) {
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
     toast.success('Log terminal berhasil disalin ke clipboard.')
+  }
+
+  if (isV2) {
+    return (
+      <div className="space-y-6 w-full animate-in fade-in duration-200 pb-12 font-sans">
+        {/* Top Header Halaman Konsisten V2 */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200/80">
+          <div className="flex items-center space-x-3.5">
+            <button
+              type="button"
+              onClick={() => onNavigate('/dashboard')}
+              className="p-2 rounded-lg bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 transition shadow-xs flex items-center justify-center shrink-0 group"
+              title="Kembali ke Dasbor"
+            >
+              <ArrowLeft className="h-4 w-4 text-slate-600 group-hover:-translate-x-0.5 transition-transform" />
+            </button>
+            <div>
+              <div className="flex items-center space-x-2.5">
+                <h2 className="text-2xl font-sans font-bold text-slate-900 flex items-center space-x-2.5">
+                  <TerminalIcon className="h-6 w-6 text-emerald-600" />
+                  <span>Terminal Jail</span>
+                </h2>
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  Sandboxed Cage
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 font-sans mt-0.5">
+                Command Line Interface (CLI) terisolasi mandiri per akun praktikum.
+              </p>
+            </div>
+          </div>
+
+          {/* Action Controls */}
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={copied ? Check : Copy}
+              onClick={handleCopyHistory}
+              title="Salin seluruh riwayat sesi"
+            >
+              {copied ? 'Tersalin' : 'Salin'}
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={RotateCcw}
+              onClick={handleResetSession}
+              title="Kembali ke root sandbox direktori awal"
+            >
+              Reset CWD
+            </Button>
+            <Button
+              variant="danger"
+              size="sm"
+              icon={Trash2}
+              onClick={() => setHistory([])}
+              title="Bersihkan layar terminal"
+            >
+              Clear
+            </Button>
+          </div>
+        </div>
+
+        {/* Terminal Window Box */}
+        <div
+          ref={containerRef}
+          onClick={handleContainerClick}
+          className="bg-slate-950 border border-slate-800 rounded-xl shadow-xl overflow-hidden font-mono text-xs sm:text-sm text-slate-200 flex flex-col h-[560px] sm:h-[600px] lg:h-[calc(100vh-210px)] min-h-[460px] max-h-[720px] cursor-text select-text"
+        >
+          {/* Terminal Window Titlebar */}
+          <div className="flex items-center justify-between px-5 py-3 bg-slate-900 border-b border-slate-800 select-none shrink-0">
+            <div className="flex items-center space-x-2">
+              <span className="h-3 w-3 rounded-full bg-rose-500/80 border border-rose-600 inline-block"></span>
+              <span className="h-3 w-3 rounded-full bg-amber-500/80 border border-amber-600 inline-block"></span>
+              <span className="h-3 w-3 rounded-full bg-emerald-500/80 border border-emerald-600 inline-block"></span>
+              <span className="text-xs text-slate-300 font-sans font-semibold ml-2">
+                bash — {username}@{serverIp}
+              </span>
+            </div>
+            <div className="flex items-center space-x-3 text-[11px] font-mono text-slate-400">
+              <span className="hidden sm:inline text-slate-500">Scrollable Buffer</span>
+              <span className="text-emerald-400">Strict Account Jail</span>
+            </div>
+          </div>
+
+          {/* Scrollable Terminal Output */}
+          <div
+            ref={scrollRef}
+            className="p-5 sm:p-6 flex-1 overflow-y-auto space-y-2 overscroll-contain focus:outline-none"
+            style={{
+              scrollbarWidth: 'thin',
+              scrollbarColor: '#334155 #020617'
+            }}
+          >
+            {history.map((item, idx) => {
+              if (item.type === 'banner') {
+                return (
+                  <pre
+                    key={idx}
+                    className="text-amber-300 font-mono text-xs whitespace-pre-wrap leading-relaxed py-1"
+                  >
+                    {item.content}
+                  </pre>
+                )
+              }
+              if (item.type === 'cmd') {
+                return (
+                  <div key={idx} className="flex items-baseline space-x-1 py-0.5">
+                    <span className="text-emerald-400 font-bold select-none shrink-0 font-mono">
+                      {item.prompt}
+                    </span>
+                    <span className="text-white font-semibold break-all">
+                      {item.cmd}
+                    </span>
+                  </div>
+                )
+              }
+              if (item.type === 'stdout') {
+                return (
+                  <pre
+                    key={idx}
+                    className="text-slate-200 font-mono text-xs sm:text-sm whitespace-pre-wrap leading-relaxed pl-1"
+                  >
+                    {item.content}
+                  </pre>
+                )
+              }
+              if (item.type === 'stderr') {
+                return (
+                  <pre
+                    key={idx}
+                    className="text-rose-400 font-bold font-mono text-xs sm:text-sm whitespace-pre-wrap leading-relaxed pl-1"
+                  >
+                    {item.content}
+                  </pre>
+                )
+              }
+              return null
+            })}
+
+            {/* Active Prompt & Input Line */}
+            <form onSubmit={handleSubmit} className="flex items-baseline space-x-1 pt-1">
+              <span className="text-emerald-400 font-bold select-none shrink-0 font-mono">
+                {username}@{serverIp} $
+              </span>
+              <div className="relative flex-1">
+                <input
+                  ref={inputRef}
+                  id="terminal-input"
+                  data-testid="terminal-input"
+                  name="terminal-input"
+                  type="text"
+                  value={inputVal}
+                  onChange={(e) => setInputVal(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  disabled={loading}
+                  autoFocus
+                  spellCheck={false}
+                  autoComplete="off"
+                  className="w-full bg-transparent text-white font-mono text-xs sm:text-sm outline-none border-none p-0 focus:ring-0 leading-normal"
+                />
+              </div>
+              {loading && (
+                <span className="text-xs text-amber-400 font-mono animate-pulse shrink-0">
+                  menjalankan...
+                </span>
+              )}
+            </form>
+
+            <div ref={bottomRef} />
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (

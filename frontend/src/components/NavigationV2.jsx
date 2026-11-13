@@ -313,7 +313,7 @@ export default function NavigationV2({
         {/* Bottom Storage & Resource Widget */}
         <div className="p-3 border-t border-gray-100 shrink-0 space-y-3">
           {!effectiveCollapsed ? (
-            <div className="bg-gray-50 border border-gray-200/80 rounded-2xl p-3.5 space-y-2.5">
+            <div className="bg-gray-50 border border-gray-200/80 rounded-xl p-3.5 space-y-2.5">
               <div className="flex items-center justify-between text-xs">
                 <span className="font-semibold text-gray-700 flex items-center space-x-1.5">
                   <HardDrive className="h-3.5 w-3.5 text-emerald-600" />
@@ -342,7 +342,7 @@ export default function NavigationV2({
                   onOpenResources()
                   if (isMobile) setMobileOpen(false)
                 }}
-                className="w-full py-1.5 px-2.5 bg-white hover:bg-emerald-50 border border-gray-200 hover:border-emerald-300 rounded-xl text-[11px] font-bold text-gray-700 hover:text-emerald-700 transition flex items-center justify-center space-x-1.5 shadow-sm"
+                className="w-full py-1.5 px-2.5 bg-white hover:bg-emerald-50 border border-gray-200 hover:border-emerald-300 rounded-lg text-[11px] font-bold text-gray-700 hover:text-emerald-700 transition flex items-center justify-center space-x-1.5 shadow-sm"
               >
                 <Activity className="h-3.5 w-3.5 text-emerald-600" />
                 <span>Lihat Detail Resource</span>
@@ -354,7 +354,7 @@ export default function NavigationV2({
                 type="button"
                 onClick={onOpenResources}
                 title={`Detail Resource: ${diskPercent}% terpakai`}
-                className="p-2.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-700 hover:scale-105 transition"
+                className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 hover:scale-105 transition"
               >
                 <Activity className="h-4 w-4" />
               </button>

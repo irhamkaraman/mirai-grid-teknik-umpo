@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom'
 import { Toaster } from 'sonner'
 import { Search, X, Menu, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
+import { ThemeProvider } from './context/ThemeContext'
 import Navigation from './components/Navigation'
 import NavigationV2 from './components/NavigationV2'
 import ThemeToggle from './components/ThemeToggle'
@@ -53,13 +54,30 @@ export default function App() {
 
   useEffect(() => {
     if (theme === 'v2') {
-      document.documentElement.classList.add('theme-v2')
-      document.body.classList.add('theme-v2')
+      document.documentElement.classList.add('theme-v2', 'theme-mig-cloud')
+      document.body.classList.add('theme-v2', 'theme-mig-cloud')
+      document.documentElement.classList.remove('bg-[#E6D7BE]')
+      document.body.classList.remove('bg-[#E6D7BE]')
     } else {
-      document.documentElement.classList.remove('theme-v2')
-      document.body.classList.remove('theme-v2')
+      document.documentElement.classList.remove('theme-v2', 'theme-mig-cloud')
+      document.body.classList.remove('theme-v2', 'theme-mig-cloud')
+      document.documentElement.classList.add('bg-[#E6D7BE]')
+      document.body.classList.add('bg-[#E6D7BE]')
     }
   }, [theme])
+
+  const handleToggleTheme = () => {
+    const nextTheme = theme === 'v1' ? 'v2' : 'v1'
+    setTheme(nextTheme)
+    localStorage.setItem('miraigrid_theme_mode', nextTheme)
+  }
+
+  const themeContextValue = useMemo(() => ({
+    theme,
+    isV2: theme === 'v2',
+    toggleTheme: handleToggleTheme,
+    setTheme,
+  }), [theme])
 
   useEffect(() => {
     if (user) {
@@ -68,12 +86,6 @@ export default function App() {
       }).catch(() => {})
     }
   }, [user])
-
-  const handleToggleTheme = () => {
-    const nextTheme = theme === 'v1' ? 'v2' : 'v1'
-    setTheme(nextTheme)
-    localStorage.setItem('miraigrid_theme_mode', nextTheme)
-  }
 
   useEffect(() => {
     const onBreach = (e) => setSecurityBreach(e.detail?.reason || 'Manipulasi rute terdeteksi')
@@ -305,11 +317,12 @@ export default function App() {
   const isV2 = theme === 'v2'
 
   return (
-    <div
-      className={`min-h-screen ${
-        isV2 ? 'bg-[#F8FAFC] text-gray-900' : 'bg-[#E6D7BE] text-[#26160F]'
-      } flex flex-col font-sans selection:bg-[#5A3521] selection:text-[#FAF5EC] relative transition-colors duration-300`}
-    >
+    <ThemeProvider value={themeContextValue}>
+      <div
+        className={`min-h-screen ${
+          isV2 ? 'bg-[#F8FAFC] text-gray-900' : 'bg-[#E6D7BE] text-[#26160F]'
+        } flex flex-col font-sans selection:bg-[#5A3521] selection:text-[#FAF5EC] relative transition-colors duration-300`}
+      >
       <Toaster
         richColors
         position="top-right"
@@ -368,7 +381,7 @@ export default function App() {
             <button
               type="button"
               onClick={() => setMobileNavOpen(true)}
-              className="md:hidden p-2 rounded-xl bg-gray-50 border border-gray-200 text-gray-700 hover:bg-gray-100 transition shadow-xs shrink-0"
+              className="md:hidden p-2 rounded-lg bg-gray-50 border border-gray-200 text-gray-700 hover:bg-gray-100 transition shadow-xs shrink-0"
               title="Buka Menu Navigasi"
             >
               <Menu className="h-5 w-5" />
@@ -379,7 +392,7 @@ export default function App() {
               <button
                 type="button"
                 onClick={() => handleToggleCollapse(false)}
-                className="hidden md:flex p-2 rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition shrink-0"
+                className="hidden md:flex p-2 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition shrink-0"
                 title="Perlebar Sidebar"
               >
                 <PanelLeftOpen className="h-4 w-4" />
@@ -399,7 +412,7 @@ export default function App() {
                   }
                 }}
                 placeholder="Cari berkas, tools, database, konfigurasi (/)..."
-                className="w-full bg-gray-50/80 hover:bg-gray-100/70 focus:bg-white border border-gray-200/80 focus:border-emerald-500 rounded-xl pl-9 pr-8 py-2 text-xs outline-none transition shadow-xs text-gray-900 placeholder-gray-400 font-sans"
+                className="w-full bg-gray-50/80 hover:bg-gray-100/70 focus:bg-white border border-gray-200/80 focus:border-emerald-500 rounded-lg pl-9 pr-8 py-2 text-xs outline-none transition shadow-xs text-gray-900 placeholder-gray-400 font-sans"
               />
               {searchQuery && (
                 <button
@@ -598,5 +611,6 @@ export default function App() {
         user={user}
       />
     </div>
+    </ThemeProvider>
   )
 }

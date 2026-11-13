@@ -4,8 +4,11 @@ import { KeyRound, AlertCircle, Eye, EyeOff, CheckCircle2 } from 'lucide-react'
 import { api } from '../api/client'
 import { Spinner } from './Skeletons'
 import ModalPortal from './ModalPortal'
+import { useTheme } from '../context/ThemeContext'
+import Button from './Button'
 
 export default function ChangePasswordModal({ isOpen, onClose, isMandatory = false, onSuccess }) {
+  const { isV2 } = useTheme()
   const [oldPassword, setOldPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -35,14 +38,14 @@ export default function ChangePasswordModal({ isOpen, onClose, isMandatory = fal
     setLoading(true)
     try {
       const payload = {
-        new_password: newPassword
+        new_password: newPassword,
       }
       if (!isMandatory && oldPassword.trim()) {
         payload.old_password = oldPassword.trim()
       }
 
       await api.post('/auth/change-password', payload)
-      
+
       // Update persistent user state in localStorage
       try {
         const saved = JSON.parse(localStorage.getItem('miraigrid_user') || '{}')
@@ -51,7 +54,7 @@ export default function ChangePasswordModal({ isOpen, onClose, isMandatory = fal
       } catch (e) {}
 
       toast.success('Password berhasil diperbarui!', {
-        description: 'Selamat datang di workspace praktikum Anda.'
+        description: 'Selamat datang di workspace praktikum Anda.',
       })
 
       // Reset form
@@ -68,6 +71,119 @@ export default function ChangePasswordModal({ isOpen, onClose, isMandatory = fal
     } finally {
       setLoading(false)
     }
+  }
+
+  if (isV2) {
+    return (
+      <ModalPortal isOpen={isOpen}>
+        <div
+          onClick={() => !isMandatory && onClose()}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-150"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md bg-white border border-slate-200 rounded-xl shadow-2xl p-6 text-slate-900 animate-in zoom-in-95 duration-150 font-sans"
+          >
+            <div className="flex items-center space-x-3 mb-5">
+              <div className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-600 shadow-xs">
+                <KeyRound className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900">
+                  {isMandatory ? 'Ganti Password Pertama Kali' : 'Perbarui Password'}
+                </h3>
+                <p className="text-xs text-slate-500 font-normal mt-0.5">
+                  {isMandatory
+                    ? 'Tentukan password baru untuk mengamankan akun praktikum Anda.'
+                    : 'Masukkan password baru yang akan digunakan.'}
+                </p>
+              </div>
+            </div>
+
+            {error && (
+              <div className="mb-4 p-3 rounded-lg bg-rose-50 border border-rose-200 flex items-start space-x-2 text-rose-700 text-xs">
+                <AlertCircle className="h-4 w-4 shrink-0 text-rose-500 mt-0.5" />
+                <span className="leading-relaxed">{error}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {!isMandatory && (
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                    Password Lama (Opsional)
+                  </label>
+                  <input
+                    type="password"
+                    value={oldPassword}
+                    onChange={(e) => setOldPassword(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3.5 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:bg-white transition"
+                    placeholder="Password akun sebelumnya"
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  Password Baru <span className="text-rose-500">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type={showNewPassword ? 'text' : 'password'}
+                    required
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-3.5 pr-10 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:bg-white transition"
+                    placeholder="Minimal 8 karakter"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 transition"
+                  >
+                    {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  Konfirmasi Password Baru <span className="text-rose-500">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    required
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-3.5 pr-10 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:bg-white transition"
+                    placeholder="Ulangi password baru"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 transition"
+                  >
+                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end space-x-2 pt-2">
+                {!isMandatory && (
+                  <Button variant="secondary" size="md" onClick={onClose} disabled={loading}>
+                    Batal
+                  </Button>
+                )}
+                <Button variant="primary" size="md" type="submit" loading={loading}>
+                  Simpan Perubahan
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </ModalPortal>
+    )
   }
 
   return (
@@ -104,7 +220,6 @@ export default function ChangePasswordModal({ isOpen, onClose, isMandatory = fal
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Hanya tampilkan Password Lama jika BUKAN mandatory */}
             {!isMandatory && (
               <div>
                 <label className="block text-xs font-semibold text-[#DFCDB5] mb-1.5">
@@ -120,75 +235,59 @@ export default function ChangePasswordModal({ isOpen, onClose, isMandatory = fal
               </div>
             )}
 
-            {/* Input Password Baru */}
             <div>
               <label className="block text-xs font-semibold text-[#DFCDB5] mb-1.5">
-                Password Baru (Min. 8 Karakter)
+                Password Baru <span className="text-[#E8DCB8]">*</span>
               </label>
-              <div className="relative group">
+              <div className="relative">
                 <input
                   type={showNewPassword ? 'text' : 'password'}
                   required
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl pl-3.5 pr-10 py-2.5 text-xs text-[#FAF5EC] placeholder-[#705241] focus:outline-none focus:border-[#C49767] transition font-sans shadow-inner"
-                  placeholder="Masukkan minimal 8 karakter"
-                  autoFocus
+                  className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl pl-3.5 pr-10 py-2.5 text-xs text-[#FAF5EC] placeholder-[#705241] focus:outline-none focus:border-[#C49767] transition"
+                  placeholder="Minimal 8 karakter"
                 />
                 <button
                   type="button"
                   onClick={() => setShowNewPassword(!showNewPassword)}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#A47454] hover:text-[#FAF5EC] transition p-1 rounded-md"
-                  title={showNewPassword ? 'Sembunyikan' : 'Lihat'}
+                  className="absolute right-3 top-2.5 text-[#A47E65] hover:text-[#FAF5EC] transition"
                 >
                   {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
             </div>
 
-            {/* Input Konfirmasi Password Baru */}
             <div>
               <label className="block text-xs font-semibold text-[#DFCDB5] mb-1.5">
-                Konfirmasi Password Baru
+                Konfirmasi Password Baru <span className="text-[#E8DCB8]">*</span>
               </label>
-              <div className="relative group">
+              <div className="relative">
                 <input
                   type={showConfirmPassword ? 'text' : 'password'}
                   required
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className={`w-full bg-[#1C0F0A] border rounded-xl pl-3.5 pr-10 py-2.5 text-xs text-[#FAF5EC] placeholder-[#705241] focus:outline-none transition font-sans shadow-inner ${
-                    confirmPassword && confirmPassword !== newPassword
-                      ? 'border-rose-500/50 focus:border-rose-500'
-                      : confirmPassword && confirmPassword === newPassword
-                      ? 'border-emerald-500/50 focus:border-emerald-500'
-                      : 'border-[#3E2316] focus:border-[#C49767]'
-                  }`}
-                  placeholder="Ulangi password baru Anda"
+                  className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl pl-3.5 pr-10 py-2.5 text-xs text-[#FAF5EC] placeholder-[#705241] focus:outline-none focus:border-[#C49767] transition"
+                  placeholder="Ulangi password baru"
                 />
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#A47454] hover:text-[#FAF5EC] transition p-1 rounded-md"
-                  title={showConfirmPassword ? 'Sembunyikan' : 'Lihat'}
+                  className="absolute right-3 top-2.5 text-[#A47E65] hover:text-[#FAF5EC] transition"
                 >
                   {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
-              {confirmPassword && confirmPassword === newPassword && (
-                <div className="flex items-center space-x-1.5 mt-1.5 text-[11px] text-emerald-400">
-                  <CheckCircle2 className="h-3.5 w-3.5" />
-                  <span>Password cocok</span>
-                </div>
-              )}
             </div>
 
-            <div className="flex justify-end space-x-2 pt-3">
+            <div className="flex items-center justify-end space-x-2 pt-2">
               {!isMandatory && (
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-4 py-2.5 rounded-xl text-xs font-medium text-[#DFCDB5] hover:text-[#FAF5EC] hover:bg-[#3A2115] transition"
+                  disabled={loading}
+                  className="px-4 py-2 rounded-xl text-xs font-medium text-[#DFCDB5] hover:text-[#FAF5EC] hover:bg-[#3A2115] transition"
                 >
                   Batal
                 </button>
@@ -196,16 +295,10 @@ export default function ChangePasswordModal({ isOpen, onClose, isMandatory = fal
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full sm:w-auto px-6 py-2.5 rounded-xl text-xs font-semibold bg-gradient-to-r from-[#7E5338] via-[#643F29] to-[#4D2F1E] hover:from-[#915F40] hover:via-[#734A31] hover:to-[#5A3623] text-[#FAF5EC] border border-[#A47454]/40 hover:border-[#C49767] shadow-lg shadow-black/30 transition-all duration-200 disabled:opacity-50"
+                className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-xl text-xs font-bold bg-[#E8DCB8] text-[#180D07] hover:bg-white transition shadow-lg disabled:opacity-50"
               >
-                {loading ? (
-                  <span className="flex items-center justify-center space-x-2">
-                    <Spinner size="xs" />
-                    <span>Menyimpan...</span>
-                  </span>
-                ) : (
-                  'Simpan Password'
-                )}
+                {loading && <Spinner size="xs" />}
+                <span>Simpan Perubahan</span>
               </button>
             </div>
           </form>

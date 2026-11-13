@@ -651,8 +651,8 @@ export default function DashboardV2({
 
       {/* External Drag and Drop Overlay */}
       {isDragOverWindow && (
-        <div className="fixed inset-0 z-50 bg-emerald-600/20 backdrop-blur-sm border-4 border-dashed border-emerald-500 rounded-3xl flex flex-col items-center justify-center pointer-events-none animate-in fade-in duration-150">
-          <div className="bg-white p-8 rounded-3xl shadow-2xl flex flex-col items-center space-y-3 border border-emerald-200">
+        <div className="fixed inset-0 z-50 bg-emerald-600/20 backdrop-blur-sm border-4 border-dashed border-emerald-500 rounded-2xl flex flex-col items-center justify-center pointer-events-none animate-in fade-in duration-150">
+          <div className="bg-white p-8 rounded-xl shadow-2xl flex flex-col items-center space-y-3 border border-emerald-200">
             <Upload className="h-12 w-12 text-emerald-600 animate-bounce" />
             <h3 className="text-lg font-bold text-gray-900">
               Lepaskan berkas di sini untuk mengunggah
@@ -668,7 +668,7 @@ export default function DashboardV2({
       )}
 
       {/* 1. TOP ACTION BAR (Quick Actions ala Google Drive) */}
-      <div className="bg-white border border-gray-200/90 rounded-3xl p-4 sm:p-5 shadow-sm space-y-4">
+      <div className="bg-white border border-gray-200/90 rounded-xl p-4 sm:p-5 shadow-sm space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           {/* Left Action Buttons */}
           <div className="flex items-center flex-wrap gap-2.5">
@@ -677,7 +677,7 @@ export default function DashboardV2({
               <button
                 type="button"
                 onClick={() => setShowCreateDropdown(!showCreateDropdown)}
-                className="flex items-center space-x-2 px-4 py-2.5 rounded-2xl bg-[#111827] hover:bg-black text-white text-xs font-semibold shadow-md hover:shadow-lg transition-all active:scale-95 group"
+                className="flex items-center space-x-2 px-4 py-2.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow-sm hover:shadow transition-all active:scale-95 group"
               >
                 <Plus className={`h-4 w-4 text-emerald-400 transition-transform duration-200 ${showCreateDropdown ? 'rotate-45' : 'group-hover:rotate-90'}`} />
                 <span>+ Buat Baru</span>
@@ -685,7 +685,7 @@ export default function DashboardV2({
               </button>
 
               {showCreateDropdown && (
-                <div className="absolute left-0 mt-2 w-56 rounded-2xl bg-white border border-gray-200 shadow-2xl p-1.5 z-30 animate-in fade-in zoom-in-95 duration-150 text-xs">
+                <div className="absolute left-0 mt-2 w-56 rounded-xl bg-white border border-gray-200 shadow-2xl p-1.5 z-30 animate-in fade-in zoom-in-95 duration-150 text-xs">
                   <button
                     type="button"
                     onClick={() => {
@@ -694,7 +694,7 @@ export default function DashboardV2({
                       setNewItemIsDir(false)
                       setActiveModal('new_item')
                     }}
-                    className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 transition text-left"
+                    className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-lg text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 transition text-left"
                   >
                     <FilePlus className="h-4 w-4 text-emerald-600" />
                     <span>Berkas Baru (File)</span>
@@ -707,7 +707,7 @@ export default function DashboardV2({
                       setNewItemIsDir(true)
                       setActiveModal('new_item')
                     }}
-                    className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 transition text-left"
+                    className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-lg text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 transition text-left"
                   >
                     <FolderPlus className="h-4 w-4 text-emerald-600" />
                     <span>Folder Baru</span>
@@ -719,7 +719,7 @@ export default function DashboardV2({
                       setShowCreateDropdown(false)
                       fileInputRef.current?.click()
                     }}
-                    className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 transition text-left"
+                    className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-lg text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 transition text-left"
                   >
                     <Upload className="h-4 w-4 text-blue-600" />
                     <span>Unggah Berkas</span>
@@ -730,7 +730,7 @@ export default function DashboardV2({
                       setShowCreateDropdown(false)
                       zipInputRef.current?.click()
                     }}
-                    className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 transition text-left"
+                    className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-lg text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 transition text-left"
                   >
                     <FileArchive className="h-4 w-4 text-amber-500" />
                     <span>Unggah ZIP (Auto-Extract)</span>
@@ -743,7 +743,7 @@ export default function DashboardV2({
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="flex items-center space-x-2 px-3.5 py-2 rounded-2xl bg-white hover:bg-emerald-50/70 border border-gray-200 hover:border-emerald-300 text-gray-700 hover:text-emerald-700 text-xs font-semibold shadow-sm transition active:scale-95"
+              className="flex items-center space-x-2 px-3.5 py-2 rounded-lg bg-white hover:bg-emerald-50/70 border border-gray-200 hover:border-emerald-300 text-gray-700 hover:text-emerald-700 text-xs font-semibold shadow-xs transition active:scale-95"
             >
               <Upload className="h-4 w-4 text-emerald-600" />
               <span className="hidden sm:inline">Unggah Berkas</span>
@@ -754,7 +754,7 @@ export default function DashboardV2({
             <button
               type="button"
               onClick={() => zipInputRef.current?.click()}
-              className="flex items-center space-x-2 px-3.5 py-2 rounded-2xl bg-white hover:bg-emerald-50/70 border border-gray-200 hover:border-emerald-300 text-gray-700 hover:text-emerald-700 text-xs font-semibold shadow-sm transition active:scale-95"
+              className="flex items-center space-x-2 px-3.5 py-2 rounded-lg bg-white hover:bg-emerald-50/70 border border-gray-200 hover:border-emerald-300 text-gray-700 hover:text-emerald-700 text-xs font-semibold shadow-xs transition active:scale-95"
               title="Unggah arsip ZIP dan otomatis ekstrak ke folder ini"
             >
               <FileArchive className="h-4 w-4 text-amber-500" />
@@ -770,7 +770,7 @@ export default function DashboardV2({
                 setNewItemIsDir(true)
                 setActiveModal('new_item')
               }}
-              className="flex items-center space-x-2 px-3.5 py-2 rounded-2xl bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 text-xs font-semibold shadow-sm transition"
+              className="flex items-center space-x-2 px-3.5 py-2 rounded-lg bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 text-xs font-semibold shadow-xs transition"
             >
               <FolderPlus className="h-4 w-4 text-gray-500" />
               <span className="hidden md:inline">Folder Baru</span>
@@ -786,7 +786,7 @@ export default function DashboardV2({
                 <button
                   type="button"
                   onClick={() => handleOpenFileEditor(target)}
-                  className="flex items-center space-x-2 px-3.5 py-2 rounded-2xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 text-xs font-semibold shadow-sm transition"
+                  className="flex items-center space-x-2 px-3.5 py-2 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 text-xs font-semibold shadow-xs transition"
                   title="Buka dan sunting kode berkas ini"
                 >
                   <Edit3 className="h-4 w-4 text-emerald-600" />
@@ -807,7 +807,7 @@ export default function DashboardV2({
                     handleDownloadZipSelected()
                   }
                 }}
-                className="flex items-center space-x-2 px-3.5 py-2 rounded-2xl bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 text-xs font-semibold shadow-sm transition"
+                className="flex items-center space-x-2 px-3.5 py-2 rounded-lg bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 text-xs font-semibold shadow-xs transition"
                 title="Unduh berkas yang dipilih"
               >
                 <Download className="h-4 w-4 text-emerald-600" />
@@ -826,7 +826,7 @@ export default function DashboardV2({
                 value={localSearch}
                 onChange={(e) => setLocalSearch(e.target.value)}
                 placeholder="Saring berkas di sini..."
-                className="w-full bg-gray-50 border border-gray-200 focus:border-emerald-500 focus:bg-white rounded-xl pl-9 pr-3 py-1.5 text-xs text-gray-800 placeholder-gray-400 outline-none transition font-sans"
+                className="w-full bg-gray-50 border border-gray-200 focus:border-emerald-500 focus:bg-white rounded-lg pl-9 pr-3 py-1.5 text-xs text-gray-800 placeholder-gray-400 outline-none transition font-sans"
               />
               {localSearch && (
                 <button
@@ -839,11 +839,11 @@ export default function DashboardV2({
             </div>
 
             {/* View Mode Switcher Toggle */}
-            <div className="flex items-center bg-gray-100 p-1 rounded-xl border border-gray-200/80">
+            <div className="flex items-center bg-gray-100 p-1 rounded-lg border border-gray-200/80">
               <button
                 type="button"
                 onClick={() => handleToggleViewMode('grid')}
-                className={`p-1.5 rounded-lg transition ${
+                className={`p-1.5 rounded-md transition ${
                   viewMode === 'grid'
                     ? 'bg-white text-emerald-700 shadow-sm font-bold'
                     : 'text-gray-500 hover:text-gray-800'
@@ -855,7 +855,7 @@ export default function DashboardV2({
               <button
                 type="button"
                 onClick={() => handleToggleViewMode('list')}
-                className={`p-1.5 rounded-lg transition ${
+                className={`p-1.5 rounded-md transition ${
                   viewMode === 'list'
                     ? 'bg-white text-emerald-700 shadow-sm font-bold'
                     : 'text-gray-500 hover:text-gray-800'
@@ -906,7 +906,7 @@ export default function DashboardV2({
           <button
             type="button"
             onClick={() => fetchDirectory(currentPath)}
-            className="p-1.5 rounded-xl text-gray-400 hover:text-emerald-700 hover:bg-emerald-50 transition shrink-0"
+            className="p-1.5 rounded-lg text-gray-400 hover:text-emerald-700 hover:bg-emerald-50 transition shrink-0"
             title="Refresh Direktori"
           >
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin text-emerald-600' : ''}`} />
@@ -950,14 +950,14 @@ export default function DashboardV2({
                     setActiveModal('new_item')
                   }
                 }}
-                className={`bg-white rounded-2xl p-4 shadow-sm transition-all duration-200 cursor-pointer group relative overflow-hidden ${
+                className={`bg-white rounded-xl p-4 shadow-xs transition-all duration-200 cursor-pointer group relative overflow-hidden ${
                   dragOverFolder === sug.name
                     ? 'border-emerald-600 ring-4 ring-emerald-300 bg-emerald-100/50 scale-105 shadow-md'
-                    : 'border border-emerald-100/90 hover:border-emerald-400 hover:shadow-md'
+                    : 'border border-emerald-100/90 hover:border-emerald-400 hover:shadow-xs'
                 }`}
               >
                 <div className="flex items-center justify-between mb-2">
-                  <div className="h-10 w-10 rounded-xl bg-emerald-50 border border-emerald-200/80 flex items-center justify-center text-emerald-600 group-hover:scale-105 transition-transform">
+                  <div className="h-10 w-10 rounded-lg bg-emerald-50 border border-emerald-200/80 flex items-center justify-center text-emerald-600 group-hover:scale-105 transition-transform">
                     <Folder className="h-5 w-5 fill-emerald-500/20" />
                   </div>
                   <button
@@ -1062,7 +1062,7 @@ export default function DashboardV2({
 
       {/* 4. MULTI-SELECTION FLOATING ACTION BAR */}
       {selectedPaths.length > 0 && (
-        <div className="sticky top-4 z-20 bg-gray-900 text-white px-5 py-3 rounded-2xl shadow-xl flex items-center justify-between animate-in slide-in-from-top duration-200">
+        <div className="sticky top-4 z-20 bg-gray-900 text-white px-5 py-3 rounded-xl shadow-xl flex items-center justify-between animate-in slide-in-from-top duration-200">
           <div className="flex items-center space-x-3 text-xs">
             <span className="font-mono bg-emerald-500/30 text-emerald-300 font-bold px-2 py-0.5 rounded-full border border-emerald-400/30">
               {selectedPaths.length} dipilih
@@ -1075,7 +1075,7 @@ export default function DashboardV2({
             <button
               type="button"
               onClick={handleShareSelected}
-              className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-emerald-300 hover:text-emerald-200 rounded-xl transition flex items-center space-x-1.5"
+              className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-emerald-300 hover:text-emerald-200 rounded-lg transition flex items-center space-x-1.5"
               title="Salin tautan publik berkas terpilih"
             >
               <Share2 className="h-3.5 w-3.5 text-emerald-400" />
@@ -1086,7 +1086,7 @@ export default function DashboardV2({
             <button
               type="button"
               onClick={handleDownloadZipSelected}
-              className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-amber-300 hover:text-amber-200 rounded-xl transition flex items-center space-x-1.5"
+              className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-amber-300 hover:text-amber-200 rounded-lg transition flex items-center space-x-1.5"
               title="Kompresi dan unduh semua berkas terpilih sebagai ZIP"
             >
               <FileArchive className="h-3.5 w-3.5 text-amber-400" />
@@ -1100,7 +1100,7 @@ export default function DashboardV2({
                 setClipboard({ action: 'copy', paths: [...selectedPaths] })
                 toast.success(`${selectedPaths.length} berkas disalin ke clipboard!`)
               }}
-              className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-xl transition flex items-center space-x-1.5"
+              className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 rounded-lg transition flex items-center space-x-1.5"
               title="Salin ke clipboard (Ctrl+C)"
             >
               <Copy className="h-3.5 w-3.5" />
@@ -1114,7 +1114,7 @@ export default function DashboardV2({
                 setSelectedItem(null) // Target selectedPaths
                 setActiveModal('delete')
               }}
-              className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl transition flex items-center space-x-1.5"
+              className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg transition flex items-center space-x-1.5"
               title="Hapus semua berkas terpilih"
             >
               <Trash2 className="h-3.5 w-3.5" />
@@ -1147,8 +1147,8 @@ export default function DashboardV2({
         </div>
       ) : filteredItems.length === 0 ? (
         /* Empty State */
-        <div className="bg-white border border-gray-200 rounded-3xl p-12 text-center text-gray-600 flex flex-col items-center justify-center space-y-4 shadow-sm">
-          <div className="h-16 w-16 rounded-3xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600">
+        <div className="bg-white border border-gray-200 rounded-xl p-8 sm:p-12 text-center text-gray-600 flex flex-col items-center justify-center space-y-4 shadow-sm">
+          <div className="h-16 w-16 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600">
             <Folder className="h-8 w-8 stroke-[1.5]" />
           </div>
           <div className="max-w-md space-y-1">
@@ -1160,7 +1160,7 @@ export default function DashboardV2({
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-sm transition"
+            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-sm transition"
           >
             Unggah Berkas Sekarang
           </button>
@@ -1193,7 +1193,7 @@ export default function DashboardV2({
                 }}
                 onClick={() => handleItemOpen(item)}
                 onContextMenu={(e) => handleContextMenu(e, item)}
-                className={`group relative bg-white rounded-2xl p-4 border transition-all duration-200 cursor-pointer select-none hover:-translate-y-0.5 ${
+                className={`group relative bg-white rounded-xl p-4 border transition-all duration-200 cursor-pointer select-none hover:-translate-y-0.5 ${
                   isSelected
                     ? 'border-emerald-500 ring-2 ring-emerald-500/20 bg-emerald-50/40 shadow-sm'
                     : isDropTarget
@@ -1216,7 +1216,7 @@ export default function DashboardV2({
                         <Square className="h-4 w-4 opacity-40 group-hover:opacity-100" />
                       )}
                     </button>
-                    <div className="p-1 rounded-xl bg-gray-50 group-hover:bg-emerald-50 transition">
+                    <div className="p-1 rounded-lg bg-gray-50 group-hover:bg-emerald-50 transition">
                       {getFileIcon(item)}
                     </div>
                   </div>
@@ -1694,7 +1694,7 @@ export default function DashboardV2({
       {/* 9. CODE VIEWER & EDITOR MODAL */}
       {activeModal === 'editor' && editorFile && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-gray-900/40 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white border border-gray-200 rounded-3xl shadow-2xl w-full max-w-4xl h-[85vh] flex flex-col overflow-hidden text-gray-900">
+          <div className="bg-white border border-gray-200 rounded-xl shadow-2xl w-full max-w-4xl h-[85vh] flex flex-col overflow-hidden text-gray-900">
             {/* Editor Header */}
             <div className="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between bg-gray-50/80">
               <div className="flex items-center space-x-3 overflow-hidden">
@@ -1714,7 +1714,7 @@ export default function DashboardV2({
                   type="button"
                   onClick={handleSaveFile}
                   disabled={savingFile}
-                  className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-xl transition flex items-center space-x-1.5 shadow-sm disabled:opacity-50"
+                  className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg transition flex items-center space-x-1.5 shadow-sm disabled:opacity-50"
                 >
                   <Save className="h-3.5 w-3.5" />
                   <span>{savingFile ? 'Menyimpan...' : 'Simpan (Ctrl+S)'}</span>
@@ -1722,7 +1722,7 @@ export default function DashboardV2({
                 <button
                   type="button"
                   onClick={() => setActiveModal(null)}
-                  className="p-1.5 text-gray-400 hover:text-gray-700 rounded-full hover:bg-gray-200"
+                  className="p-1.5 text-gray-400 hover:text-gray-700 rounded-lg hover:bg-gray-200"
                 >
                   <X className="h-5 w-5" />
                 </button>
@@ -1790,10 +1790,10 @@ export default function DashboardV2({
       {/* 10. PROPERTIES / GET INFO MODAL */}
       {activeModal === 'info' && selectedItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white border border-gray-200 rounded-3xl shadow-2xl max-w-md w-full p-6 text-gray-900 space-y-4">
+          <div className="bg-white border border-gray-200 rounded-xl shadow-2xl max-w-md w-full p-6 text-gray-900 space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-gray-100">
               <div className="flex items-center space-x-3">
-                <div className="p-2 bg-emerald-50 text-emerald-600 rounded-2xl">
+                <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
                   {getFileIcon(selectedItem)}
                 </div>
                 <div>
@@ -1805,34 +1805,34 @@ export default function DashboardV2({
               </div>
               <button
                 onClick={() => setActiveModal(null)}
-                className="p-1 text-gray-400 hover:text-gray-700 rounded-full"
+                className="p-1 text-gray-400 hover:text-gray-700 rounded-lg"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
             <div className="space-y-2.5 text-xs">
-              <div className="flex items-center justify-between p-2.5 rounded-xl bg-gray-50">
+              <div className="flex items-center justify-between p-2.5 rounded-lg bg-gray-50">
                 <span className="text-gray-500">Tipe Berkas</span>
                 <span className="font-semibold">{selectedItem.is_dir ? 'Direktori / Folder' : selectedItem.type || 'Berkas'}</span>
               </div>
-              <div className="flex items-center justify-between p-2.5 rounded-xl bg-gray-50">
+              <div className="flex items-center justify-between p-2.5 rounded-lg bg-gray-50">
                 <span className="text-gray-500">Ukuran</span>
                 <span className="font-mono font-semibold">
                   {selectedItem.is_dir ? '-' : `${formatBytes(selectedItem.size)} (${selectedItem.size} Bytes)`}
                 </span>
               </div>
-              <div className="flex items-center justify-between p-2.5 rounded-xl bg-gray-50">
+              <div className="flex items-center justify-between p-2.5 rounded-lg bg-gray-50">
                 <span className="text-gray-500">Izin Linux (Octal)</span>
                 <span className="font-mono font-semibold text-emerald-700">
                   {selectedItem.permissions || '0755'}
                 </span>
               </div>
-              <div className="flex items-center justify-between p-2.5 rounded-xl bg-gray-50">
+              <div className="flex items-center justify-between p-2.5 rounded-lg bg-gray-50">
                 <span className="text-gray-500">Terakhir Dimodifikasi</span>
                 <span className="font-semibold">{formatDate(selectedItem.modified)}</span>
               </div>
-              <div className="p-2.5 rounded-xl bg-gray-50 space-y-1">
+              <div className="p-2.5 rounded-lg bg-gray-50 space-y-1">
                 <span className="text-gray-500 block">Jalur Virtual (Path)</span>
                 <code className="text-[11px] font-mono text-emerald-700 block break-all">
                   /home/{username}/{selectedItem.path}
@@ -1844,14 +1844,14 @@ export default function DashboardV2({
               <button
                 type="button"
                 onClick={() => handleCopyPublicLink(selectedItem)}
-                className="px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl text-xs font-semibold transition"
+                className="px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg text-xs font-semibold transition"
               >
                 Salin Tautan Publik
               </button>
               <button
                 type="button"
                 onClick={() => setActiveModal(null)}
-                className="px-4 py-2 bg-gray-900 text-white rounded-xl text-xs font-semibold hover:bg-black transition"
+                className="px-4 py-2 bg-gray-900 text-white rounded-lg text-xs font-semibold hover:bg-black transition"
               >
                 Tutup
               </button>
@@ -1865,7 +1865,7 @@ export default function DashboardV2({
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm animate-in fade-in duration-200">
           <form
             onSubmit={handleRenameItem}
-            className="bg-white border border-gray-200 rounded-3xl shadow-2xl max-w-sm w-full p-6 text-gray-900 space-y-4"
+            className="bg-white border border-gray-200 rounded-xl shadow-2xl max-w-sm w-full p-6 text-gray-900 space-y-4"
           >
             <h3 className="text-sm font-bold text-gray-900">Ganti Nama Berkas / Folder</h3>
             <div className="space-y-1.5">
@@ -1876,20 +1876,20 @@ export default function DashboardV2({
                 onChange={(e) => setNewItemName(e.target.value)}
                 autoFocus
                 required
-                className="w-full bg-gray-50 border border-gray-200 focus:border-emerald-500 rounded-xl px-3.5 py-2 text-xs text-gray-900 outline-none"
+                className="w-full bg-gray-50 border border-gray-200 focus:border-emerald-500 rounded-lg px-3.5 py-2 text-xs text-gray-900 outline-none"
               />
             </div>
             <div className="flex justify-end space-x-2 pt-2">
               <button
                 type="button"
                 onClick={() => setActiveModal(null)}
-                className="px-4 py-2 text-xs text-gray-600 hover:bg-gray-100 rounded-xl transition"
+                className="px-4 py-2 text-xs text-gray-600 hover:bg-gray-100 rounded-lg transition"
               >
                 Batal
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition shadow-sm"
+                className="px-4 py-2 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition shadow-sm"
               >
                 Simpan
               </button>
@@ -1903,13 +1903,13 @@ export default function DashboardV2({
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm animate-in fade-in duration-200">
           <form
             onSubmit={handleCreateNewItem}
-            className="bg-white border border-gray-200 rounded-3xl shadow-2xl max-w-sm w-full p-6 text-gray-900 space-y-4"
+            className="bg-white border border-gray-200 rounded-xl shadow-2xl max-w-sm w-full p-6 text-gray-900 space-y-4"
           >
             <div className="flex items-center space-x-2">
               <button
                 type="button"
                 onClick={() => setNewItemIsDir(false)}
-                className={`flex-1 py-1.5 rounded-xl text-xs font-semibold transition ${
+                className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition ${
                   !newItemIsDir
                     ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
                     : 'bg-gray-100 text-gray-600'
@@ -1920,7 +1920,7 @@ export default function DashboardV2({
               <button
                 type="button"
                 onClick={() => setNewItemIsDir(true)}
-                className={`flex-1 py-1.5 rounded-xl text-xs font-semibold transition ${
+                className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition ${
                   newItemIsDir
                     ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
                     : 'bg-gray-100 text-gray-600'
@@ -1941,7 +1941,7 @@ export default function DashboardV2({
                 placeholder={newItemIsDir ? 'nama_folder' : 'script.php'}
                 autoFocus
                 required
-                className="w-full bg-gray-50 border border-gray-200 focus:border-emerald-500 rounded-xl px-3.5 py-2 text-xs text-gray-900 outline-none font-mono"
+                className="w-full bg-gray-50 border border-gray-200 focus:border-emerald-500 rounded-lg px-3.5 py-2 text-xs text-gray-900 outline-none font-mono"
               />
             </div>
 
@@ -1949,13 +1949,13 @@ export default function DashboardV2({
               <button
                 type="button"
                 onClick={() => setActiveModal(null)}
-                className="px-4 py-2 text-xs text-gray-600 hover:bg-gray-100 rounded-xl transition"
+                className="px-4 py-2 text-xs text-gray-600 hover:bg-gray-100 rounded-lg transition"
               >
                 Batal
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition shadow-sm"
+                className="px-4 py-2 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition shadow-sm"
               >
                 Buat Sekarang
               </button>
@@ -1967,8 +1967,8 @@ export default function DashboardV2({
       {/* 13. DELETE CONFIRMATION MODAL */}
       {activeModal === 'delete' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white border border-gray-200 rounded-3xl shadow-2xl max-w-sm w-full p-6 text-gray-900 space-y-4">
-            <div className="h-12 w-12 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center mx-auto">
+          <div className="bg-white border border-gray-200 rounded-xl shadow-2xl max-w-sm w-full p-6 text-gray-900 space-y-4">
+            <div className="h-12 w-12 rounded-lg bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center mx-auto">
               <Trash2 className="h-6 w-6" />
             </div>
             <div className="text-center space-y-1">
@@ -1984,14 +1984,14 @@ export default function DashboardV2({
                   setActiveModal(null)
                   setSelectedItem(null)
                 }}
-                className="px-4 py-2 text-xs text-gray-600 hover:bg-gray-100 rounded-xl transition"
+                className="px-4 py-2 text-xs text-gray-600 hover:bg-gray-100 rounded-lg transition"
               >
                 Batal
               </button>
               <button
                 type="button"
                 onClick={handleDeleteConfirmed}
-                className="px-4 py-2 text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white rounded-xl transition shadow-sm"
+                className="px-4 py-2 text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white rounded-lg transition shadow-sm"
               >
                 Ya, Hapus
               </button>

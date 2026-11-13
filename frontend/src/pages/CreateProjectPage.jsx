@@ -4,8 +4,12 @@ import { ArrowLeft, Check, AlertCircle, Folder, Rocket, ChevronDown } from 'luci
 import { toast } from 'sonner'
 import { api } from '../api/client'
 import { Spinner } from '../components/Skeletons'
+import { useTheme } from '../context/ThemeContext'
+import Button from '../components/Button'
+import Card from '../components/Card'
 
 export default function CreateProjectPage({ onBack, onCreated, user: propUser }) {
+  const { isV2 } = useTheme()
   const currentUser = propUser || JSON.parse(localStorage.getItem('miraigrid_user') || '{}')
   const isAdmin = currentUser?.role === 'admin'
   const location = useLocation()
@@ -133,6 +137,233 @@ export default function CreateProjectPage({ onBack, onCreated, user: propUser })
   }
 
   const currentLangConfig = languageOptions.find((l) => l.id === selectedLanguage) || languageOptions[0]
+
+  if (isV2) {
+    return (
+      <div className="space-y-6 font-sans pb-12 animate-in fade-in duration-200">
+        {/* Top Breadcrumb Bar */}
+        <div className="flex items-center space-x-3 pb-3 border-b border-slate-200">
+          <Button
+            variant="secondary"
+            size="sm"
+            icon={ArrowLeft}
+            onClick={onBack}
+          >
+            Kembali
+          </Button>
+          <div>
+            <h2 className="text-xl font-bold text-slate-900 tracking-tight">
+              Buat Project Web Baru
+            </h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Pilih bahasa pemrograman & versi engine untuk container terisolasi Anda.
+            </p>
+          </div>
+        </div>
+
+        {/* Main Form Container */}
+        <Card className="p-6 sm:p-8">
+          {error && (
+            <div className="mb-6 p-4 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center space-x-2.5">
+              <AlertCircle className="h-4 w-4 shrink-0 text-rose-500" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          <form onSubmit={handleCreateProject} className="space-y-6">
+            {/* Project Name */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Nama Project (Slug)
+              </label>
+              <input
+                type="text"
+                required
+                placeholder="contoh: sistem-kasir-praktikum"
+                value={projectName}
+                onChange={(e) => setProjectName(e.target.value)}
+                className="w-full bg-white border border-slate-200 rounded-lg px-4 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition font-sans"
+              />
+              <p className="text-[11px] text-slate-500 mt-1.5 font-mono">
+                Hanya huruf kecil, angka, dan tanda hubung (-).
+              </p>
+            </div>
+
+            {/* 3 LANGUAGE CARDS WITH PROPORTIONAL LOGOS */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-2.5">
+                Pilih Bahasa Pemrograman
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {languageOptions.map((lang) => {
+                  const isSelected = selectedLanguage === lang.id
+                  return (
+                    <button
+                      key={lang.id}
+                      type="button"
+                      onClick={() => handleLanguageSelect(lang.id)}
+                      className={`p-5 rounded-xl border text-center flex flex-col items-center justify-between transition-all duration-200 relative group cursor-pointer ${
+                        isSelected
+                          ? 'bg-emerald-50/40 border-emerald-500 shadow-sm ring-2 ring-emerald-500/20'
+                          : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/50'
+                      }`}
+                    >
+                      {/* Selected Check Badge */}
+                      {isSelected && (
+                        <div className="absolute top-3 right-3 h-5 w-5 rounded-full bg-emerald-600 text-white flex items-center justify-center shadow-xs">
+                          <Check className="h-3 w-3 stroke-[3]" />
+                        </div>
+                      )}
+
+                      {/* Logo Image */}
+                      <div className="h-16 w-16 rounded-xl bg-slate-50 border border-slate-100 p-2.5 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
+                        <img
+                          src={lang.logo}
+                          alt={`${lang.name} logo`}
+                          className="h-11 w-11 object-contain"
+                        />
+                      </div>
+
+                      <div>
+                        <h4 className="text-sm font-bold text-slate-900 font-sans">{lang.name}</h4>
+                        <p className="text-[10px] text-slate-500 font-mono mt-0.5">{lang.badge}</p>
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Version Selector */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Pilih Versi {currentLangConfig.name}
+              </label>
+              <div className="relative">
+                <select
+                  value={selectedVersion}
+                  onChange={(e) => setSelectedVersion(e.target.value)}
+                  className="w-full bg-white border border-slate-200 rounded-lg pl-4 pr-10 py-2.5 text-xs text-slate-900 font-mono focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition appearance-none cursor-pointer"
+                >
+                  {currentLangConfig.versions.map((ver) => (
+                    <option key={ver.val} value={ver.val}>
+                      {ver.label}
+                    </option>
+                  ))}
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400">
+                  <ChevronDown className="h-4 w-4" />
+                </div>
+              </div>
+              <p className="text-[11px] text-slate-500 mt-1.5 font-mono">
+                Container Docker resmi {currentLangConfig.name} akan otomatis dijalankan seketika.
+              </p>
+            </div>
+
+            {/* App Root Directory (Custom Directory / Sandbox) */}
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 sm:p-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-semibold text-slate-700">
+                  App Root Directory {isAdmin ? (
+                    <span className="text-emerald-600 font-normal">(Bisa Custom / Repositori Git)</span>
+                  ) : (
+                    <span className="text-slate-500 font-normal">(Opsional)</span>
+                  )}
+                </label>
+                {isAdmin && gitRepos.length > 0 && (
+                  <span className="text-[10px] text-slate-500 font-mono">
+                    {gitRepos.length} Git™ Repositori Terdeteksi
+                  </span>
+                )}
+              </div>
+
+              <input
+                type="text"
+                placeholder={
+                  isAdmin
+                    ? 'contoh: public atau /home/admin/repositories/nama_repo (kosongkan untuk default root)'
+                    : 'contoh: public atau src (kosongkan jika kode berada di root project)'
+                }
+                value={appRoot}
+                onChange={(e) => setAppRoot(e.target.value)}
+                className="w-full bg-white border border-slate-200 rounded-lg px-4 py-2 text-xs text-slate-900 font-mono focus:outline-none focus:border-emerald-500 transition placeholder-slate-400"
+              />
+
+              {/* Quick Pick Git Repositories for Admin */}
+              {isAdmin && gitRepos.length > 0 && (
+                <div className="pt-1">
+                  <div className="text-[10px] text-slate-500 font-mono mb-1.5 flex items-center space-x-1">
+                    <span>Pilih Cepat dari Git™ Repositories:</span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {gitRepos.map((repo) => (
+                      <button
+                        key={repo.id}
+                        type="button"
+                        onClick={() => setAppRoot(repo.path)}
+                        className={`text-[10px] font-mono px-2.5 py-1 rounded-md border transition flex items-center space-x-1 cursor-pointer ${
+                          appRoot === repo.path
+                            ? 'bg-slate-900 text-white border-slate-900 font-bold shadow-xs'
+                            : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
+                        }`}
+                        title={repo.path}
+                      >
+                        <Folder className="h-3 w-3 shrink-0 text-emerald-600" />
+                        <span>{repo.name}</span>
+                      </button>
+                    ))}
+                    {appRoot && (
+                      <button
+                        type="button"
+                        onClick={() => setAppRoot('')}
+                        className="text-[10px] font-mono px-2 py-1 text-rose-500 hover:underline cursor-pointer"
+                      >
+                        Reset default
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Security Explanation / Helper Text */}
+              <p className="text-[11px] text-slate-500 font-sans leading-relaxed">
+                {isAdmin ? (
+                  <span>
+                    <strong className="text-slate-700">Akses Administrator:</strong> Anda bebas menentukan path direktori ke subfolder project (e.g. <code className="font-mono text-slate-800">public</code>) maupun ke direktori lain di server seperti <code className="font-mono text-slate-800">/home/admin/repositories/nama_repo</code>.
+                  </span>
+                ) : (
+                  <span>
+                    <strong className="text-slate-700">Sandbox Mahasiswa:</strong> Tentukan subdirektori di dalam folder project Anda (misal <code className="font-mono text-slate-800">public</code> atau <code className="font-mono text-slate-800">src</code>). Sistem mengunci akses secara aman agar tidak dapat berpindah di luar ruang akun Anda.
+                  </span>
+                )}
+              </p>
+            </div>
+
+            {/* Form Actions */}
+            <div className="flex items-center justify-end space-x-3 pt-4 border-t border-slate-100">
+              <Button
+                type="button"
+                variant="secondary"
+                size="md"
+                onClick={onBack}
+              >
+                Batal
+              </Button>
+              <Button
+                type="submit"
+                variant="primary"
+                size="md"
+                loading={actionLoading}
+                icon={Rocket}
+              >
+                Buat & Jalankan
+              </Button>
+            </div>
+          </form>
+        </Card>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
