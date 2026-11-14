@@ -135,13 +135,19 @@ async def create_manual_user(
     """, (clean_username, clean_name, body.email or f"{clean_username}@umpo.ac.id", pass_hash, body.role, body.class_id, must_change, onboarding_step, onboarding_completed))
     user_id = cursor.lastrowid
 
-    # Create quota (admin has larger quota, student standard sandbox)
-    max_proj = 999 if body.role == "admin" else 2
-    max_db = 999 if body.role == "admin" else 2
-    max_mem = 1024 if body.role == "admin" else 512
-    max_cpu = 2.0 if body.role == "admin" else 0.5
-    max_disk = 20000 if body.role == "admin" else 10240
-    max_db_disk = 10000 if body.role == "admin" else 5120
+    # Create quota (admin: host tier, dosen: 20GB/1GB/1.5 Core, student: 10GB/512MB/0.5 Core)
+    if body.role == "admin":
+        max_proj, max_db, def_mem, def_cpu, def_disk, def_db_disk = 999, 999, 1024, 2.0, 20000, 10000
+    elif body.role == "dosen":
+        max_proj, max_db, def_mem, def_cpu, def_disk, def_db_disk = 5, 5, 1024, 1.5, 20480, 10240
+    else:
+        max_proj, max_db, def_mem, def_cpu, def_disk, def_db_disk = 2, 2, 512, 0.5, 10240, 5120
+
+    max_mem = body.max_memory_mb if body.max_memory_mb is not None else def_mem
+    max_cpu = body.max_cpu_cores if body.max_cpu_cores is not None else def_cpu
+    max_disk = body.max_disk_mb if body.max_disk_mb is not None else def_disk
+    max_db_disk = body.max_database_disk_mb if body.max_database_disk_mb is not None else def_db_disk
+
     await db.execute("""
         INSERT INTO quotas (user_id, max_projects, max_databases, max_memory_mb, max_cpu_cores, max_disk_mb, max_database_disk_mb)
         VALUES (?, ?, ?, ?, ?, ?, ?)

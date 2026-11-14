@@ -4,7 +4,7 @@ from app.core.database import get_db
 from app.core.security import verify_password, hash_password, create_access_token, decode_access_token
 from app.models.schemas import LoginRequest, ChangePasswordRequest, Token, UserResponse
 from app.api.deps import get_current_user, get_client_ip
-from app.services.simtik import verify_simtik, verify_simtik_dosen
+from app.services.simtik import verify_simtik
 from app.services.user_home import ensure_user_home
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -78,55 +78,55 @@ async def login(
             detail="Password administrator salah."
         )
 
-    # 2. Student or Dosen Authentication via SIMTIK UMPO Handshake
-    portal = (credentials.portal or "mahasiswa").strip().lower()
-    is_dosen_portal = portal == "dosen"
-
-    if is_dosen_portal:
-        simtik_result = await verify_simtik_dosen(username, password)
-    else:
-        simtik_result = await verify_simtik(username, password)
+    # 2. Unified SIMTIK UMPO Handshake (Mahasiswa & Dosen via https://simtik.umpo.ac.id/)
+    simtik_result = await verify_simtik(username, password)
 
     if not simtik_result["success"]:
-        default_err = (
-            "NIDN / Username Dosen atau Password SIMTIK salah."
-            if is_dosen_portal
-            else "NIM atau Password SIMTIK salah."
-        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=simtik_result.get("message", default_err)
+            detail=simtik_result.get("message", "NIM / Username / NIDN atau Password SIMTIK salah.")
         )
 
-    # 3. Handshake successful: Auto-provision or sync user in local database
+    # 3. Smart Auto-Detect Role:
+    # Mahasiswa UMPO: murni digit angka dengan panjang <= 8 (contoh: 23533740)
+    # Dosen UMPO: mengandung huruf (username) ATAU angka > 8 digit (NIDN/NIP)
+    identifier = username.strip()
+    if identifier.isdigit() and len(identifier) <= 8:
+        assigned_role = "student"
+        default_projects = 2
+        default_databases = 2
+        default_ram = 512       # 512 MB
+        default_storage = 10240 # 10 GB
+        default_db = 5120       # 5 GB
+        default_cpu = 0.5       # 0.5 Core
+    else:
+        assigned_role = "dosen"
+        default_projects = 5
+        default_databases = 5
+        default_ram = 1024      # 1 GB
+        default_storage = 20480 # 20 GB
+        default_db = 10240      # 10 GB
+        default_cpu = 1.5       # 1.5 Cores
+
+    # 4. Handshake successful: Auto-provision or sync user in local database
     new_hash = hash_password(password)
-    target_role = "dosen" if is_dosen_portal else "student"
 
     if not user:
-        account_name = simtik_result.get(
-            "nama",
-            f"Dosen {username}" if is_dosen_portal else f"Mahasiswa {username}"
-        )
-        account_email = f"{username}@umpo.ac.id"
+        default_prefix = "Dosen" if assigned_role == "dosen" else "Mahasiswa"
+        raw_name = simtik_result.get("nama")
+        account_name = raw_name if (raw_name and raw_name != identifier) else f"{default_prefix} {identifier}"
+        account_email = f"{identifier}@umpo.ac.id"
 
         insert_cur = await db.execute("""
             INSERT INTO users (username, name, email, password_hash, role, must_change_password, is_active, onboarding_step, onboarding_completed)
             VALUES (?, ?, ?, ?, ?, 0, 1, 1, 0)
-        """, (username, account_name, account_email, new_hash, target_role))
+        """, (identifier, account_name, account_email, new_hash, assigned_role))
         user_id = insert_cur.lastrowid
 
-        if is_dosen_portal:
-            # Generous default quotas for Dosen: 15 GB storage, 1 GB RAM, 5 GB DB, 1.0 CPU Core
-            await db.execute("""
-                INSERT INTO quotas (user_id, max_projects, max_databases, max_memory_mb, max_cpu_cores, max_disk_mb, max_database_disk_mb)
-                VALUES (?, 5, 5, 1024, 1.0, 15360, 5120)
-            """, (user_id,))
-        else:
-            # Default quotas for Student: 10 GB storage, 512 MB RAM, 5 GB DB, 0.5 CPU Core
-            await db.execute("""
-                INSERT INTO quotas (user_id, max_projects, max_databases, max_memory_mb, max_cpu_cores, max_disk_mb, max_database_disk_mb)
-                VALUES (?, 2, 2, 512, 0.5, 10240, 5120)
-            """, (user_id,))
+        await db.execute("""
+            INSERT INTO quotas (user_id, max_projects, max_databases, max_memory_mb, max_cpu_cores, max_disk_mb, max_database_disk_mb)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (user_id, default_projects, default_databases, default_ram, default_cpu, default_storage, default_db))
         await db.commit()
 
         cursor = await db.execute("SELECT * FROM users WHERE id = ?", (user_id,))
@@ -137,8 +137,7 @@ async def login(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Akun ini telah dinonaktifkan oleh administrator lab."
             )
-        # Synchronize password hash (and promote role to dosen if logging in via dosen portal and not admin)
-        if is_dosen_portal and user["role"] != "admin" and user["role"] != "dosen":
+        if assigned_role == "dosen" and user["role"] == "student":
             await db.execute("""
                 UPDATE users SET password_hash = ?, role = 'dosen' WHERE id = ?
             """, (new_hash, user["id"]))
@@ -152,12 +151,8 @@ async def login(
             await db.commit()
 
     # Audit log for SIMTIK login
-    audit_target = "auth_simtik_dosen" if is_dosen_portal else "auth_simtik"
-    audit_detail = (
-        "Dosen successfully logged in via SIMTIK UMPO Dosen SSO Handshake"
-        if is_dosen_portal
-        else "User successfully logged in via SIMTIK UMPO SSO Handshake"
-    )
+    audit_target = "auth_simtik_dosen" if user["role"] == "dosen" else "auth_simtik"
+    audit_detail = f"User ({user['role']}) successfully logged in via SIMTIK UMPO SSO Handshake"
     await db.execute("""
         INSERT INTO audit_logs (actor_id, action, target_resource, ip_address, details)
         VALUES (?, 'LOGIN', ?, ?, ?)

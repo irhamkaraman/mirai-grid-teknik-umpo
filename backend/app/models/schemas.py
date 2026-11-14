@@ -15,7 +15,6 @@ class Token(BaseModel):
 class LoginRequest(BaseModel):
     username: str
     password: str
-    portal: Optional[str] = "mahasiswa"
 
 class ChangePasswordRequest(BaseModel):
     old_password: Optional[str] = None
@@ -76,9 +75,13 @@ class UserCreateManual(BaseModel):
     name: str = Field(min_length=2, max_length=100)
     password: str = Field(min_length=6)
     email: Optional[str] = None
-    role: str = Field(default="student", pattern="^(student|admin)$")
+    role: str = Field(default="student", pattern="^(student|dosen|admin)$")
     class_id: Optional[int] = None
     must_change_password: bool = True
+    max_disk_mb: Optional[int] = Field(default=None, ge=50, le=100000)
+    max_memory_mb: Optional[int] = Field(default=None, ge=64, le=64000)
+    max_cpu_cores: Optional[float] = Field(default=None, ge=0.1, le=32.0)
+    max_database_disk_mb: Optional[int] = Field(default=None, ge=10, le=100000)
 
 class UserResponse(BaseModel):
     id: int

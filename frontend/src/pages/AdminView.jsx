@@ -51,6 +51,26 @@ export default function AdminView({ onNavigate }) {
   const [manualPassword, setManualPassword] = useState('')
   const [manualRole, setManualRole] = useState('student')
   const [manualMustChange, setManualMustChange] = useState(true)
+  const [manualDiskMb, setManualDiskMb] = useState(10240)
+  const [manualMemoryMb, setManualMemoryMb] = useState(512)
+  const [manualCpuCores, setManualCpuCores] = useState(0.5)
+
+  const handleManualRoleChange = (nextRole) => {
+    setManualRole(nextRole)
+    if (nextRole === 'dosen') {
+      setManualDiskMb(20480)
+      setManualMemoryMb(1024)
+      setManualCpuCores(1.5)
+    } else if (nextRole === 'admin') {
+      setManualDiskMb(20000)
+      setManualMemoryMb(1024)
+      setManualCpuCores(2.0)
+    } else {
+      setManualDiskMb(10240)
+      setManualMemoryMb(512)
+      setManualCpuCores(0.5)
+    }
+  }
 
   useEffect(() => {
     loadAll()
@@ -105,12 +125,16 @@ export default function AdminView({ onNavigate }) {
         role: manualRole,
         class_id: null,
         must_change_password: manualMustChange,
+        max_disk_mb: Number(manualDiskMb),
+        max_memory_mb: Number(manualMemoryMb),
+        max_cpu_cores: Number(manualCpuCores),
       })
-      toast.success(`Akun '${manualUsername}' (${manualRole === 'admin' ? 'Administrator' : 'Mahasiswa'}) berhasil dibuat!`, { id: toastId })
+      const roleLabel = manualRole === 'admin' ? 'Administrator' : manualRole === 'dosen' ? 'Dosen' : 'Mahasiswa'
+      toast.success(`Akun '${manualUsername}' (${roleLabel}) berhasil dibuat!`, { id: toastId })
       setManualUsername('')
       setManualName('')
       setManualPassword('')
-      setManualRole('student')
+      handleManualRoleChange('student')
       fetchUsers()
       fetchStats()
       setActiveTab('users')
@@ -423,9 +447,10 @@ export default function AdminView({ onNavigate }) {
                 }}
                 className="bg-white border border-slate-200 rounded-lg px-3.5 py-2 text-xs text-slate-700 focus:outline-none focus:border-slate-400 font-medium"
               >
-                <option value="">Semua Role (Student &amp; Admin)</option>
-                <option value="student">Mahasiswa (Student)</option>
-                <option value="admin">Administrator (Admin)</option>
+                <option value="">Semua Role</option>
+                <option value="student">Mahasiswa (STUDENT)</option>
+                <option value="dosen">Dosen (DOSEN)</option>
+                <option value="admin">Administrator (ADMIN)</option>
               </select>
               <Button
                 variant="primary"
@@ -541,10 +566,12 @@ export default function AdminView({ onNavigate }) {
                                 className={
                                   u.role === 'admin'
                                     ? 'bg-amber-50 text-amber-700 border border-amber-200/80 rounded-md px-2 py-0.5 text-xs font-medium uppercase font-mono'
-                                    : 'bg-slate-100 text-slate-700 border border-slate-200 rounded-md px-2 py-0.5 text-xs font-medium uppercase font-mono'
+                                    : u.role === 'dosen'
+                                      ? 'bg-purple-50 text-purple-700 border border-purple-200/80 rounded-md px-2 py-0.5 text-xs font-medium uppercase font-mono'
+                                      : 'bg-slate-100 text-slate-700 border border-slate-200 rounded-md px-2 py-0.5 text-xs font-medium uppercase font-mono'
                                 }
                               >
-                                {u.role}
+                                {u.role === 'dosen' ? 'DOSEN' : u.role}
                               </span>
                             </td>
                             {/* Storage */}
@@ -822,12 +849,66 @@ export default function AdminView({ onNavigate }) {
                   </label>
                   <select
                     value={manualRole}
-                    onChange={(e) => setManualRole(e.target.value)}
+                    onChange={(e) => handleManualRoleChange(e.target.value)}
                     className="w-full bg-white border border-slate-200 rounded-lg px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-slate-400 font-medium"
                   >
-                    <option value="student">Mahasiswa (Student)</option>
-                    <option value="admin">Administrator Lab (Admin)</option>
+                    <option value="student">Mahasiswa (STUDENT)</option>
+                    <option value="dosen">Dosen (DOSEN)</option>
+                    <option value="admin">Administrator (ADMIN)</option>
                   </select>
+                </div>
+              </div>
+
+              {/* Preset Kuota Resource Otomatis */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-3.5 rounded-xl bg-slate-50 border border-slate-200/80">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Storage (MB)
+                  </label>
+                  <input
+                    type="number"
+                    min={50}
+                    max={100000}
+                    value={manualDiskMb}
+                    onChange={(e) => setManualDiskMb(e.target.value)}
+                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-900 font-mono focus:outline-none focus:border-slate-400"
+                  />
+                  <span className="text-[11px] text-slate-500 mt-1 block">
+                    {manualDiskMb >= 1024 ? `${(manualDiskMb / 1024).toFixed(0)} GB` : `${manualDiskMb} MB`}
+                  </span>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    RAM (MB)
+                  </label>
+                  <input
+                    type="number"
+                    min={64}
+                    max={64000}
+                    value={manualMemoryMb}
+                    onChange={(e) => setManualMemoryMb(e.target.value)}
+                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-900 font-mono focus:outline-none focus:border-slate-400"
+                  />
+                  <span className="text-[11px] text-slate-500 mt-1 block">
+                    {manualMemoryMb >= 1024 ? `${(manualMemoryMb / 1024).toFixed(0)} GB` : `${manualMemoryMb} MB`}
+                  </span>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    CPU (Core)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min={0.1}
+                    max={32}
+                    value={manualCpuCores}
+                    onChange={(e) => setManualCpuCores(e.target.value)}
+                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-900 font-mono focus:outline-none focus:border-slate-400"
+                  />
+                  <span className="text-[11px] text-slate-500 mt-1 block">
+                    {manualCpuCores} Core
+                  </span>
                 </div>
               </div>
 
