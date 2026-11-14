@@ -180,19 +180,25 @@ def resolve_app_root_paths(
     is_admin = current_user.get("role") == "admin"
     raw = (app_root_raw or "").strip()
 
-    # Standard base paths (public_html is the unified default web root for all student projects)
-    if project_name in ["public_html", "starter-app"] or "public_html" in raw:
-        standard_local_dir = os.path.realpath(os.path.join(settings.DATA_DIR, "home", project_owner_username, "public_html"))
-        standard_host_dir = f"/var/lib/docker/volumes/miraigrid_miraigrid_data/_data/home/{project_owner_username}/public_html"
-        standard_virtual_prefix = f"/home/{project_owner_username}/public_html"
-    else:
-        standard_local_dir = os.path.realpath(os.path.join(settings.PROJECTS_DIR, f"{project_owner_username}_{project_name}"))
-        standard_host_dir = os.path.join(settings.HOST_PROJECTS_DIR, f"{project_owner_username}_{project_name}").replace("\\", "/")
-        standard_virtual_prefix = f"/home/{project_owner_username}/{project_name}"
+    # Unified Workspace Home Directory: /home/{project_owner_username}/{project_name}
+    # Ensures every deployed project is immediately visible & editable in Workspace File Manager
+    owner_home_local = os.path.realpath(os.path.join(settings.DATA_DIR, "home", project_owner_username))
+    os.makedirs(owner_home_local, exist_ok=True)
+    effective_folder = "public_html" if (project_name in ["public_html", "starter-app"] or "public_html" in raw) else project_name
+    standard_local_dir = os.path.realpath(os.path.join(owner_home_local, effective_folder))
+    standard_host_dir = f"/var/lib/docker/volumes/miraigrid_miraigrid_data/_data/home/{project_owner_username}/{effective_folder}"
+    standard_virtual_prefix = f"/home/{project_owner_username}/{effective_folder}"
 
     # Default / Empty case
     if not raw or raw == standard_virtual_prefix or raw == f"{standard_virtual_prefix}/":
         os.makedirs(standard_local_dir, exist_ok=True)
+        try:
+            os.chmod(standard_local_dir, 0o755)
+            st = os.stat(owner_home_local)
+            if hasattr(os, "chown"):
+                os.chown(standard_local_dir, st.st_uid, st.st_gid)
+        except Exception:
+            pass
         return {
             "app_root": "",
             "app_root_subpath": "",
@@ -359,8 +365,8 @@ def write_starter_template(language: str, version: str, project_dir: str, projec
                 f.write(ini_content)
         return
 
-    # 1. PHP Starter & php.ini
-    if language == "php":
+    # 1. PHP & OpenLiteSpeed Starter + php.ini
+    if language in ("php", "openlitespeed"):
         directives = cfg.get("directives", {
             "display_errors": "Off",
             "error_log": "error_log",
@@ -378,32 +384,40 @@ def write_starter_template(language: str, version: str, project_dir: str, projec
         with open(os.path.join(project_dir, ".miraigrid_php.ini"), "w", encoding="utf-8") as f:
             f.write(ini_content)
 
-        index_php = f"""<!DOCTYPE html>
+        index_php = f"""<?php
+// Default Starter File - MiraiGrid Cloud Lab
+$projectName = {json.dumps(project_name)};
+?>
+<!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8">
-  <title>{project_name} — MiraiGrid Lab TI</title>
-  <style>
-    body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #E6D7BE; color: #26160F; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }}
-    .card {{ background: #2B1810; color: #FAF5EC; border-radius: 28px; padding: 40px; max-width: 540px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); text-align: center; }}
-    h1 {{ margin: 0 0 10px 0; font-size: 26px; font-family: serif; color: #FAF5EC; }}
-    p {{ color: #DFCDB5; font-size: 14px; line-height: 1.6; margin: 10px 0; }}
-    .badge {{ display: inline-block; background: #C49767; color: #2B1810; padding: 4px 14px; border-radius: 99px; font-size: 11px; font-weight: bold; margin-bottom: 14px; }}
-    .info {{ background: #1C0F0A; padding: 12px; border-radius: 14px; font-size: 12px; font-family: monospace; color: #E8DCB8; margin-top: 20px; }}
-  </style>
+    <meta charset="UTF-8">
+    <title>Proyek Aktif - <?= htmlspecialchars($projectName) ?></title>
+    <style>
+        body {{ font-family: system-ui, sans-serif; background: #0A0B0D; color: #EDEDEA; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }}
+        .card {{ background: #141519; border: 1px solid #26282E; border-radius: 12px; padding: 32px; max-width: 480px; text-align: center; }}
+        h1 {{ color: #D4FF3A; margin-top: 0; }}
+        p {{ color: #8E9096; line-height: 1.6; }}
+        .badge {{ background: #1C1E23; border: 1px solid #26282E; padding: 4px 12px; border-radius: 6px; font-family: monospace; font-size: 13px; color: #D4FF3A; }}
+    </style>
 </head>
 <body>
-  <div class="card">
-    <span class="badge">PHP {version} • RUNNING</span>
-    <h1>{project_name}</h1>
-    <p>Aplikasi PHP {version} Anda telah aktif di container terisolasi MiraiGrid Lab TI UMPO.</p>
-    <p>Gunakan File Manager untuk mengedit file secara langsung atau meng-upload kode praktikum.</p>
-    <div class="info">PHP Version: <?php echo phpversion(); ?> | Server: <?php echo $_SERVER['HTTP_HOST']; ?></div>
-  </div>
+    <div class="card">
+        <h1>Proyek Siap Dijalankan!</h1>
+        <p>Container PHP resmi untuk <strong><?= htmlspecialchars($projectName) ?></strong> berhasil dijalankan.</p>
+        <p>Silakan edit berkas <code>index.php</code> ini melalui <strong>Workspace File Manager</strong> atau unggah kode praktikum Anda.</p>
+        <span class="badge">PHP <?= phpversion(); ?> • MiraiGrid Cloud</span>
+    </div>
 </body>
 </html>"""
-        with open(os.path.join(project_dir, "index.php"), "w", encoding="utf-8") as f:
+        index_path = os.path.join(project_dir, "index.php")
+        with open(index_path, "w", encoding="utf-8") as f:
             f.write(index_php)
+        try:
+            os.chmod(project_dir, 0o755)
+            os.chmod(index_path, 0o644)
+        except Exception:
+            pass
 
     # 2. Python Starter
     elif language == "python":

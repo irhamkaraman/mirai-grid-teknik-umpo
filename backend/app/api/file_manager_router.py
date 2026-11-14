@@ -353,7 +353,18 @@ async def get_user_files(
     ws_root, target_dir, is_admin_mode = resolve_workspace_root_and_path(current_user, path)
 
     if not os.path.exists(target_dir):
-        raise HTTPException(status_code=404, detail="Direktori tidak ditemukan.")
+        # Auto-heal fallback for freshly created project directories inside user's own sandbox
+        if not is_admin_mode and path and target_dir != ws_root:
+            try:
+                os.makedirs(target_dir, exist_ok=True)
+                os.chmod(target_dir, 0o755)
+                if hasattr(os, "chown"):
+                    st = os.stat(ws_root)
+                    os.chown(target_dir, st.st_uid, st.st_gid)
+            except Exception:
+                raise HTTPException(status_code=404, detail="Direktori tidak ditemukan.")
+        else:
+            raise HTTPException(status_code=404, detail="Direktori tidak ditemukan.")
     if not os.path.isdir(target_dir):
         raise HTTPException(status_code=400, detail="Path bukan merupakan direktori.")
 
