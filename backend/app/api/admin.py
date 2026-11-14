@@ -138,13 +138,14 @@ async def create_manual_user(
     # Create quota (admin has larger quota, student standard sandbox)
     max_proj = 999 if body.role == "admin" else 2
     max_db = 999 if body.role == "admin" else 2
-    max_mem = 1024 if body.role == "admin" else 256
+    max_mem = 1024 if body.role == "admin" else 512
     max_cpu = 2.0 if body.role == "admin" else 0.5
-    max_disk = 5000 if body.role == "admin" else 500
+    max_disk = 20000 if body.role == "admin" else 10240
+    max_db_disk = 10000 if body.role == "admin" else 5120
     await db.execute("""
-        INSERT INTO quotas (user_id, max_projects, max_databases, max_memory_mb, max_cpu_cores, max_disk_mb)
-        VALUES (?, ?, ?, ?, ?, ?)
-    """, (user_id, max_proj, max_db, max_mem, max_cpu, max_disk))
+        INSERT INTO quotas (user_id, max_projects, max_databases, max_memory_mb, max_cpu_cores, max_disk_mb, max_database_disk_mb)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, (user_id, max_proj, max_db, max_mem, max_cpu, max_disk, max_db_disk))
 
     ip = get_client_ip(request)
     await db.execute("""
@@ -257,13 +258,13 @@ async def get_user_detail(
 ):
     cursor = await db.execute("""
         SELECT u.*, c.name as class_name, co.year as cohort_year,
-               COALESCE(q.max_disk_mb, 1000) as max_disk_mb,
+               COALESCE(q.max_disk_mb, 10240) as max_disk_mb,
                COALESCE(q.max_memory_mb, 512) as max_memory_mb,
-               COALESCE(q.max_cpu_cores, 1.0) as max_cpu_cores,
+               COALESCE(q.max_cpu_cores, 0.5) as max_cpu_cores,
                COALESCE(q.max_processes, 50) as max_processes,
                COALESCE(q.max_projects, 2) as max_projects,
                COALESCE(q.max_databases, 99) as max_databases,
-               COALESCE(q.max_database_disk_mb, 100) as max_database_disk_mb,
+               COALESCE(q.max_database_disk_mb, 5120) as max_database_disk_mb,
                COALESCE(q.allow_postgres, 1) as allow_postgres,
                COALESCE(q.allow_mariadb, 1) as allow_mariadb,
                COALESCE(q.allow_remote_db, 1) as allow_remote_db
@@ -629,12 +630,12 @@ async def list_users(
 ):
     query = """
         SELECT u.*, c.name as class_name, co.year as cohort_year,
-               COALESCE(q.max_disk_mb, CASE WHEN u.role = 'admin' THEN 2000 ELSE 5000 END) as max_disk_mb,
+               COALESCE(q.max_disk_mb, CASE WHEN u.role = 'admin' THEN 20000 ELSE 10240 END) as max_disk_mb,
                COALESCE(q.max_memory_mb, CASE WHEN u.role = 'admin' THEN 1024 ELSE 512 END) as max_memory_mb,
                COALESCE(q.max_cpu_cores, CASE WHEN u.role = 'admin' THEN 2.0 ELSE 0.5 END) as max_cpu_cores,
                COALESCE(q.max_projects, CASE WHEN u.role = 'admin' THEN 99 ELSE 2 END) as max_projects,
                COALESCE(q.max_databases, CASE WHEN u.role = 'admin' THEN 99 ELSE 2 END) as max_databases,
-               COALESCE(q.max_database_disk_mb, CASE WHEN u.role = 'admin' THEN 1000 ELSE 100 END) as max_database_disk_mb
+               COALESCE(q.max_database_disk_mb, CASE WHEN u.role = 'admin' THEN 10000 ELSE 5120 END) as max_database_disk_mb
         FROM users u
         LEFT JOIN classes c ON u.class_id = c.id
         LEFT JOIN cohorts co ON c.cohort_id = co.id
@@ -660,7 +661,7 @@ async def list_users(
             d["max_disk_label"] = "Tanpa Batas"
         else:
             d["is_unlimited"] = False
-            d["max_disk_label"] = f"{d.get('max_disk_mb', 500)} MB"
+            d["max_disk_label"] = f"{d.get('max_disk_mb', 10240)} MB"
         users.append(d)
     return users
 
@@ -785,8 +786,8 @@ async def get_system_capacity(
             c.name as class_name, co.year as cohort_year,
             COALESCE(q.max_projects, CASE WHEN u.role = 'admin' THEN 99 ELSE 2 END) as max_projects,
             COALESCE(q.max_databases, CASE WHEN u.role = 'admin' THEN 99 ELSE 2 END) as max_databases,
-            COALESCE(q.max_disk_mb, CASE WHEN u.role = 'admin' THEN 2000 ELSE 5000 END) as max_disk_mb,
-            COALESCE(q.max_database_disk_mb, CASE WHEN u.role = 'admin' THEN 1000 ELSE 100 END) as max_database_disk_mb,
+            COALESCE(q.max_disk_mb, CASE WHEN u.role = 'admin' THEN 20000 ELSE 10240 END) as max_disk_mb,
+            COALESCE(q.max_database_disk_mb, CASE WHEN u.role = 'admin' THEN 10000 ELSE 5120 END) as max_database_disk_mb,
             COUNT(DISTINCT p.id) as project_count,
             COUNT(DISTINCT d.id) as database_count,
             GROUP_CONCAT(DISTINCT p.name) as project_names,
@@ -816,7 +817,7 @@ async def get_system_capacity(
         total_allocated_disk_mb += est_disk_mb
         d["estimated_disk_mb"] = est_disk_mb
         d["estimated_db_storage_mb"] = est_db_storage_mb
-        d["max_database_disk_mb"] = d.get("max_database_disk_mb") or 100
+        d["max_database_disk_mb"] = d.get("max_database_disk_mb") or 5120
         d["projects_list"] = [x.strip() for x in (d.get("project_names") or "").split(",") if x.strip()]
         d["databases_list"] = [x.strip() for x in (d.get("db_names") or "").split(",") if x.strip()]
         if d.get("role") == "admin":
@@ -824,7 +825,7 @@ async def get_system_capacity(
             d["max_disk_label"] = "Tanpa Batas"
         else:
             d["is_unlimited"] = False
-            d["max_disk_label"] = f"{d.get('max_disk_mb', 500)} MB"
+            d["max_disk_label"] = f"{d.get('max_disk_mb', 10240)} MB"
         accounts.append(d)
 
     return {

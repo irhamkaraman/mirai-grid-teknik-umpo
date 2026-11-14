@@ -43,7 +43,7 @@ class TemplateComposer:
         allocated_port: int,
         app_config: Optional[Dict[str, Any]] = None,
         env_vars: Optional[Dict[str, str]] = None,
-        mem_limit_mb: int = 256,
+        mem_limit_mb: int = 512,
         cpu_cores: float = 0.5,
         pids_limit: int = 50
     ) -> str:

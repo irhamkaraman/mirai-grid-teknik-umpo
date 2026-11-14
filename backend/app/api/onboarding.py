@@ -102,8 +102,8 @@ async def get_onboarding_status(
             "role": user["role"]
         },
         "quotas": {
-            "max_disk_mb": quota["max_disk_mb"] if quota else 5000,
-            "max_memory_mb": quota["max_memory_mb"] if quota else 1024,
+            "max_disk_mb": quota["max_disk_mb"] if quota else 10240,
+            "max_memory_mb": quota["max_memory_mb"] if quota else 512,
             "max_cpu_cores": quota["max_cpu_cores"] if quota else 0.5,
             "max_databases": quota["max_databases"] if quota else 2
         },

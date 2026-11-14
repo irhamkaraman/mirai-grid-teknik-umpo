@@ -104,8 +104,8 @@ async def login(
 
         # Insert default quotas for new student
         await db.execute("""
-            INSERT INTO quotas (user_id, max_projects, max_databases, max_memory_mb, max_cpu_cores, max_disk_mb)
-            VALUES (?, 2, 2, 256, 0.5, 500)
+            INSERT INTO quotas (user_id, max_projects, max_databases, max_memory_mb, max_cpu_cores, max_disk_mb, max_database_disk_mb)
+            VALUES (?, 2, 2, 512, 0.5, 10240, 5120)
         """, (user_id,))
         await db.commit()
 

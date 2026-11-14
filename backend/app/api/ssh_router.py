@@ -56,8 +56,8 @@ async def get_ssh_info(
         (current_user["id"],)
     )
     quota = await cursor.fetchone()
-    storage_mb = quota["max_disk_mb"] if quota and "max_disk_mb" in quota.keys() else (quota[0] if quota else 500)
-    ram_mb = quota["max_memory_mb"] if quota and "max_memory_mb" in quota.keys() else (quota[1] if quota else 256)
+    storage_mb = quota["max_disk_mb"] if quota and "max_disk_mb" in quota.keys() else (quota[0] if quota else 10240)
+    ram_mb = quota["max_memory_mb"] if quota and "max_memory_mb" in quota.keys() else (quota[1] if quota else 512)
     cpu_cores = quota["max_cpu_cores"] if quota and "max_cpu_cores" in quota.keys() else (quota[2] if quota else 0.5)
 
     return {

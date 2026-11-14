@@ -15,6 +15,24 @@ def test_template_composer_php():
     assert "no-new-privileges:true" in compose
     assert "cap_drop:" in compose
     assert "10001:80" in compose
+    assert "memory: 512M" in compose
+    assert "cpus: '0.5'" in compose
+
+def test_template_composer_custom_quota():
+    compose = TemplateComposer.generate_compose(
+        nim="23533001",
+        project_name="custom-app",
+        language="php",
+        version="8.3",
+        project_src_dir="/data/projects/23533001_custom-app",
+        allocated_port=10004,
+        mem_limit_mb=1024,
+        cpu_cores=1.0,
+        pids_limit=100
+    )
+    assert "memory: 1024M" in compose
+    assert "cpus: '1.0'" in compose
+    assert "pids: 100" in compose
 
 def test_template_composer_python():
     compose = TemplateComposer.generate_compose(

@@ -46,9 +46,10 @@ class Settings(BaseSettings):
     # Quotas
     DEFAULT_MAX_PROJECTS: int = 2
     DEFAULT_MAX_DATABASES: int = 2
-    DEFAULT_MAX_MEMORY_MB: int = 256
+    DEFAULT_MAX_MEMORY_MB: int = 512
     DEFAULT_MAX_CPU_CORES: float = 0.5
-    DEFAULT_MAX_DISK_MB: int = 500
+    DEFAULT_MAX_DISK_MB: int = 10240
+    DEFAULT_DB_DISK_MB: int = 5120
 
     # JupyterHub SSO
     JUPYTER_SSO_SECRET: str = Field(default="Z2iAuW1nKa52ZLfLCNnKbZzViQqfKeayDLai0NxQzScIpyrrKDn2Iwy1HGY9fnMP", min_length=0)

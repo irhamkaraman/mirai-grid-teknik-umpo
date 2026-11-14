@@ -65,10 +65,10 @@ async def init_db():
             user_id INTEGER UNIQUE REFERENCES users(id) ON DELETE CASCADE,
             max_projects INTEGER DEFAULT 2,
             max_databases INTEGER DEFAULT 99,
-            max_memory_mb INTEGER DEFAULT 256,
+            max_memory_mb INTEGER DEFAULT 512,
             max_cpu_cores REAL DEFAULT 0.5,
-            max_disk_mb INTEGER DEFAULT 500,
-            max_database_disk_mb INTEGER DEFAULT 100,
+            max_disk_mb INTEGER DEFAULT 10240,
+            max_database_disk_mb INTEGER DEFAULT 5120,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
         """)
@@ -235,7 +235,7 @@ async def init_db():
             ("allow_postgres", "INTEGER DEFAULT 1"),
             ("allow_mariadb", "INTEGER DEFAULT 1"),
             ("allow_remote_db", "INTEGER DEFAULT 1"),
-            ("max_database_disk_mb", "INTEGER DEFAULT 100"),
+            ("max_database_disk_mb", "INTEGER DEFAULT 5120"),
         ]:
             try:
                 await db.execute(f"ALTER TABLE quotas ADD COLUMN {col} {col_def};")
@@ -257,6 +257,19 @@ async def init_db():
             await db.execute("UPDATE users SET onboarding_completed = 1, onboarding_step = 4 WHERE role = 'admin';")
         except Exception:
             pass
+
+        # Auto-migrate existing student quotas to new defaults (512MB RAM, 10GB disk, 5GB DB disk)
+        try:
+            await db.execute("""
+                UPDATE quotas 
+                SET max_disk_mb = 10240, 
+                    max_database_disk_mb = 5120, 
+                    max_memory_mb = 512 
+                WHERE user_id IN (SELECT id FROM users WHERE role = 'student')
+                  AND (max_disk_mb < 10240 OR max_database_disk_mb < 5120 OR max_memory_mb < 512);
+            """)
+        except Exception as e:
+            print(f"[Warning] Student quota auto-migration: {e}")
 
         # Seed default Administrator if not exists
         cursor = await db.execute("SELECT id FROM users WHERE username = 'admin'")

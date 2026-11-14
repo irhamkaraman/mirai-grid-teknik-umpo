@@ -724,7 +724,7 @@ async def create_project(
     if current_user.get("role") != "admin":
         cursor = await db.execute("SELECT max_disk_mb FROM quotas WHERE user_id = ?", (current_user["id"],))
         quota_row = await cursor.fetchone()
-        max_disk_mb = quota_row["max_disk_mb"] if (quota_row and quota_row["max_disk_mb"]) else 500
+        max_disk_mb = quota_row["max_disk_mb"] if (quota_row and quota_row["max_disk_mb"]) else 10240
 
         c_cur = await db.execute("SELECT COUNT(*) FROM projects WHERE user_id = ?", (current_user["id"],))
         c_dbs = await (await db.execute("SELECT COUNT(*) FROM student_databases WHERE user_id = ?", (current_user["id"],))).fetchone()
@@ -778,7 +778,7 @@ async def create_project(
 
     q_cur = await db.execute("SELECT * FROM quotas WHERE user_id = ?", (current_user["id"],))
     quota = await q_cur.fetchone()
-    mem_limit = quota["max_memory_mb"] if quota else 256
+    mem_limit = quota["max_memory_mb"] if quota else 512
     cpus = quota["max_cpu_cores"] if quota else 0.5
     pids = quota["max_processes"] if (quota and "max_processes" in quota.keys() and quota["max_processes"]) else 50
 
@@ -900,7 +900,7 @@ async def update_project_config(
 
     q_cur = await db.execute("SELECT * FROM quotas WHERE user_id = ?", (current_user["id"],))
     quota = await q_cur.fetchone()
-    mem_limit = quota["max_memory_mb"] if quota else 256
+    mem_limit = quota["max_memory_mb"] if quota else 512
     cpus = quota["max_cpu_cores"] if quota else 0.5
     pids = quota["max_processes"] if (quota and "max_processes" in quota.keys() and quota["max_processes"]) else 50
 
@@ -980,7 +980,7 @@ async def set_project_startup_file(
     host_project_dir = os.path.join(settings.HOST_PROJECTS_DIR, f"{nim}_{project_name}").replace("\\", "/")
     q_cur = await db.execute("SELECT * FROM quotas WHERE user_id = ?", (current_user["id"],))
     quota = await q_cur.fetchone()
-    mem_limit = quota["max_memory_mb"] if quota else 256
+    mem_limit = quota["max_memory_mb"] if quota else 512
     cpus = quota["max_cpu_cores"] if quota else 0.5
     pids = quota["max_processes"] if (quota and "max_processes" in quota.keys() and quota["max_processes"]) else 50
     env_vars = json.loads(decrypt_secret(project["env_vars_enc"])) if project["env_vars_enc"] else {}
@@ -1481,7 +1481,7 @@ async def extract_archive(
         cursor_q = await db.execute("SELECT max_disk_mb FROM quotas WHERE user_id = ?", (current_user["id"],))
         quota_row = await cursor_q.fetchone()
         is_admin = current_user.get("role") == "admin"
-        max_disk_mb = quota_row["max_disk_mb"] if (quota_row and quota_row["max_disk_mb"]) else (2000.0 if is_admin else 500.0)
+        max_disk_mb = quota_row["max_disk_mb"] if (quota_row and quota_row["max_disk_mb"]) else (20000.0 if is_admin else 10240.0)
 
         from app.services.disk_usage import calculate_account_disk_usage
         disk_used_mb, _ = calculate_account_disk_usage(current_user["username"])
@@ -1537,7 +1537,7 @@ async def upload_files_to_directory(
         cursor_q = await db.execute("SELECT max_disk_mb FROM quotas WHERE user_id = ?", (current_user["id"],))
         quota_row = await cursor_q.fetchone()
         is_admin = current_user.get("role") == "admin"
-        max_disk_mb = quota_row["max_disk_mb"] if (quota_row and quota_row["max_disk_mb"]) else (2000.0 if is_admin else 500.0)
+        max_disk_mb = quota_row["max_disk_mb"] if (quota_row and quota_row["max_disk_mb"]) else (20000.0 if is_admin else 10240.0)
 
         from app.services.disk_usage import calculate_account_disk_usage
         disk_used_mb, _ = calculate_account_disk_usage(current_user["username"])

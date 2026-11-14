@@ -59,8 +59,8 @@ async def create_database(
     quota_row = await cursor.fetchone()
     
     is_admin = current_user.get("role") == "admin"
-    max_db_storage_mb = 1000 if is_admin else (
-        quota_row["max_database_disk_mb"] if (quota_row and "max_database_disk_mb" in quota_row.keys() and quota_row["max_database_disk_mb"]) else 100
+    max_db_storage_mb = 10000 if is_admin else (
+        quota_row["max_database_disk_mb"] if (quota_row and "max_database_disk_mb" in quota_row.keys() and quota_row["max_database_disk_mb"]) else 5120
     )
 
     c_cur = await db.execute("SELECT COUNT(*) FROM student_databases WHERE user_id = ?", (current_user["id"],))
