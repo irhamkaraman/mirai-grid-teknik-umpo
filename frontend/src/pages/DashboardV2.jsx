@@ -1853,12 +1853,20 @@ export default function DashboardV2({
                       </div>
                     </td>
                     <td className="py-3 px-4 hidden md:table-cell">
-                      <div className="flex items-center space-x-2">
-                        <div className="h-5 w-5 rounded-full bg-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-700 shrink-0">
-                          {(item.owner_label || 'Saya').charAt(0).toUpperCase()}
-                        </div>
-                        <span className="text-slate-600 text-xs">{item.owner_label || 'Saya'}</span>
-                      </div>
+                      {(() => {
+                        const ownerDisplay = item.owner_name
+                          ? `${item.owner_name} (${item.owner_username || item.name})`
+                          : (item.owner_label || 'Saya')
+                        const initial = ownerDisplay.charAt(0).toUpperCase()
+                        return (
+                          <div className="flex items-center space-x-2">
+                            <div className="h-5 w-5 rounded-full bg-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-700 shrink-0">
+                              {initial}
+                            </div>
+                            <span className="text-slate-600 text-xs">{ownerDisplay}</span>
+                          </div>
+                        )
+                      })()}
                     </td>
                     <td className="py-3 px-4 hidden md:table-cell font-mono text-slate-500 text-xs">
                       {formatDate(item.modified)}
@@ -2098,7 +2106,9 @@ export default function DashboardV2({
                     <div className="space-y-1">
                       <span className="text-[11px] font-semibold text-slate-900 block">Pemilik</span>
                       <span className="text-xs text-slate-600 block">
-                        {infoItem.owner_label || `Saya (${getRoleLabel(user?.role)})`}
+                        {infoItem.owner_name
+                          ? `${infoItem.owner_name} (${infoItem.owner_username || infoItem.name})`
+                          : (infoItem.owner_label || `Saya (${getRoleLabel(user?.role)})`)}
                       </span>
                     </div>
 

@@ -255,11 +255,15 @@ def _format_owner_meta(target_username: str, users_map: dict) -> dict:
     if not info:
         return {
             "owner_username": target_username,
+            "owner_name": None,
             "owner_role": "system",
-            "owner_label": f"Sistem ({target_username})" if target_username else "Sistem",
+            "owner_label": target_username or "Sistem",
         }
     role = (info.get("role") or "student").lower()
-    if role == "dosen":
+    full_name = (info.get("name") or "").strip()
+    if full_name:
+        label = f"{full_name} ({target_username})"
+    elif role == "dosen":
         label = f"Dosen ({target_username})"
     elif role == "admin":
         label = f"Administrator ({target_username})"
@@ -267,6 +271,7 @@ def _format_owner_meta(target_username: str, users_map: dict) -> dict:
         label = f"Mahasiswa ({target_username})"
     return {
         "owner_username": target_username,
+        "owner_name": full_name or None,
         "owner_role": role,
         "owner_label": label,
     }
