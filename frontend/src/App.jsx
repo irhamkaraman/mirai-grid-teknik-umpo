@@ -445,7 +445,9 @@ export default function App() {
         <div
           className={
             isV2
-              ? 'mig-main-card w-full min-h-[calc(100vh-4.5rem)] bg-white rounded-2xl border border-slate-200/80 overflow-hidden flex flex-col p-4 sm:p-6 md:p-7'
+              ? location.pathname === '/dashboard' || location.pathname === '/'
+                ? 'mig-main-card w-full h-[calc(100vh-4.5rem)] bg-white rounded-2xl border border-slate-200/80 overflow-hidden flex flex-col p-0'
+                : 'mig-main-card w-full h-[calc(100vh-4.5rem)] bg-white rounded-2xl border border-slate-200/80 overflow-y-auto overflow-x-hidden flex flex-col p-4 sm:p-6 md:p-7'
               : 'w-full'
           }
         >

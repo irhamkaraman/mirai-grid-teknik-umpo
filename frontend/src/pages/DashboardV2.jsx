@@ -960,7 +960,7 @@ export default function DashboardV2({
 
   return (
     <div
-      className="space-y-6 animate-in fade-in duration-300 w-full relative"
+      className="flex h-full w-full overflow-hidden relative animate-in fade-in duration-300"
       onDragEnter={handleDragEnter}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
@@ -1037,6 +1037,8 @@ export default function DashboardV2({
         </div>
       </ModalPortal>
 
+      {/* KOLOM KIRI: AREA TABEL BERKAS (SCROLLABLE SECARA MANDIRI) */}
+      <div className="flex-1 h-full overflow-y-auto p-4 sm:p-6 md:p-7 space-y-6 min-w-0 transition-all duration-200 custom-scrollbar">
       {/* 1. BREADCRUMB PATH & SEARCH BAR */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border border-slate-200/90 rounded-xl px-4 py-2.5">
         {/* Breadcrumb Path Navigation */}
@@ -1398,9 +1400,7 @@ export default function DashboardV2({
         </div>
       )}
 
-      {/* 4. INTERACTIVE FILE LIST / GRID + DESKTOP GOOGLE DRIVE RIGHT SIDEPANEL */}
-      <div className="flex items-start gap-4 relative">
-        <div className="flex-1 min-w-0">
+      {/* 4. INTERACTIVE FILE LIST / GRID */}
       {loading ? (
         viewMode === 'list' ? (
           <SkeletonTable rows={5} />
@@ -1758,13 +1758,13 @@ export default function DashboardV2({
           </table>
         </div>
       )}
-        </div>
+      </div>
 
-        {/* 5. DESKTOP RIGHT SIDEPANEL: INFORMASI & PROPERTI BERKAS (Google Drive Style) */}
-        {infoItem && (
-          <aside className="hidden md:flex w-80 lg:w-96 bg-white border border-slate-200/90 rounded-2xl shrink-0 flex-col overflow-hidden sticky top-4 max-h-[calc(100vh-5rem)] animate-in slide-in-from-right-4 duration-200">
-            {/* Header Panel */}
-            <div className="px-5 py-4 flex items-center justify-between border-b border-slate-100">
+      {/* 5. KOLOM KANAN: SIDEPANEL DETAIL BERKAS (STATIS / TETAP DI TEMPAT ALA GOOGLE DRIVE) */}
+      {infoItem && (
+        <aside className="hidden md:flex w-80 lg:w-96 h-full flex-shrink-0 border-l border-slate-200/80 bg-white flex-col z-20 transition-all duration-300 animate-in slide-in-from-right-4">
+          {/* Header Panel (Selalu diam di atas panel) */}
+          <div className="px-5 py-4 flex items-center justify-between border-b border-slate-100 flex-shrink-0">
               <div className="flex items-center gap-3 min-w-0">
                 <div className="p-2 rounded-xl bg-slate-50 border border-slate-200/70 shrink-0">
                   {getFileIcon(infoItem)}
@@ -1990,7 +1990,6 @@ export default function DashboardV2({
             </div>
           </aside>
         )}
-      </div>
 
       {/* 6. CONTEXT MENU (Floating Right-Click) */}
       {contextMenu && (
