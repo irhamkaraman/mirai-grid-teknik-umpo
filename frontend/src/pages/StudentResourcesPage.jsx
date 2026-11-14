@@ -245,7 +245,8 @@ export default function StudentResourcesPage({ user, onNavigate }) {
   }
 
   return (
-    <div className="w-full max-w-7xl mx-auto space-y-6 pb-12 font-sans select-none">
+    <div className="flex-1 min-h-0 h-full overflow-y-auto w-full">
+      <div className="w-full max-w-7xl mx-auto space-y-6 pb-12 font-sans select-none">
       {/* 1. Breadcrumb Bar */}
       <nav aria-label="Breadcrumb" className="flex items-center space-x-2 text-xs">
         <button
@@ -700,6 +701,7 @@ export default function StudentResourcesPage({ user, onNavigate }) {
       </div>
         </>
       )}
+      </div>
     </div>
   )
 }
