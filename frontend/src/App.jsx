@@ -10,6 +10,7 @@ import ResourceDetailModal from './components/ResourceDetailModal'
 import ProfileAvatar from './components/ProfileFloating'
 import ChangePasswordModal from './components/ChangePasswordModal'
 import LoginPage from './pages/LoginPage'
+import LandingPage from './pages/LandingPage'
 import DashboardV2 from './pages/DashboardV2'
 import ProjectsView from './pages/ProjectsView'
 import DatabasesView from './pages/DatabasesView'
@@ -200,11 +201,17 @@ export default function App() {
           }}
         />
         <Routes>
+          <Route path="/" element={<LandingPage onLogin={() => navigate('/login')} />} />
+          <Route path="/welcome" element={<LandingPage onLogin={() => navigate('/login')} />} />
           <Route path="/login" element={<LoginPage onLoginSuccess={handleLoginSuccess} />} />
-          <Route path="*" element={<LoginPage onLoginSuccess={handleLoginSuccess} />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </div>
     )
+  }
+
+  if (location.pathname === '/welcome') {
+    return <LandingPage onLogin={() => navigate('/dashboard')} />
   }
 
   // 0. GATED ONBOARDING WIZARD (Pengguna baru wajib menyelesaikan onboarding sebelum bisa mengakses Dashboard & Fitur)
