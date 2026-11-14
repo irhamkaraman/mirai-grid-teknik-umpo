@@ -24,6 +24,7 @@ import {
 } from 'lucide-react'
 import { launchJupyterLab } from '../api/jupyter'
 import { useUpload } from '../context/UploadContext'
+import { formatMBSize } from '../utils/formatters'
 
 export function JupyterIcon({ className = "h-4 w-4" }) {
   return (
@@ -131,13 +132,25 @@ export default function NavigationV2({
     if (type === 'thingsboard') {
       requestGuardedNavigation('/thingsboard', async () => {
         try {
+          const localMgToken = localStorage.getItem('miraigrid_token') || localStorage.getItem('token') || ''
+          if (localMgToken) {
+            try {
+              document.cookie = `miraigrid_token=${localMgToken}; path=/; domain=.miraigrid.web.id; max-age=604800; SameSite=Lax; Secure`
+            } catch (e) {}
+          }
           const { getThingsBoardSSO } = await import('../api/thingsboard')
           const ssoData = await getThingsBoardSSO()
           if (ssoData && ssoData.ready && ssoData.sso_url) {
-            window.location.href = ssoData.sso_url
+            let targetUrl = ssoData.sso_url
+            if (localMgToken && !targetUrl.includes('mg_token=')) {
+              targetUrl += (targetUrl.includes('?') ? '&' : '?') + `mg_token=${encodeURIComponent(localMgToken)}`
+            }
+            window.location.href = targetUrl
             return
           }
-        } catch (e) {}
+        } catch (e) {
+          console.error('[ThingsBoard SSO] Fast launch fallback to /thingsboard:', e)
+        }
         navigate('/thingsboard')
       })
       return
@@ -330,8 +343,8 @@ export default function NavigationV2({
               </div>
 
               <div className="flex items-center justify-between text-[11px] text-gray-500 font-mono">
-                <span>{diskUsedMb} MB</span>
-                <span>{diskTotalMb} MB</span>
+                <span>{formatMBSize(diskUsedMb)}</span>
+                <span>{formatMBSize(diskTotalMb)}</span>
               </div>
 
               <button

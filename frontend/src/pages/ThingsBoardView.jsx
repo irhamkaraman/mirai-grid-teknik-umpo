@@ -16,8 +16,10 @@ import {
 import { toast } from 'sonner'
 import { getThingsBoardStatus, startThingsBoard, restartThingsBoard } from '../api/thingsboard'
 import { syncPageRoute } from '../utils/securityRoute'
+import { useTheme } from '../context/ThemeContext'
 
 export default function ThingsBoardView({ user, onNavigate }) {
+  const { isV2 } = useTheme()
   const [loading, setLoading] = useState(true)
   const [restarting, setRestarting] = useState(false)
   const [status, setStatus] = useState(null)
@@ -26,7 +28,10 @@ export default function ThingsBoardView({ user, onNavigate }) {
   const [initProgress, setInitProgress] = useState(25)
   const [showEmbedded, setShowEmbedded] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [failSafeTriggered, setFailSafeTriggered] = useState(false)
+  const [errorMessage, setErrorMessage] = useState('')
   const pollIntervalRef = useRef(null)
+  const failSafeTimerRef = useRef(null)
 
   const username = user?.username || 'admin'
   const userId = user?.id || 1
@@ -41,13 +46,22 @@ export default function ThingsBoardView({ user, onNavigate }) {
     initThingsBoard()
     return () => {
       if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
+      if (failSafeTimerRef.current) clearTimeout(failSafeTimerRef.current)
     }
   }, [])
 
   const initThingsBoard = async () => {
     setLoading(true)
+    setFailSafeTriggered(false)
+    setErrorMessage('')
     setInitStep(1)
     setInitProgress(20)
+
+    if (failSafeTimerRef.current) clearTimeout(failSafeTimerRef.current)
+    failSafeTimerRef.current = setTimeout(() => {
+      setFailSafeTriggered(true)
+      console.warn('[ThingsBoard SSO] 5s handshake threshold reached — enabling Fail-Safe manual actions.')
+    }, 5000)
 
     try {
       // 1. Fetch initial status or trigger start
@@ -64,7 +78,7 @@ export default function ThingsBoardView({ user, onNavigate }) {
       // Helper to ensure domain cookie is set before navigating
       const getEnhancedSsoUrl = (rawUrl) => {
         let finalUrl = rawUrl || `https://tb-${username}.miraigrid.web.id`
-        const localMgToken = localStorage.getItem('token') || localStorage.getItem('miraigrid_token')
+        const localMgToken = localStorage.getItem('miraigrid_token') || localStorage.getItem('token')
         if (localMgToken) {
           try {
             document.cookie = `miraigrid_token=${localMgToken}; path=/; domain=.miraigrid.web.id; max-age=604800; SameSite=Lax; Secure`
@@ -79,6 +93,7 @@ export default function ThingsBoardView({ user, onNavigate }) {
 
       // If already ready, immediately redirect directly to dedicated subdomain with SSO
       if (sRes.ready) {
+        if (failSafeTimerRef.current) clearTimeout(failSafeTimerRef.current)
         setInitStep(4)
         setInitProgress(100)
         const targetUrl = getEnhancedSsoUrl(sRes.sso_url || sRes.public_url)
@@ -88,6 +103,7 @@ export default function ThingsBoardView({ user, onNavigate }) {
 
       // 2. Poll every 3 seconds until ThingsBoard Spring Boot is fully HTTP ready
       let pollCount = 0
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current)
       pollIntervalRef.current = setInterval(async () => {
         pollCount++
         try {
@@ -96,13 +112,14 @@ export default function ThingsBoardView({ user, onNavigate }) {
 
           if (checkRes.ready) {
             clearInterval(pollIntervalRef.current)
+            if (failSafeTimerRef.current) clearTimeout(failSafeTimerRef.current)
             setInitStep(4)
             setInitProgress(100)
             toast.success('ThingsBoard IoT Sandbox siap! Mengalihkan ke dashboard...')
             const targetUrl = getEnhancedSsoUrl(checkRes.sso_url || checkRes.public_url)
             setTimeout(() => {
               window.location.replace(targetUrl)
-            }, 500)
+            }, 400)
             return
           } else {
             // Smooth progress increments during initialization
@@ -118,11 +135,15 @@ export default function ThingsBoardView({ user, onNavigate }) {
             }
           }
         } catch (e) {
-          console.warn('Polling ThingsBoard status failed', e)
+          console.warn('[ThingsBoard SSO] Polling ThingsBoard status failed:', e)
+          setErrorMessage(e?.response?.data?.detail || e?.message || 'Gagal menghubungi endpoint status ThingsBoard.')
+          setFailSafeTriggered(true)
         }
       }, 3000)
     } catch (err) {
-      console.error('Failed to initialize ThingsBoard session', err)
+      console.error('[ThingsBoard SSO] Failed to initialize ThingsBoard session:', err)
+      setErrorMessage(err?.response?.data?.detail || err?.message || 'Gagal menghubungkan ke server IoT.')
+      setFailSafeTriggered(true)
       toast.error('Gagal memuat instance ThingsBoard')
       setLoading(false)
     }
@@ -366,6 +387,50 @@ export default function ThingsBoardView({ user, onNavigate }) {
               <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
               <span>Terisolasi Penuh • Cgroups v2 Protected • Anti-Cross Tampering</span>
             </div>
+
+            {/* Fail-Safe Timeout & Error Recovery Actions (Shown after 5s or on error) */}
+            {failSafeTriggered && (
+              <div className="bg-[#1E110A] border border-amber-500/40 rounded-2xl p-4 text-left space-y-3">
+                <p className="text-xs text-amber-300 font-medium leading-relaxed">
+                  {errorMessage
+                    ? `Gagal menghubungkan ke server IoT: ${errorMessage}`
+                    : 'Container IoT sedang menyelesaikan booting layanan. Anda dapat mencoba ulang koneksi SSO atau membuka instance secara langsung:'}
+                </p>
+                <div className="flex flex-col sm:flex-row gap-2.5">
+                  <button
+                    type="button"
+                    onClick={initThingsBoard}
+                    className="flex-1 py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold flex items-center justify-center space-x-1.5 transition cursor-pointer"
+                  >
+                    <RefreshCw className="h-3.5 w-3.5" />
+                    <span>Coba Lagi</span>
+                  </button>
+                  <a
+                    href={
+                      status?.sso_url
+                        ? status.sso_url.includes('mg_token=')
+                          ? status.sso_url
+                          : `${status.sso_url}${status.sso_url.includes('?') ? '&' : '?'}mg_token=${encodeURIComponent(
+                              localStorage.getItem('miraigrid_token') || localStorage.getItem('token') || ''
+                            )}`
+                        : publicSubdomainUrl
+                    }
+                    onClick={() => {
+                      try {
+                        const t = localStorage.getItem('miraigrid_token') || localStorage.getItem('token')
+                        if (t) {
+                          document.cookie = `miraigrid_token=${t}; path=/; domain=.miraigrid.web.id; max-age=604800; SameSite=Lax; Secure`
+                        }
+                      } catch (e) {}
+                    }}
+                    className="flex-1 py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center justify-center space-x-1.5 transition cursor-pointer"
+                  >
+                    <span>Buka Langsung</span>
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                </div>
+              </div>
+            )}
           </>
         )}
 
@@ -445,10 +510,18 @@ export default function ThingsBoardView({ user, onNavigate }) {
             <div className="flex flex-col sm:flex-row items-center gap-3 pt-1">
               {/* Primary Action Button: Open in New Tab with SSO */}
               <a
-                href={status?.sso_url ? (status.sso_url.includes('?') ? `${status.sso_url}&mg_token=${encodeURIComponent(localStorage.getItem('token') || '')}` : `${status.sso_url}?mg_token=${encodeURIComponent(localStorage.getItem('token') || '')}`) : publicSubdomainUrl}
+                href={
+                  status?.sso_url
+                    ? status.sso_url.includes('mg_token=')
+                      ? status.sso_url
+                      : `${status.sso_url}${status.sso_url.includes('?') ? '&' : '?'}mg_token=${encodeURIComponent(
+                          localStorage.getItem('miraigrid_token') || localStorage.getItem('token') || ''
+                        )}`
+                    : publicSubdomainUrl
+                }
                 onClick={() => {
                   try {
-                    const t = localStorage.getItem('token') || localStorage.getItem('miraigrid_token')
+                    const t = localStorage.getItem('miraigrid_token') || localStorage.getItem('token')
                     if (t) document.cookie = `miraigrid_token=${t}; path=/; domain=.miraigrid.web.id; max-age=604800; SameSite=Lax; Secure`
                   } catch(e) {}
                 }}

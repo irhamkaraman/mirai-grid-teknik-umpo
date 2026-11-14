@@ -11,6 +11,7 @@ import ConfirmModal from '../components/ConfirmModal'
 import ModalPortal from '../components/ModalPortal'
 import { useTheme } from '../context/ThemeContext'
 import Button from '../components/Button'
+import { formatMBSize } from '../utils/formatters'
 
 export default function AdminView({ onNavigate }) {
   const { isV2 } = useTheme()
@@ -185,14 +186,24 @@ export default function AdminView({ onNavigate }) {
     })
   }
 
-  // Filtered & Paginated Users
+  // Filtered & Paginated Users (Synchronized client-side + server-side search & role filter)
   const filteredUsers = useMemo(() => {
-    if (!selectedRole) return users
-    return users.filter((u) => u.role === selectedRole)
-  }, [users, selectedRole])
+    const q = search.trim().toLowerCase()
+    return users.filter((u) => {
+      if (selectedRole && u.role !== selectedRole) return false
+      if (q) {
+        const matchUsername = String(u.username || '').toLowerCase().includes(q)
+        const matchName = String(u.name || '').toLowerCase().includes(q)
+        if (!matchUsername && !matchName) return false
+      }
+      return true
+    })
+  }, [users, selectedRole, search])
 
   const totalUserPages = Math.max(1, Math.ceil(filteredUsers.length / userPageSize))
   const paginatedUsers = filteredUsers.slice((userPage - 1) * userPageSize, userPage * userPageSize)
+  const startItem = filteredUsers.length === 0 ? 0 : (userPage - 1) * userPageSize + 1
+  const endItem = Math.min(userPage * userPageSize, filteredUsers.length)
 
   // Selection helpers (only student role accounts can be selected/bulk deleted)
   const selectableUsersOnPage = paginatedUsers.filter((u) => u.role !== 'admin')
@@ -286,117 +297,123 @@ export default function AdminView({ onNavigate }) {
 
   if (isV2) {
     return (
-      <div className="space-y-6 font-sans w-full text-slate-900">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div>
-            <h2 className="text-2xl font-sans font-bold text-slate-900 tracking-tight flex items-center space-x-2.5">
-              <Users className="h-6 w-6 text-slate-700" />
-              <span>Kelola Akun – MiraiGrid</span>
-            </h2>
-            <p className="text-xs text-slate-500 mt-1">
-              Kelola akun pengguna (Student &amp; Admin), alokasi kuota resource, dan audit log aktivitas.
-            </p>
-          </div>
-
-          <Button
-            variant="primary"
-            size="md"
-            icon={UserPlus}
-            onClick={() => setActiveTab('create')}
-          >
-            Tambah Akun Baru
-          </Button>
-        </div>
-
-        {/* Global Stat Cards */}
-        {loading ? (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <SkeletonCard />
-            <SkeletonCard />
-            <SkeletonCard />
-            <SkeletonCard />
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <div className="bg-white border border-slate-200/80 p-5 rounded-xl">
-              <p className="text-xs font-medium text-slate-500">Total Pengguna</p>
-              <p className="text-2xl font-bold text-slate-900 mt-1 font-sans">{users.length}</p>
-              <p className="text-[11px] text-slate-400 mt-1">Semua Akun Terdaftar</p>
-            </div>
-            <div className="bg-white border border-slate-200/80 p-5 rounded-xl">
-              <p className="text-xs font-medium text-slate-500">Mahasiswa (Student)</p>
-              <p className="text-2xl font-bold text-sky-600 mt-1 font-sans">{totalStudents}</p>
-              <p className="text-[11px] text-slate-400 mt-1">Akun Praktikan Sandbox</p>
-            </div>
-            <div className="bg-white border border-slate-200/80 p-5 rounded-xl">
-              <p className="text-xs font-medium text-slate-500">Administrator (Admin)</p>
-              <p className="text-2xl font-bold text-amber-600 mt-1 font-sans">{totalAdmins}</p>
-              <p className="text-[11px] text-slate-400 mt-1">Akses Root &amp; Manajemen</p>
-            </div>
-            <div className="bg-white border border-slate-200/80 p-5 rounded-xl">
-              <p className="text-xs font-medium text-slate-500">Resource Aktif</p>
-              <p className="text-2xl font-bold text-emerald-600 mt-1 font-sans">
-                {(stats?.total_projects ?? 0) + (stats?.total_databases ?? 0)}
-              </p>
-              <p className="text-[11px] text-slate-400 mt-1">
-                {stats?.total_projects ?? 0} Proj • {stats?.total_databases ?? 0} DB
+      <div className="flex flex-col h-full min-h-0 font-sans w-full text-slate-900">
+        {/* 1. Header, Summary Stats Cards & Tabs (Fixed at Top) */}
+        <div className="flex-shrink-0 space-y-4 mb-4">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-2xl font-sans font-bold text-slate-900 tracking-tight flex items-center space-x-2.5">
+                <Users className="h-6 w-6 text-slate-700" />
+                <span>Kelola Akun – MiraiGrid</span>
+              </h2>
+              <p className="text-xs text-slate-500 mt-1">
+                Kelola akun pengguna (Student &amp; Admin), alokasi kuota resource, dan audit log aktivitas.
               </p>
             </div>
-          </div>
-        )}
 
-        {/* Sub Navigation Tabs */}
-        <div className="flex border-b border-slate-200 space-x-2 overflow-x-auto">
-          <button
-            type="button"
-            onClick={() => setActiveTab('users')}
-            className={`px-4 py-2.5 text-xs border-b-2 whitespace-nowrap transition-colors flex items-center space-x-2 ${
-              activeTab === 'users'
-                ? 'border-slate-900 text-slate-900 font-bold'
-                : 'border-transparent text-slate-500 hover:text-slate-900 font-medium'
-            }`}
-          >
-            <Users className="h-3.5 w-3.5" />
-            <span>Daftar Akun</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('create')}
-            className={`px-4 py-2.5 text-xs border-b-2 whitespace-nowrap transition-colors flex items-center space-x-2 ${
-              activeTab === 'create'
-                ? 'border-slate-900 text-slate-900 font-bold'
-                : 'border-transparent text-slate-500 hover:text-slate-900 font-medium'
-            }`}
-          >
-            <UserPlus className="h-3.5 w-3.5" />
-            <span>Tambah Akun</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('logs')}
-            className={`px-4 py-2.5 text-xs border-b-2 whitespace-nowrap transition-colors flex items-center space-x-2 ${
-              activeTab === 'logs'
-                ? 'border-slate-900 text-slate-900 font-bold'
-                : 'border-transparent text-slate-500 hover:text-slate-900 font-medium'
-            }`}
-          >
-            <Clock className="h-3.5 w-3.5" />
-            <span>Audit Log</span>
-          </button>
+            <Button
+              variant="primary"
+              size="md"
+              icon={UserPlus}
+              onClick={() => setActiveTab('create')}
+            >
+              Tambah Akun Baru
+            </Button>
+          </div>
+
+          {/* Global Stat Cards */}
+          {loading ? (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <SkeletonCard />
+              <SkeletonCard />
+              <SkeletonCard />
+              <SkeletonCard />
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div className="bg-white border border-slate-200/80 p-4 sm:p-5 rounded-xl">
+                <p className="text-xs font-medium text-slate-500">Total Pengguna</p>
+                <p className="text-2xl font-bold text-slate-900 mt-1 font-sans">{users.length}</p>
+                <p className="text-[11px] text-slate-400 mt-1">Semua Akun Terdaftar</p>
+              </div>
+              <div className="bg-white border border-slate-200/80 p-4 sm:p-5 rounded-xl">
+                <p className="text-xs font-medium text-slate-500">Mahasiswa (Student)</p>
+                <p className="text-2xl font-bold text-sky-600 mt-1 font-sans">{totalStudents}</p>
+                <p className="text-[11px] text-slate-400 mt-1">Akun Praktikan Sandbox</p>
+              </div>
+              <div className="bg-white border border-slate-200/80 p-4 sm:p-5 rounded-xl">
+                <p className="text-xs font-medium text-slate-500">Administrator (Admin)</p>
+                <p className="text-2xl font-bold text-amber-600 mt-1 font-sans">{totalAdmins}</p>
+                <p className="text-[11px] text-slate-400 mt-1">Akses Root &amp; Manajemen</p>
+              </div>
+              <div className="bg-white border border-slate-200/80 p-4 sm:p-5 rounded-xl">
+                <p className="text-xs font-medium text-slate-500">Resource Aktif</p>
+                <p className="text-2xl font-bold text-emerald-600 mt-1 font-sans">
+                  {(stats?.total_projects ?? 0) + (stats?.total_databases ?? 0)}
+                </p>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  {stats?.total_projects ?? 0} Proj • {stats?.total_databases ?? 0} DB
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Sub Navigation Tabs */}
+          <div className="flex border-b border-slate-200 space-x-2 overflow-x-auto">
+            <button
+              type="button"
+              onClick={() => setActiveTab('users')}
+              className={`px-4 py-2.5 text-xs border-b-2 whitespace-nowrap transition-colors flex items-center space-x-2 ${
+                activeTab === 'users'
+                  ? 'border-slate-900 text-slate-900 font-bold'
+                  : 'border-transparent text-slate-500 hover:text-slate-900 font-medium'
+              }`}
+            >
+              <Users className="h-3.5 w-3.5" />
+              <span>Daftar Akun</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('create')}
+              className={`px-4 py-2.5 text-xs border-b-2 whitespace-nowrap transition-colors flex items-center space-x-2 ${
+                activeTab === 'create'
+                  ? 'border-slate-900 text-slate-900 font-bold'
+                  : 'border-transparent text-slate-500 hover:text-slate-900 font-medium'
+              }`}
+            >
+              <UserPlus className="h-3.5 w-3.5" />
+              <span>Tambah Akun</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('logs')}
+              className={`px-4 py-2.5 text-xs border-b-2 whitespace-nowrap transition-colors flex items-center space-x-2 ${
+                activeTab === 'logs'
+                  ? 'border-slate-900 text-slate-900 font-bold'
+                  : 'border-transparent text-slate-500 hover:text-slate-900 font-medium'
+              }`}
+            >
+              <Clock className="h-3.5 w-3.5" />
+              <span>Audit Log</span>
+            </button>
+          </div>
         </div>
 
         {/* TAB 1: DAFTAR AKUN */}
         {activeTab === 'users' && (
-          <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex flex-col flex-1 min-h-0">
+            <div className="flex-shrink-0 flex flex-col sm:flex-row gap-3 mb-4">
               <div className="relative flex-1">
                 <Search className="h-4 w-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
                   placeholder="Cari NIM, Username, atau Nama Akun..."
                   value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                  onChange={(e) => {
+                    setSearch(e.target.value)
+                    setUserPage(1)
+                  }}
                   onKeyDown={(e) => e.key === 'Enter' && fetchUsers()}
                   className="w-full bg-white border border-slate-200 rounded-lg pl-10 pr-4 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-slate-400 transition-colors"
                 />
@@ -425,10 +442,10 @@ export default function AdminView({ onNavigate }) {
             {loading ? (
               <SkeletonTable rows={5} />
             ) : (
-              <div className="bg-white border border-slate-200/80 rounded-xl overflow-hidden">
+              <>
                 {/* Bulk Action Toolbar */}
                 {selectedUserIds.length > 0 && (
-                  <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 bg-slate-50 border-b border-slate-200/80 text-xs">
+                  <div className="flex-shrink-0 flex flex-wrap items-center justify-between gap-3 p-3.5 mb-3 bg-slate-50 border border-slate-200/80 rounded-xl text-xs">
                     <div className="flex items-center space-x-2">
                       <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-slate-900 text-white font-mono font-semibold text-xs">
                         {selectedUserIds.length} Akun Terpilih
@@ -466,10 +483,11 @@ export default function AdminView({ onNavigate }) {
                   </div>
                 )}
 
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs text-slate-700">
-                    <thead className="bg-slate-50 border-b border-slate-200/80">
-                      <tr className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                {/* 2. AREA SCROLL TABEL (BISA DI-SCROLL VERTIKAL & HORIZONTAL SECARA MANDIRI) */}
+                <div className="flex-1 min-h-[240px] overflow-auto border border-slate-200/80 rounded-xl bg-white">
+                  <table className="w-full text-left border-collapse text-xs text-slate-700">
+                    <thead className="bg-slate-50 sticky top-0 z-10 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                      <tr>
                         <th className="p-4 w-12 text-center">
                           <input
                             type="checkbox"
@@ -554,17 +572,12 @@ export default function AdminView({ onNavigate }) {
                                 >
                                   <HardDrive className="h-3 w-3 text-slate-500" />
                                   <span>
-                                    {u.max_disk_mb >= 1000
-                                      ? `${(u.max_disk_mb / 1000).toFixed(u.max_disk_mb % 1000 === 0 ? 0 : 1)} GB`
-                                      : `${u.max_disk_mb || 500} MB`}
+                                    {formatMBSize(u.max_disk_mb || 500)}
                                   </span>
                                   <span className="text-slate-300">|</span>
                                   <Database className="h-3 w-3 text-slate-500" />
                                   <span>
-                                    DB{' '}
-                                    {u.max_database_disk_mb >= 1000
-                                      ? `${(u.max_database_disk_mb / 1000).toFixed(u.max_database_disk_mb % 1000 === 0 ? 0 : 1)} GB`
-                                      : `${u.max_database_disk_mb || 100} MB`}
+                                    DB {formatMBSize(u.max_database_disk_mb || 100)}
                                   </span>
                                 </button>
                               )}
@@ -675,55 +688,82 @@ export default function AdminView({ onNavigate }) {
                   </table>
                 </div>
 
-                {/* Pagination Controls */}
-                <div className="flex flex-col sm:flex-row items-center justify-between p-4 bg-slate-50/60 border-t border-slate-200/80 gap-3 text-xs text-slate-600">
-                  <div className="flex items-center space-x-2">
-                    <span>Tampilkan</span>
-                    <select
-                      value={userPageSize}
-                      onChange={(e) => {
-                        setUserPageSize(parseInt(e.target.value))
-                        setUserPage(1)
-                      }}
-                      className="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs text-slate-700 focus:outline-none focus:border-slate-400"
-                    >
-                      <option value={10}>10</option>
-                      <option value={25}>25</option>
-                      <option value={50}>50</option>
-                      <option value={100}>100</option>
-                    </select>
-                    <span>akun per halaman (Total {filteredUsers.length} akun)</span>
+                {/* 3. FOOTER PAGINASI (TETAP DIAM DI BAWAH) */}
+                <div className="flex-shrink-0 pt-4 border-t border-slate-100 mt-2 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-600">
+                  {/* Sisi Kiri: Info Ringkas & Rows Per Page */}
+                  <div className="flex flex-wrap items-center gap-3">
+                    <span>
+                      Menampilkan <strong className="text-slate-900 font-semibold">{startItem} - {endItem}</strong> dari{' '}
+                      <strong className="text-slate-900 font-semibold">{filteredUsers.length}</strong> akun
+                    </span>
+                    <div className="flex items-center space-x-1.5">
+                      <span className="text-slate-400">•</span>
+                      <span>Baris per halaman:</span>
+                      <select
+                        value={userPageSize}
+                        onChange={(e) => {
+                          setUserPageSize(parseInt(e.target.value))
+                          setUserPage(1)
+                        }}
+                        className="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs font-medium text-slate-700 focus:outline-none focus:border-slate-400 cursor-pointer"
+                      >
+                        <option value={5}>5</option>
+                        <option value={10}>10</option>
+                        <option value={25}>25</option>
+                        <option value={50}>50</option>
+                        <option value={100}>100</option>
+                      </select>
+                    </div>
                   </div>
 
-                  <div className="flex items-center space-x-2">
-                    <span>
-                      Halaman {userPage} dari {totalUserPages}
-                    </span>
+                  {/* Sisi Kanan: Tombol Navigasi Halaman */}
+                  <div className="flex items-center space-x-1.5">
                     <button
                       type="button"
                       disabled={userPage <= 1}
                       onClick={() => setUserPage((p) => Math.max(1, p - 1))}
-                      className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 hover:text-slate-900 disabled:opacity-40 transition-colors"
+                      className="inline-flex items-center space-x-1 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 hover:text-slate-900 disabled:opacity-40 disabled:pointer-events-none transition-colors cursor-pointer"
                     >
-                      <ChevronLeft className="h-4 w-4" />
+                      <ChevronLeft className="h-3.5 w-3.5" />
+                      <span className="hidden sm:inline">Sebelumnya</span>
                     </button>
+
+                    <div className="flex items-center space-x-1">
+                      {Array.from({ length: totalUserPages }, (_, idx) => idx + 1).map((pageNum) => (
+                        <button
+                          key={pageNum}
+                          type="button"
+                          onClick={() => setUserPage(pageNum)}
+                          className={`min-w-[30px] h-7 px-2 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                            userPage === pageNum
+                              ? 'bg-slate-900 text-white font-semibold border border-slate-900'
+                              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      ))}
+                    </div>
+
                     <button
                       type="button"
                       disabled={userPage >= totalUserPages}
                       onClick={() => setUserPage((p) => Math.min(totalUserPages, p + 1))}
-                      className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 hover:text-slate-900 disabled:opacity-40 transition-colors"
+                      className="inline-flex items-center space-x-1 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 hover:text-slate-900 disabled:opacity-40 disabled:pointer-events-none transition-colors cursor-pointer"
                     >
-                      <ChevronRight className="h-4 w-4" />
+                      <span className="hidden sm:inline">Berikutnya</span>
+                      <ChevronRight className="h-3.5 w-3.5" />
                     </button>
                   </div>
                 </div>
-              </div>
+              </>
             )}
           </div>
         )}
 
         {/* TAB 2: TAMBAH AKUN PENGGUNA */}
         {activeTab === 'create' && (
+          <div className="flex-1 min-h-0 overflow-y-auto">
           <div className="bg-white border border-slate-200/80 rounded-xl p-6 sm:p-8 text-slate-900 max-w-xl">
             <h3 className="text-lg font-sans font-bold text-slate-900 mb-1 flex items-center space-x-2">
               <UserPlus className="h-5 w-5 text-slate-700" />
@@ -827,12 +867,13 @@ export default function AdminView({ onNavigate }) {
               </div>
             </form>
           </div>
+          </div>
         )}
 
         {/* TAB 3: AUDIT LOGS */}
         {activeTab === 'logs' && (
-          <div className="bg-white border border-slate-200/80 rounded-xl overflow-hidden text-slate-900">
-            <div className="p-4 sm:p-5 border-b border-slate-200/80 bg-slate-50/50 flex items-center justify-between">
+          <div className="flex-1 min-h-[240px] bg-white border border-slate-200/80 rounded-xl overflow-hidden text-slate-900 flex flex-col">
+            <div className="flex-shrink-0 p-4 sm:p-5 border-b border-slate-200/80 bg-slate-50/50 flex items-center justify-between">
               <h4 className="text-base font-sans font-bold text-slate-900 flex items-center space-x-2">
                 <Clock className="h-5 w-5 text-slate-600" />
                 <span>Aktivitas Sistem &amp; Audit Log (50 Terakhir)</span>
@@ -845,7 +886,7 @@ export default function AdminView({ onNavigate }) {
                 Refresh
               </button>
             </div>
-            <div>
+            <div className="flex-1 min-h-0 overflow-y-auto">
               {auditLogs.length === 0 ? (
                 <div className="p-8 text-center text-xs text-slate-400">Belum ada catatan aktivitas.</div>
               ) : (

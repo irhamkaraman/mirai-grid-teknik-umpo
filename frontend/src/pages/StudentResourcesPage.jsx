@@ -21,6 +21,7 @@ import {
 import { useTheme } from '../context/ThemeContext'
 import { api } from '../api/client'
 import { SkeletonCard, SkeletonTable } from '../components/Skeletons'
+import { formatMBSize } from '../utils/formatters'
 
 export default function StudentResourcesPage({ user, onNavigate }) {
   const { isV2 } = useTheme()
@@ -404,10 +405,10 @@ export default function StudentResourcesPage({ user, onNavigate }) {
             <div className="space-y-1.5 pt-1">
               <div className="flex items-baseline justify-between">
                 <span className={`text-xl sm:text-2xl font-bold font-mono ${isV2 ? 'text-slate-900' : 'text-[#FAF5EC]'}`}>
-                  {ramMetric.used_mb} <span className="text-xs font-normal text-slate-400">MB</span>
+                  {formatMBSize(ramMetric.used_mb)}
                 </span>
                 <span className={`text-xs font-mono ${isV2 ? 'text-slate-500' : 'text-[#D0B8A2]'}`}>
-                  / {ramMetric.max_mb} MB
+                  / {formatMBSize(ramMetric.max_mb)}
                 </span>
               </div>
 
@@ -524,10 +525,10 @@ export default function StudentResourcesPage({ user, onNavigate }) {
             <div className="space-y-1.5 pt-1">
               <div className="flex items-baseline justify-between">
                 <span className={`text-xl sm:text-2xl font-bold font-mono ${isV2 ? 'text-slate-900' : 'text-[#FAF5EC]'}`}>
-                  {diskMetric.used_mb} <span className="text-xs font-normal text-slate-400">MB</span>
+                  {formatMBSize(diskMetric.used_mb)}
                 </span>
                 <span className={`text-xs font-mono ${isV2 ? 'text-slate-500' : 'text-[#D0B8A2]'}`}>
-                  / {diskMetric.max_mb >= 1024 ? `${Math.round(diskMetric.max_mb / 1024)} GB` : `${diskMetric.max_mb} MB`}
+                  / {formatMBSize(diskMetric.max_mb)}
                 </span>
               </div>
 
@@ -586,10 +587,10 @@ export default function StudentResourcesPage({ user, onNavigate }) {
             <div className="space-y-1.5 pt-1">
               <div className="flex items-baseline justify-between">
                 <span className={`text-xl sm:text-2xl font-bold font-mono ${isV2 ? 'text-slate-900' : 'text-[#FAF5EC]'}`}>
-                  {dbMetric.used_mb} <span className="text-xs font-normal text-slate-400">MB</span>
+                  {formatMBSize(dbMetric.used_mb)}
                 </span>
                 <span className={`text-xs font-mono ${isV2 ? 'text-slate-500' : 'text-[#D0B8A2]'}`}>
-                  / {dbMetric.max_mb >= 1024 ? `${Math.round(dbMetric.max_mb / 1024)} GB` : `${dbMetric.max_mb} MB`}
+                  / {formatMBSize(dbMetric.max_mb)}
                 </span>
               </div>
 

@@ -34,7 +34,7 @@ html.theme-mig-cloud #root,
 .theme-mig-cloud .mig-main-card {
   background-color: #FFFFFF !important;
   border-radius: 1rem !important; /* rounded-2xl (16px) */
-  overflow: hidden !important;
+  overflow-x: hidden;
 }
 
 .theme-v2 ::-webkit-scrollbar-track,

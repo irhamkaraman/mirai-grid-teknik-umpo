@@ -1,42 +1,68 @@
 import re
+import json
+import base64
 from typing import Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, Header, Request, Response, status
 import aiosqlite
 
 from app.core.config import settings
 from app.core.database import get_db
-from app.core.subdomain_auth import verify_subdomain_access
+from app.core.security import create_access_token
+from app.core.subdomain_auth import verify_subdomain_access, extract_token_from_request
 from app.api.deps import get_current_user
 from app.services.thingsboard_manager import ThingsBoardManager
 
 router = APIRouter(prefix="/thingsboard", tags=["ThingsBoard IoT Platform"])
 
+
+def _build_mg_token(current_user: dict, request: Optional[Request] = None) -> str:
+    if request:
+        auth_header = request.headers.get("authorization", "")
+        if auth_header.startswith("Bearer "):
+            tok = auth_header[7:].strip()
+            if tok:
+                return tok
+    return create_access_token(
+        {
+            "sub": str(current_user["id"]),
+            "username": current_user["username"],
+            "role": current_user.get("role", "student"),
+        }
+    )
+
+
 @router.get("/status")
 async def get_status(
+    request: Request,
     current_user: dict = Depends(get_current_user),
     db: aiosqlite.Connection = Depends(get_db)
 ):
     user_id = current_user["id"]
     username = current_user["username"]
-    return await ThingsBoardManager.get_status(user_id, username, db)
+    mg_token = _build_mg_token(current_user, request)
+    return await ThingsBoardManager.get_status(user_id, username, db, mg_token=mg_token)
 
 @router.get("/sso")
 async def get_sso(
+    request: Request,
     current_user: dict = Depends(get_current_user),
     db: aiosqlite.Connection = Depends(get_db)
 ):
     user_id = current_user["id"]
     username = current_user["username"]
-    return await ThingsBoardManager.get_sso_session(user_id, username, db)
+    mg_token = _build_mg_token(current_user, request)
+    return await ThingsBoardManager.get_sso_session(user_id, username, db, mg_token=mg_token)
 
 @router.post("/start")
 async def start_thingsboard(
+    request: Request,
     current_user: dict = Depends(get_current_user),
     db: aiosqlite.Connection = Depends(get_db)
 ):
     user_id = current_user["id"]
     username = current_user["username"]
-    return await ThingsBoardManager.start(user_id, username, db)
+    mg_token = _build_mg_token(current_user, request)
+    return await ThingsBoardManager.start(user_id, username, db, mg_token=mg_token)
 
 @router.post("/stop")
 async def stop_thingsboard(
@@ -49,12 +75,14 @@ async def stop_thingsboard(
 
 @router.post("/restart")
 async def restart_thingsboard(
+    request: Request,
     current_user: dict = Depends(get_current_user),
     db: aiosqlite.Connection = Depends(get_db)
 ):
     user_id = current_user["id"]
     username = current_user["username"]
-    return await ThingsBoardManager.restart(user_id, username, db)
+    mg_token = _build_mg_token(current_user, request)
+    return await ThingsBoardManager.restart(user_id, username, db, mg_token=mg_token)
 
 @router.get("/resolve")
 async def resolve_thingsboard_subdomain(
@@ -102,7 +130,15 @@ async def resolve_thingsboard_subdomain(
     x_orig_uri = request.headers.get("x-original-uri", "")
     is_device_telemetry = x_orig_uri.startswith("/api/v1/") or request.query_params.get("device") == "1"
 
-    if not is_device_telemetry:
+    # High-Performance Fast-Path for static chunks, fonts, locales & assets:
+    # Skip container readiness checks and cookie auth on static assets (e.g. anonymous @font-face fetches)
+    is_asset = (
+        x_orig_uri.startswith("/assets/")
+        or x_orig_uri.startswith("/static/")
+        or bool(re.search(r'\.(js|css|png|jpg|jpeg|gif|ico|svg|woff2?|ttf|eot|otf|json|webp|wasm|map)(\?.*)?$', x_orig_uri, re.IGNORECASE))
+    )
+
+    if not is_device_telemetry and not is_asset:
         # STRICT ZERO-TRUST AUTHORIZATION CHECK FOR WEB USER ACCESS
         is_authorized, status_code, err_msg, auth_user = await verify_subdomain_access(
             request=request,
@@ -111,13 +147,28 @@ async def resolve_thingsboard_subdomain(
             platform_name="ThingsBoard IoT Sandbox"
         )
         if not is_authorized:
-            resp = Response(status_code=status_code, content=err_msg)
-            resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-            return resp
+            # Resilient fallback: check if request has ThingsBoard X-Authorization header or a ThingsBoard JWT in cookie
+            tb_jwt_ok = False
+            x_auth = request.headers.get("x-authorization", "")
+            candidate_tok = (
+                x_auth[7:].strip()
+                if x_auth.lower().startswith("bearer ")
+                else (request.cookies.get("tb_jwt_token") or extract_token_from_request(request))
+            )
+            if candidate_tok and candidate_tok.count(".") == 2:
+                try:
+                    b64_part = candidate_tok.split(".")[1]
+                    b64_part += "=" * (-len(b64_part) % 4)
+                    jwt_payload = json.loads(base64.urlsafe_b64decode(b64_part).decode("utf-8"))
+                    if jwt_payload.get("iss") == "thingsboard.io":
+                        tb_jwt_ok = True
+                except Exception:
+                    pass
 
-    # High-Performance Fast-Path for static chunks & assets:
-    # Skip container readiness checks and heavy disk traversal on static assets
-    is_asset = bool(re.search(r'\.(js|css|png|jpg|jpeg|gif|ico|svg|woff2?|ttf|eot|map)(\?.*)?$', x_orig_uri, re.IGNORECASE))
+            if not tb_jwt_ok:
+                resp = Response(status_code=status_code, content=err_msg)
+                resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+                return resp
 
     if not is_asset:
         # Auto-ensure instance is running only on main page hits

@@ -1,5 +1,7 @@
 import os
+import time
 import asyncio
+from urllib.parse import quote
 from typing import Dict, Any, Optional
 import httpx
 import aiosqlite
@@ -10,6 +12,9 @@ DOCKER_UDS = "/var/run/docker.sock"
 DATA_BASE_DIR = "/app/data/home"
 HOST_DATA_BASE_DIR = "/var/lib/docker/volumes/miraigrid_miraigrid_data/_data/home"
 THINGSBOARD_IMAGE = "thingsboard/tb-postgres:latest"
+
+# In-memory SSO JWT cache per username: {username: {"token": str, "refresh_token": str, "expires_at": float}}
+_SSO_TOKEN_CACHE: Dict[str, Dict[str, Any]] = {}
 
 class ThingsBoardManager:
     """
@@ -179,18 +184,32 @@ COAP_PORT=5683
         return data_dir
 
     @staticmethod
-    async def get_tenant_tokens(port: int) -> tuple[str, str]:
-        """Fetch active JWT session tokens for Tenant Admin in this container."""
-        for target_host in ["10.10.10.10", "172.17.0.1", "127.0.0.1"]:
+    async def get_tenant_tokens(port: int, username: str = "", force_refresh: bool = False) -> tuple[str, str]:
+        """Fetch active JWT session tokens for Tenant Admin in this container (with fast in-memory cache)."""
+        now = time.time()
+        if username and not force_refresh:
+            cached = _SSO_TOKEN_CACHE.get(username)
+            if cached and cached.get("expires_at", 0) > now and cached.get("token"):
+                return cached["token"], cached.get("refresh_token", "")
+
+        for target_host in ["127.0.0.1", "10.10.10.10", "172.17.0.1"]:
             try:
-                async with httpx.AsyncClient(timeout=2.5) as client:
+                async with httpx.AsyncClient(timeout=2.0) as client:
                     login_res = await client.post(
                         f"http://{target_host}:{port}/api/auth/login",
                         json={"username": "tenant@thingsboard.org", "password": "tenant"}
                     )
                     if login_res.status_code == 200:
                         t_data = login_res.json()
-                        return t_data.get("token", ""), t_data.get("refreshToken", "")
+                        tok = t_data.get("token", "")
+                        ref = t_data.get("refreshToken", "")
+                        if tok and username:
+                            _SSO_TOKEN_CACHE[username] = {
+                                "token": tok,
+                                "refresh_token": ref,
+                                "expires_at": now + 2700,  # Cache for 45 minutes
+                            }
+                        return tok, ref
             except Exception:
                 continue
         return "", ""
@@ -198,9 +217,9 @@ COAP_PORT=5683
     @staticmethod
     async def is_http_ready(port: int) -> bool:
         """Check if ThingsBoard Spring Boot web interface is ready on the local port."""
-        for target_host in ["10.10.10.10", "172.17.0.1", "127.0.0.1"]:
+        for target_host in ["127.0.0.1", "10.10.10.10", "172.17.0.1"]:
             try:
-                async with httpx.AsyncClient(timeout=2.0) as client:
+                async with httpx.AsyncClient(timeout=1.8) as client:
                     res = await client.get(f"http://{target_host}:{port}/", follow_redirects=True)
                     if res.status_code in [200, 302]:
                         return True
@@ -221,8 +240,26 @@ COAP_PORT=5683
             pass
         return False
 
+    @staticmethod
+    def _compose_sso_url(subdomain: str, jwt_tok: str, ref_tok: str, mg_token: Optional[str] = None) -> str:
+        if not jwt_tok:
+            if mg_token:
+                return f"https://{subdomain}/sso?mg_token={quote(mg_token)}"
+            return f"https://{subdomain}"
+        url = f"https://{subdomain}/sso?token={quote(jwt_tok)}&refresh_token={quote(ref_tok)}"
+        if mg_token:
+            url += f"&mg_token={quote(mg_token)}"
+        return url
+
     @classmethod
-    async def get_status(cls, user_id: int, username: str, db: Optional[aiosqlite.Connection] = None, fetch_tokens: bool = False) -> Dict[str, Any]:
+    async def get_status(
+        cls,
+        user_id: int,
+        username: str,
+        db: Optional[aiosqlite.Connection] = None,
+        fetch_tokens: bool = False,
+        mg_token: Optional[str] = None,
+    ) -> Dict[str, Any]:
         container_name = f"tb_{username}"
         port = 15000 + user_id
         quotas = await cls.get_user_quotas(user_id, db)
@@ -243,9 +280,8 @@ COAP_PORT=5683
                     if is_running:
                         ready = await cls.is_http_ready(port)
                         if ready:
-                            jwt_tok, ref_tok = await cls.get_tenant_tokens(port)
-                            if jwt_tok:
-                                sso_url = f"https://{subdomain}/sso?token={jwt_tok}&refresh_token={ref_tok}"
+                            jwt_tok, ref_tok = await cls.get_tenant_tokens(port, username=username)
+                            sso_url = cls._compose_sso_url(subdomain, jwt_tok, ref_tok, mg_token)
 
                     status_str = "online" if ready else ("starting" if is_running else "stopped")
                     return {
@@ -283,12 +319,18 @@ COAP_PORT=5683
         }
 
     @classmethod
-    async def get_sso_session(cls, user_id: int, username: str, db: Optional[aiosqlite.Connection] = None) -> Dict[str, Any]:
+    async def get_sso_session(
+        cls,
+        user_id: int,
+        username: str,
+        db: Optional[aiosqlite.Connection] = None,
+        mg_token: Optional[str] = None,
+    ) -> Dict[str, Any]:
         """Generate a one-click SSO redirect session into ThingsBoard."""
-        status_info = await cls.get_status(user_id, username, db, fetch_tokens=True)
+        status_info = await cls.get_status(user_id, username, db, fetch_tokens=True, mg_token=mg_token)
         if not status_info.get("running"):
-            await cls.start(user_id, username, db)
-            status_info = await cls.get_status(user_id, username, db, fetch_tokens=True)
+            await cls.start(user_id, username, db, mg_token=mg_token)
+            status_info = await cls.get_status(user_id, username, db, fetch_tokens=True, mg_token=mg_token)
 
         port = status_info.get("port", 15000 + user_id)
         subdomain = status_info.get("subdomain", f"tb-{username}.miraigrid.web.id")
@@ -297,9 +339,8 @@ COAP_PORT=5683
 
         sso_url = status_info.get("sso_url", public_url)
         if is_ready and "token=" not in sso_url:
-            jwt_tok, ref_tok = await cls.get_tenant_tokens(port)
-            if jwt_tok:
-                sso_url = f"https://{subdomain}/sso?token={jwt_tok}&refresh_token={ref_tok}"
+            jwt_tok, ref_tok = await cls.get_tenant_tokens(port, username=username, force_refresh=True)
+            sso_url = cls._compose_sso_url(subdomain, jwt_tok, ref_tok, mg_token)
 
         return {
             "ready": is_ready,
@@ -312,7 +353,13 @@ COAP_PORT=5683
         }
 
     @classmethod
-    async def start(cls, user_id: int, username: str, db: Optional[aiosqlite.Connection] = None) -> Dict[str, Any]:
+    async def start(
+        cls,
+        user_id: int,
+        username: str,
+        db: Optional[aiosqlite.Connection] = None,
+        mg_token: Optional[str] = None,
+    ) -> Dict[str, Any]:
         container_name = f"tb_{username}"
         port = 15000 + user_id
         quotas = await cls.get_user_quotas(user_id, db)
@@ -360,7 +407,7 @@ COAP_PORT=5683
                         start_res = await client.post(f"http://docker/containers/{container_name}/start")
                         if start_res.status_code not in [204, 304]:
                             raise RuntimeError(f"Gagal menjalankan container ThingsBoard: {start_res.text}")
-                    return await cls.get_status(user_id, username, db)
+                    return await cls.get_status(user_id, username, db, mg_token=mg_token)
 
             # Create container
             create_payload = {
@@ -395,21 +442,29 @@ COAP_PORT=5683
             if start_res.status_code not in [204, 304]:
                 raise RuntimeError(f"Gagal memulai container ThingsBoard baru: {start_res.text}")
 
-            return await cls.get_status(user_id, username, db)
+            return await cls.get_status(user_id, username, db, mg_token=mg_token)
 
     @classmethod
     async def stop(cls, user_id: int, username: str) -> bool:
+        _SSO_TOKEN_CACHE.pop(username, None)
         container_name = f"tb_{username}"
         async with cls._get_docker_client() as client:
             res = await client.post(f"http://docker/containers/{container_name}/stop?t=10")
             return res.status_code in [204, 304, 404]
 
     @classmethod
-    async def restart(cls, user_id: int, username: str, db: Optional[aiosqlite.Connection] = None) -> Dict[str, Any]:
+    async def restart(
+        cls,
+        user_id: int,
+        username: str,
+        db: Optional[aiosqlite.Connection] = None,
+        mg_token: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        _SSO_TOKEN_CACHE.pop(username, None)
         container_name = f"tb_{username}"
         async with cls._get_docker_client() as client:
             res = await client.post(f"http://docker/containers/{container_name}/restart?t=10")
             if res.status_code not in [204, 304]:
                 # If container doesn't exist, start it fresh
-                return await cls.start(user_id, username, db)
-            return await cls.get_status(user_id, username, db)
+                return await cls.start(user_id, username, db, mg_token=mg_token)
+            return await cls.get_status(user_id, username, db, mg_token=mg_token)
