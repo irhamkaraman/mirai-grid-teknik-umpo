@@ -255,7 +255,9 @@ export default function App() {
   const isStandaloneFilesView = location.pathname.startsWith('/files')
   if (isStandaloneFilesView) {
     if (theme === 'v2') {
-      return <Navigate to="/dashboard" replace />
+      const searchParams = new URLSearchParams(location.search)
+      const targetSubpath = (searchParams.get('path') || searchParams.get('dir') || '').replace(/^\/+|\/+$/g, '')
+      return <Navigate to={targetSubpath ? `/dashboard?path=${encodeURIComponent(targetSubpath)}` : '/dashboard'} replace />
     }
     return (
       <UploadProvider>

@@ -93,7 +93,7 @@ export function syncFileRoute(workspaceName, currentPath, activeFilePath = null)
   newHash += `&sig=${sig}`
 
   if (window.location.hash !== `#${newHash}`) {
-    window.history.replaceState(null, '', `${window.location.pathname}#${newHash}`)
+    window.history.replaceState(null, '', `${window.location.pathname}${window.location.search || ''}#${newHash}`)
   }
 }
 
@@ -112,7 +112,7 @@ export function syncPageRoute(pageName, extraParams = {}) {
     
   const newHash = `!_sec/${sessKey}/${queryStr}&sig=${sig}`
   if (window.location.hash !== `#${newHash}`) {
-    window.history.replaceState(null, '', `${window.location.pathname}#${newHash}`)
+    window.history.replaceState(null, '', `${window.location.pathname}${window.location.search || ''}#${newHash}`)
   }
 }
 
@@ -121,19 +121,51 @@ export function syncPageRoute(pageName, extraParams = {}) {
  * Returns: { isTampered: boolean, reason: string }
  */
 export function checkUrlTampering(urlOrHash = '') {
-  const fullTarget = decodeURIComponent(urlOrHash || (typeof window !== 'undefined' ? window.location.href : ''))
+  const rawTarget = urlOrHash || (typeof window !== 'undefined' ? window.location.href : '')
+  let fullTarget = rawTarget
+  try {
+    fullTarget = decodeURIComponent(rawTarget)
+  } catch (e) {}
   const lower = fullTarget.toLowerCase()
 
   // 1. Path traversal attacks
   const traversalPatterns = [
     '..', '%2e%2e', '..%2f', '%2f..', '/etc/', '/proc/', '/sys/', '/root/',
-    '/var/run/', '/boot/', 'c:\\', '\\windows\\', '\\system32'
+    '/var/run/', '/boot/', 'c:\\', '\\windows\\', '\\system32', '%00', '\x00'
   ]
   for (const pat of traversalPatterns) {
     if (lower.includes(pat)) {
       return { isTampered: true, reason: `Deteksi Path Traversal terlarang: "${pat}"` }
     }
   }
+
+  // 1b. Inspect query parameters (?path= / ?dir=) for tilde (~) or cross-account /home/<other>
+  try {
+    const activeUser = JSON.parse(localStorage.getItem('miraigrid_user') || '{}')
+    const activeUsername = activeUser?.username || ''
+    const qIndex = rawTarget.indexOf('?')
+    if (qIndex !== -1) {
+      const qPart = rawTarget.slice(qIndex + 1).split('#')[0]
+      const qParams = new URLSearchParams(qPart)
+      for (const key of ['path', 'dir', 'file']) {
+        const val = qParams.get(key)
+        if (val) {
+          const cleanVal = decodeURIComponent(val).trim().replace(/\\/g, '/')
+          if (cleanVal.startsWith('~') || cleanVal.includes('/~') || cleanVal.includes('..')) {
+            return { isTampered: true, reason: `Parameter query "${key}" mengandung pola traversal terlarang` }
+          }
+          if (
+            activeUsername &&
+            cleanVal.startsWith('/home/') &&
+            cleanVal !== `/home/${activeUsername}` &&
+            !cleanVal.startsWith(`/home/${activeUsername}/`)
+          ) {
+            return { isTampered: true, reason: `Percobaan akses lintas akun pada parameter "${key}"` }
+          }
+        }
+      }
+    }
+  } catch (e) {}
 
   // 2. Cross-Site Scripting (XSS) / Code Injection
   const injectionPatterns = [
@@ -156,19 +188,64 @@ export function checkUrlTampering(urlOrHash = '') {
     }
   }
 
-  // 4. Hash Tampering Verification (if an existing !_sec hash is present, check signature)
-  if (fullTarget.includes('!_sec/')) {
+  // 4. Hash Tampering & Base64 Parameter Verification (if an existing !_sec hash is present)
+  if (rawTarget.includes('!_sec/')) {
     try {
-      const hashPart = fullTarget.split('!_sec/')[1] || ''
-      const [sessAndParams] = hashPart.split('&')
-      // If the signature is present, verify its integrity
-      if (hashPart.includes('sig=')) {
-        const urlParams = new URLSearchParams(hashPart.split('/').slice(1).join('/'))
+      const hashPart = rawTarget.split('!_sec/')[1] || ''
+      const slashIdx = hashPart.indexOf('/')
+      if (slashIdx !== -1) {
+        const hashSessKey = hashPart.slice(0, slashIdx)
+        const paramString = hashPart.slice(slashIdx + 1)
+        const urlParams = new URLSearchParams(paramString)
         const providedSig = urlParams.get('sig')
-        // Check if params contain forbidden characters
+        const activeUser = JSON.parse(localStorage.getItem('miraigrid_user') || '{}')
+        const activeUsername = activeUser?.username || ''
+
+        const payloadForSig = {}
         for (const [k, v] of urlParams.entries()) {
-          if (k !== 'sig' && (v.includes('../') || v.includes('..'))) {
-            return { isTampered: true, reason: 'Parameter hash termodifikasi ilegal' }
+          if (k === 'sig') continue
+          payloadForSig[k] = v
+
+          // Check raw value & Base64-decoded value for dir, ws, file
+          const candidates = [v]
+          if (['dir', 'ws', 'file'].includes(k)) {
+            candidates.push(safeB64Decode(v))
+          }
+          for (const cand of candidates) {
+            const norm = String(cand || '').replace(/\\/g, '/')
+            const normLower = norm.toLowerCase()
+            if (
+              norm.includes('..') ||
+              normLower.includes('%2e%2e') ||
+              norm.startsWith('~') ||
+              norm.includes('/~') ||
+              normLower.startsWith('/etc') ||
+              normLower.startsWith('/root') ||
+              normLower.startsWith('/proc') ||
+              normLower.startsWith('/sys')
+            ) {
+              return { isTampered: true, reason: `Parameter hash "${k}" termodifikasi ilegal (Path Traversal Detected)` }
+            }
+            if (
+              activeUsername &&
+              norm.startsWith('/home/') &&
+              norm !== `/home/${activeUsername}` &&
+              !norm.startsWith(`/home/${activeUsername}/`)
+            ) {
+              return { isTampered: true, reason: `Percobaan akses direktori akun lain via parameter "${k}"` }
+            }
+          }
+        }
+
+        // Verify cryptographic session signature (sig) when session key matches active session
+        if (providedSig && hashSessKey === getSecuritySessionKey()) {
+          const routeKey = payloadForSig.page || '/files'
+          const expectedSig = computeRouteSignature(routeKey, payloadForSig)
+          if (providedSig !== expectedSig) {
+            return {
+              isTampered: true,
+              reason: 'Signature keamanan URL (sig) tidak cocok — terdeteksi modifikasi manual parameter rute!'
+            }
           }
         }
       }

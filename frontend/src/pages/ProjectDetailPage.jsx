@@ -24,10 +24,14 @@ export default function ProjectDetailPage({ project: propProject, onBack, onUpda
   const [loading, setLoading] = useState(!propProject)
 
   const handleOpenInFileManager = (targetPath) => {
+    const subpath = (targetPath || '').replace(new RegExp('^/home/[^/]+/?'), '').replace(/^\/+|\/+$/g, '')
+    if (isV2) {
+      navigate(subpath ? `/dashboard?path=${encodeURIComponent(subpath)}` : '/dashboard')
+      return
+    }
     if (onOpenFile) {
       onOpenFile(targetPath)
     } else {
-      const subpath = (targetPath || '').replace(new RegExp('^/home/[^/]+/?'), '')
       navigate(`/files?dir=${encodeURIComponent(subpath || '')}`)
     }
   }

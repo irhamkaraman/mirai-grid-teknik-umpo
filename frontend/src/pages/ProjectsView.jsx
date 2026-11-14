@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import {
   Plus,
   Play,
@@ -54,6 +54,7 @@ export default function ProjectsView({ user: propUser }) {
   const [publishLoadingId, setPublishLoadingId] = useState(null)
   const [copiedId, setCopiedId] = useState(null)
   const location = useLocation()
+  const navigate = useNavigate()
 
   // Search, Filter & Pagination States
   const [searchQuery, setSearchQuery] = useState('')
@@ -253,8 +254,12 @@ export default function ProjectsView({ user: propUser }) {
           setActiveConsoleProject(proj)
         }}
         onOpenFile={(targetPath) => {
-          const subpath = (targetPath || '').replace(new RegExp(`^/home/[^/]+/?`), '')
+          const subpath = (targetPath || '').replace(new RegExp(`^/home/[^/]+/?`), '').replace(/^\/+|\/+$/g, '')
           setActiveProjectDetail(null)
+          if (isV2) {
+            navigate(subpath ? `/dashboard?path=${encodeURIComponent(subpath)}` : '/dashboard')
+            return
+          }
           setActiveFileManagerProject({
             id: 'root',
             name: 'Storage',
@@ -269,6 +274,11 @@ export default function ProjectsView({ user: propUser }) {
   }
 
   if (activeFileManagerProject) {
+    if (isV2) {
+      const cleanSub = (activeFileManagerProject.initial_path || '').replace(/^\/+|\/+$/g, '')
+      navigate(cleanSub ? `/dashboard?path=${encodeURIComponent(cleanSub)}` : '/dashboard', { replace: true })
+      return null
+    }
     return (
       <FileManager
         project={activeFileManagerProject}
@@ -384,18 +394,11 @@ export default function ProjectsView({ user: propUser }) {
             <button
               type="button"
               onClick={() => {
-                const subpath = appRoot.replace(new RegExp(`^/home/[^/]+/?`), '')
-                setActiveFileManagerProject({
-                  id: 'root',
-                  name: 'Storage',
-                  is_home_root: true,
-                  owner_username: projOwner,
-                  virtual_path: `/home/${projOwner}`,
-                  initial_path: subpath,
-                })
+                const subpath = appRoot.replace(new RegExp(`^/home/[^/]+/?`), '').replace(/^\/+|\/+$/g, '')
+                navigate(subpath ? `/dashboard?path=${encodeURIComponent(subpath)}` : '/dashboard')
               }}
               className="group inline-flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 transition-colors text-left cursor-pointer"
-              title="Buka direktori ini langsung di File Manager"
+              title="Buka direktori ini langsung di Workspace V2"
             >
               <Folder className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
               <span className="truncate max-w-[220px] underline decoration-dotted decoration-slate-400 group-hover:decoration-solid">
@@ -947,17 +950,10 @@ export default function ProjectsView({ user: propUser }) {
                                   <button
                                     type="button"
                                     onClick={() => {
-                                      setActiveFileManagerProject({
-                                        id: 'root',
-                                        name: 'Storage',
-                                        is_home_root: true,
-                                        owner_username: group.username,
-                                        virtual_path: `/home/${group.username}`,
-                                        initial_path: '',
-                                      })
+                                      navigate('/dashboard')
                                     }}
                                     className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-lg bg-white hover:bg-slate-50 border border-slate-200 text-[11px] font-medium text-slate-700 transition-colors"
-                                    title={`Buka File Manager /home/${group.username}`}
+                                    title={`Buka Workspace /home/${group.username}`}
                                   >
                                     <Folder className="h-3 w-3 text-emerald-600" />
                                     <span>Storage Akun</span>

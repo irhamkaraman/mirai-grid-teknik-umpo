@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react'
+import { useLocation } from 'react-router-dom'
 import {
   Folder,
   FileText,
@@ -68,9 +69,55 @@ export default function DashboardV2({
 }) {
   const username = user?.username || 'user'
   const { enqueueUploads, queue } = useUpload()
+  const location = useLocation()
+
+  // Sanitize incoming ?path= or ?dir= parameter to prevent path traversal and strip /home/<username>/ prefix
+  const sanitizeIncomingPath = (rawPath) => {
+    if (!rawPath) return ''
+    let s = String(rawPath).trim().replace(/\\/g, '/')
+    if (
+      s.includes('..') ||
+      s.toLowerCase().includes('%2e%2e') ||
+      s.includes('~') ||
+      s.includes('\0') ||
+      s.toLowerCase().includes('%00')
+    ) {
+      toast.error('Akses Ditolak: Percobaan pelanggaran batas direktori sandbox (Path Traversal Detected)!')
+      return ''
+    }
+    const homePrefix = `/home/${username}`
+    if (s.startsWith(`${homePrefix}/`)) {
+      s = s.slice(homePrefix.length + 1)
+    } else if (s === homePrefix) {
+      s = ''
+    } else if (s.startsWith('/home/')) {
+      toast.error('Akses Ditolak: Direktori milik akun lain tidak dapat diakses!')
+      return ''
+    }
+    return s.replace(/^\/+|\/+$/g, '')
+  }
 
   // State
-  const [currentPath, setCurrentPath] = useState('')
+  const [currentPath, setCurrentPath] = useState(() => {
+    try {
+      const params = new URLSearchParams(window.location.search)
+      return sanitizeIncomingPath(params.get('path') || params.get('dir') || '')
+    } catch {
+      return ''
+    }
+  })
+
+  // Sync currentPath when navigating to /dashboard?path=...
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(location.search)
+      const queryPath = params.get('path') ?? params.get('dir')
+      if (queryPath !== null) {
+        const clean = sanitizeIncomingPath(queryPath)
+        setCurrentPath(clean)
+      }
+    } catch {}
+  }, [location.search, username])
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [quota, setQuota] = useState(null)

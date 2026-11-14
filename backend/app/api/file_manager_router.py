@@ -5,7 +5,11 @@ import pathlib
 import io
 import stat
 import mimetypes
+import logging
+from urllib.parse import unquote
 from typing import List, Optional, Union
+
+logger = logging.getLogger("miraigrid.security")
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form, Body, status
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel, Field
@@ -71,49 +75,99 @@ def resolve_safe_user_path(home_dir: str, subpath: str = "") -> str:
     Strictly verifies that the resolved path does not escape home_dir or user's isolated repositories.
     Supports relative paths, root ('/'), and absolute virtual paths like '/home/{username}/public_html'.
     """
+    user_root = os.path.abspath(os.path.realpath(home_dir))
     if not subpath:
-        return home_dir
+        return user_root
 
-    if "\x00" in subpath:
-        raise HTTPException(status_code=400, detail="Null byte terdeteksi pada parameter path.")
+    username = os.path.basename(user_root)
+    raw = str(subpath)
+    decoded = unquote(raw)
+    lower_raw = raw.lower()
+    lower_dec = decoded.lower()
 
-    username = os.path.basename(home_dir)
-    s = subpath.strip().replace("\\", "/")
+    # 1. Block null bytes, parent traversal (..), home tilde (~), and encoded variants
+    if (
+        "\x00" in raw
+        or "\x00" in decoded
+        or "%00" in lower_raw
+        or "%2e%2e" in lower_raw
+        or ".." in raw.replace("\\", "/").split("/")
+        or ".." in decoded.replace("\\", "/").split("/")
+        or "../" in raw
+        or "..\\" in raw
+        or "../" in decoded
+        or "..\\" in decoded
+        or decoded.strip().startswith("~")
+        or "/~" in decoded.replace("\\", "/")
+    ):
+        logger.warning(
+            f"[SECURITY ALERT] Path Traversal blocked for user='{username}' | raw_subpath='{raw}'"
+        )
+        raise HTTPException(
+            status_code=403,
+            detail="Akses Ditolak: Percobaan pelanggaran batas direktori sandbox (Path Traversal Detected)!"
+        )
 
-    # Strip absolute /home/{username} or home/{username} prefix if user passed full virtual path
+    s = decoded.strip().replace("\\", "/")
+
+    # 2. Check and strip absolute /home/{username} prefix, or block cross-user /home/{other} & system roots
     if s.startswith(f"/home/{username}/"):
         s = s[len(f"/home/{username}/"):]
-    elif s == f"/home/{username}" or s == f"/home/{username}/":
+    elif s in (f"/home/{username}", f"/home/{username}/"):
         s = ""
     elif s.startswith(f"home/{username}/"):
         s = s[len(f"home/{username}/"):]
-    elif s == f"home/{username}" or s == f"home/{username}/":
+    elif s in (f"home/{username}", f"home/{username}/"):
         s = ""
+    elif s.startswith("/home/") or s.startswith("home/"):
+        logger.warning(
+            f"[SECURITY ALERT] Cross-account sandbox access blocked for user='{username}' | target='{raw}'"
+        )
+        raise HTTPException(
+            status_code=403,
+            detail="Akses Ditolak: Percobaan pelanggaran batas direktori sandbox (Path Traversal Detected)!"
+        )
+    elif s.startswith(("/etc/", "/etc", "/root/", "/root", "/proc/", "/sys/", "/var/", "/boot/", "/usr/", "/bin/", "/sbin/")):
+        logger.warning(
+            f"[SECURITY ALERT] System directory access blocked for user='{username}' | target='{raw}'"
+        )
+        raise HTTPException(
+            status_code=403,
+            detail="Akses Ditolak: Percobaan pelanggaran batas direktori sandbox (Path Traversal Detected)!"
+        )
 
     clean_sub = s.strip().lstrip("/")
     if not clean_sub or clean_sub in (".", ""):
-        return home_dir
+        return user_root
 
-    combined = os.path.join(home_dir, clean_sub)
-    resolved = os.path.realpath(combined)
+    combined = os.path.join(user_root, clean_sub)
+    resolved = os.path.abspath(os.path.realpath(combined))
 
-    allowed_roots = [os.path.realpath(home_dir)]
-    data_base = os.path.dirname(os.path.dirname(home_dir))
-    user_repo_dir = os.path.realpath(os.path.join(data_base, "repositories", username))
+    allowed_roots = [user_root]
+    data_base = os.path.dirname(os.path.dirname(user_root))
+    user_repo_dir = os.path.abspath(os.path.realpath(os.path.join(data_base, "repositories", username)))
     if os.path.exists(user_repo_dir):
         allowed_roots.append(user_repo_dir)
 
     is_safe = False
     for root in allowed_roots:
         try:
-            if os.path.commonpath([root, resolved]) == root:
+            if os.path.commonpath([root, resolved]) == root and (
+                resolved == root or resolved.startswith(root + os.sep)
+            ):
                 is_safe = True
                 break
         except ValueError:
             pass
 
     if not is_safe:
-        raise HTTPException(status_code=403, detail="Akses di luar root sandbox storage akun Anda dilarang keras.")
+        logger.warning(
+            f"[SECURITY ALERT] Resolved path escaped sandbox for user='{username}' | resolved='{resolved}' | root='{user_root}'"
+        )
+        raise HTTPException(
+            status_code=403,
+            detail="Akses Ditolak: Percobaan pelanggaran batas direktori sandbox (Path Traversal Detected)!"
+        )
 
     return resolved
 
