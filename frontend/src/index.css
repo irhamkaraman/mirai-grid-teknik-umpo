@@ -155,3 +155,16 @@ tbody tr:hover {
 .animate-showcase-step {
   animation: showcase-step-enter 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+@keyframes iso-float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+.animate-iso-float {
+  animation: iso-float 4s ease-in-out infinite;
+}

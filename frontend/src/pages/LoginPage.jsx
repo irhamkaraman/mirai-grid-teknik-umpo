@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import { api } from '../api/client'
 import { Spinner } from '../components/Skeletons'
+import LoginIsometricShowcase from '../components/LoginIsometricShowcase'
 
 const SHOWCASE_STEPS = [
   {
@@ -131,10 +132,10 @@ export default function LoginPage({ onLoginSuccess }) {
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-900 flex flex-col md:flex-row relative overflow-x-hidden font-sans select-none">
       {/* LEFT COLUMN: 3-Step Living Showcase (Hidden cleanly on mobile < 768px) */}
-      <div className="hidden md:flex md:w-7/12 p-8 lg:p-14 flex-col justify-between relative z-10 border-r border-slate-200/80 bg-white">
+      <div className="hidden md:flex md:w-7/12 p-8 lg:p-12 flex-col justify-between relative z-10 border-r border-slate-200/80 bg-white">
         {/* Top Brand Header + Progress Line Tracker */}
         <div>
-          <div className="flex items-center space-x-3.5 mb-8">
+          <div className="flex items-center space-x-3.5 mb-6">
             <div className="h-11 w-11 rounded-xl bg-slate-50 p-2 border border-slate-200/80 flex items-center justify-center shrink-0">
               <img
                 src="/logos/miraigrid-logo.svg"
@@ -196,19 +197,22 @@ export default function LoginPage({ onLoginSuccess }) {
         </div>
 
         {/* Center Living Showcase Step Content (Fade & Slide Transition) */}
-        <div className="my-10 max-w-xl">
-          <div key={currentStep.id} className="animate-showcase-step space-y-6">
-            <div className="space-y-3">
+        <div className="my-6 max-w-xl">
+          <div key={currentStep.id} className="animate-showcase-step space-y-4">
+            <div className="space-y-2.5">
               <p className="font-mono text-xs text-slate-400 tracking-wider">
                 {currentStep.number}
               </p>
-              <h2 className="text-3xl lg:text-4xl font-bold text-slate-900 leading-[1.18] tracking-tight">
+              <h2 className="text-2xl lg:text-3xl font-bold text-slate-900 leading-[1.2] tracking-tight">
                 {currentStep.title}
               </h2>
               <p className="text-sm text-slate-600 leading-relaxed">
                 {currentStep.description}
               </p>
             </div>
+
+            {/* Clean 2.5D Isometric Vector Illustration */}
+            <LoginIsometricShowcase activeStep={activeStep} />
 
             {/* Step Status Card */}
             {(() => {
