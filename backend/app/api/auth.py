@@ -4,7 +4,7 @@ from app.core.database import get_db
 from app.core.security import verify_password, hash_password, create_access_token, decode_access_token
 from app.models.schemas import LoginRequest, ChangePasswordRequest, Token, UserResponse
 from app.api.deps import get_current_user, get_client_ip
-from app.services.simtik import verify_simtik
+from app.services.simtik import verify_simtik, verify_simtik_dosen
 from app.services.user_home import ensure_user_home
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -78,35 +78,55 @@ async def login(
             detail="Password administrator salah."
         )
 
-    # 2. Student Authentication via SIMTIK UMPO Handshake
-    simtik_result = await verify_simtik(username, password)
+    # 2. Student or Dosen Authentication via SIMTIK UMPO Handshake
+    portal = (credentials.portal or "mahasiswa").strip().lower()
+    is_dosen_portal = portal == "dosen"
+
+    if is_dosen_portal:
+        simtik_result = await verify_simtik_dosen(username, password)
+    else:
+        simtik_result = await verify_simtik(username, password)
 
     if not simtik_result["success"]:
-        # If SIMTIK rejects, raise clear 401 error
+        default_err = (
+            "NIDN / Username Dosen atau Password SIMTIK salah."
+            if is_dosen_portal
+            else "NIM atau Password SIMTIK salah."
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=simtik_result.get("message", "NIM atau Password SIMTIK salah.")
+            detail=simtik_result.get("message", default_err)
         )
 
     # 3. Handshake successful: Auto-provision or sync user in local database
     new_hash = hash_password(password)
+    target_role = "dosen" if is_dosen_portal else "student"
 
     if not user:
-        # Auto-provision new student
-        student_name = simtik_result.get("nama", f"Mahasiswa {username}")
-        student_email = f"{username}@umpo.ac.id"
-        
+        account_name = simtik_result.get(
+            "nama",
+            f"Dosen {username}" if is_dosen_portal else f"Mahasiswa {username}"
+        )
+        account_email = f"{username}@umpo.ac.id"
+
         insert_cur = await db.execute("""
             INSERT INTO users (username, name, email, password_hash, role, must_change_password, is_active, onboarding_step, onboarding_completed)
-            VALUES (?, ?, ?, ?, 'student', 0, 1, 1, 0)
-        """, (username, student_name, student_email, new_hash))
+            VALUES (?, ?, ?, ?, ?, 0, 1, 1, 0)
+        """, (username, account_name, account_email, new_hash, target_role))
         user_id = insert_cur.lastrowid
 
-        # Insert default quotas for new student
-        await db.execute("""
-            INSERT INTO quotas (user_id, max_projects, max_databases, max_memory_mb, max_cpu_cores, max_disk_mb, max_database_disk_mb)
-            VALUES (?, 2, 2, 512, 0.5, 10240, 5120)
-        """, (user_id,))
+        if is_dosen_portal:
+            # Generous default quotas for Dosen: 15 GB storage, 1 GB RAM, 5 GB DB, 1.0 CPU Core
+            await db.execute("""
+                INSERT INTO quotas (user_id, max_projects, max_databases, max_memory_mb, max_cpu_cores, max_disk_mb, max_database_disk_mb)
+                VALUES (?, 5, 5, 1024, 1.0, 15360, 5120)
+            """, (user_id,))
+        else:
+            # Default quotas for Student: 10 GB storage, 512 MB RAM, 5 GB DB, 0.5 CPU Core
+            await db.execute("""
+                INSERT INTO quotas (user_id, max_projects, max_databases, max_memory_mb, max_cpu_cores, max_disk_mb, max_database_disk_mb)
+                VALUES (?, 2, 2, 512, 0.5, 10240, 5120)
+            """, (user_id,))
         await db.commit()
 
         cursor = await db.execute("SELECT * FROM users WHERE id = ?", (user_id,))
@@ -117,17 +137,31 @@ async def login(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Akun ini telah dinonaktifkan oleh administrator lab."
             )
-        # Synchronize password hash
-        await db.execute("""
-            UPDATE users SET password_hash = ? WHERE id = ?
-        """, (new_hash, user["id"]))
-        await db.commit()
+        # Synchronize password hash (and promote role to dosen if logging in via dosen portal and not admin)
+        if is_dosen_portal and user["role"] != "admin" and user["role"] != "dosen":
+            await db.execute("""
+                UPDATE users SET password_hash = ?, role = 'dosen' WHERE id = ?
+            """, (new_hash, user["id"]))
+            await db.commit()
+            cursor = await db.execute("SELECT * FROM users WHERE id = ?", (user["id"],))
+            user = await cursor.fetchone()
+        else:
+            await db.execute("""
+                UPDATE users SET password_hash = ? WHERE id = ?
+            """, (new_hash, user["id"]))
+            await db.commit()
 
     # Audit log for SIMTIK login
+    audit_target = "auth_simtik_dosen" if is_dosen_portal else "auth_simtik"
+    audit_detail = (
+        "Dosen successfully logged in via SIMTIK UMPO Dosen SSO Handshake"
+        if is_dosen_portal
+        else "User successfully logged in via SIMTIK UMPO SSO Handshake"
+    )
     await db.execute("""
         INSERT INTO audit_logs (actor_id, action, target_resource, ip_address, details)
-        VALUES (?, 'LOGIN', 'auth_simtik', ?, 'User successfully logged in via SIMTIK UMPO SSO Handshake')
-    """, (user["id"], ip))
+        VALUES (?, 'LOGIN', ?, ?, ?)
+    """, (user["id"], audit_target, ip, audit_detail))
     await db.commit()
 
     # Provision user home directory with standard isolated cPanel structure

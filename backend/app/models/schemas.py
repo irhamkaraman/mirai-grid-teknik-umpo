@@ -15,6 +15,7 @@ class Token(BaseModel):
 class LoginRequest(BaseModel):
     username: str
     password: str
+    portal: Optional[str] = "mahasiswa"
 
 class ChangePasswordRequest(BaseModel):
     old_password: Optional[str] = None

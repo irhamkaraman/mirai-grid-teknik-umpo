@@ -17,11 +17,17 @@ import { Spinner } from '../components/Skeletons'
 import Button from '../components/Button'
 
 export default function LoginPage({ onLoginSuccess }) {
+  const [portalMode, setPortalMode] = useState('mahasiswa')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  const handlePortalSwitch = (mode) => {
+    setPortalMode(mode)
+    setError('')
+  }
 
   const handleLogin = async (e) => {
     e.preventDefault()
@@ -33,7 +39,8 @@ export default function LoginPage({ onLoginSuccess }) {
     try {
       const response = await api.post('/auth/login', {
         username: cleanUsername,
-        password
+        password,
+        portal: portalMode
       })
       const data = response.data
       localStorage.setItem('miraigrid_token', data.access_token)
@@ -221,8 +228,36 @@ export default function LoginPage({ onLoginSuccess }) {
               Masuk ke Workspace
             </h3>
             <p className="text-xs text-slate-500 mt-1.5 font-sans">
-              Masukkan NIM atau Username beserta kata sandi Anda untuk mengakses platform.
+              {portalMode === 'dosen'
+                ? 'Masuk menggunakan akun portal Dosen SIMTIK UMPO Anda.'
+                : 'Masukkan NIM atau Username beserta kata sandi Anda untuk mengakses platform.'}
             </p>
+          </div>
+
+          {/* Portal Role Toggle (V2 Clean Segmented Tabs) */}
+          <div className="mb-5 grid grid-cols-2 gap-1.5 rounded-xl bg-slate-100 p-1 border border-slate-200/80">
+            <button
+              type="button"
+              onClick={() => handlePortalSwitch('mahasiswa')}
+              className={`py-2 px-3 rounded-lg text-xs font-semibold transition-colors ${
+                portalMode === 'mahasiswa'
+                  ? 'bg-white text-slate-900 border border-slate-200'
+                  : 'text-slate-500 hover:text-slate-800 border border-transparent'
+              }`}
+            >
+              Mahasiswa
+            </button>
+            <button
+              type="button"
+              onClick={() => handlePortalSwitch('dosen')}
+              className={`py-2 px-3 rounded-lg text-xs font-semibold transition-colors ${
+                portalMode === 'dosen'
+                  ? 'bg-white text-slate-900 border border-slate-200'
+                  : 'text-slate-500 hover:text-slate-800 border border-transparent'
+              }`}
+            >
+              Dosen
+            </button>
           </div>
 
           {/* Error Notification Alert */}
@@ -238,10 +273,10 @@ export default function LoginPage({ onLoginSuccess }) {
 
           {/* Login Form */}
           <form onSubmit={handleLogin} className="space-y-4">
-            {/* Input NIM / Username */}
+            {/* Input NIM / NIDN / Username */}
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                NIM atau Username
+                {portalMode === 'dosen' ? 'NIDN / NIP / Username Dosen' : 'NIM atau Username'}
               </label>
               <div className="relative group">
                 <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-700 transition-colors pointer-events-none">
@@ -253,7 +288,7 @@ export default function LoginPage({ onLoginSuccess }) {
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-10 pr-4 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-slate-400 transition font-sans"
-                  placeholder="Contoh: 23533xxx atau admin"
+                  placeholder={portalMode === 'dosen' ? 'Masukkan NIDN / NIP / Username Dosen' : 'Masukkan NIM'}
                   autoComplete="username"
                   autoFocus
                 />
