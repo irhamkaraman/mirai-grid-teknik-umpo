@@ -734,7 +734,7 @@ async def create_project(
     nim = current_user["username"]
     subdomain = f"{body.name}-{nim}.{settings.BASE_DOMAIN}"
 
-    # Batasan berbasis kuota storage file manager & total RAM pool akun
+    # Batasan berbasis kuota storage file manager & slot + real RAM pool akun
     if current_user.get("role") != "admin":
         cursor = await db.execute("SELECT max_disk_mb, max_memory_mb FROM quotas WHERE user_id = ?", (current_user["id"],))
         quota_row = await cursor.fetchone()
@@ -742,9 +742,12 @@ async def create_project(
 
         user_role_lower = (current_user.get("role") or "student").lower()
         max_account_ram = float(quota_row["max_memory_mb"]) if (quota_row and quota_row["max_memory_mb"]) else (1024.0 if user_role_lower == "dosen" else 512.0)
+        max_allowed_projects = 3 if user_role_lower == "student" else 5
+        role_label = "Dosen" if user_role_lower == "dosen" else "Mahasiswa"
 
-        def _get_user_total_allocated_ram(uname: str) -> float:
-            total_mb = 0.0
+        def _get_user_active_project_metrics(uname: str) -> tuple[int, float]:
+            running_count = 0
+            live_ram_mb = 0.0
             all_containers = portainer.list_containers_socket(all_containers=True) or []
             for c in all_containers:
                 cnames = [n.lstrip("/") for n in (c.get("Names") or [])]
@@ -752,17 +755,31 @@ async def create_project(
                     continue
                 if (c.get("State") or "").lower() != "running":
                     continue
-                info = portainer.inspect_container_socket(c.get("Id") or cnames[0])
-                mem_bytes = ((info or {}).get("HostConfig") or {}).get("Memory") or 0
-                total_mb += (mem_bytes / (1024 * 1024)) if mem_bytes > 0 else 150.0
-            return round(total_mb, 1)
+                running_count += 1
+                stats = portainer.get_container_stats_socket(c.get("Id") or cnames[0])
+                if stats:
+                    mem_stats = stats.get("memory_stats") or {}
+                    raw_usage = mem_stats.get("usage") or 0
+                    st_detail = mem_stats.get("stats") or {}
+                    cache = st_detail.get("inactive_file") or st_detail.get("cache") or 0
+                    live_ram_mb += max(0.0, (raw_usage - cache) / (1024 * 1024))
+            return running_count, round(live_ram_mb, 1)
 
-        existing_allocated_ram = await asyncio.to_thread(_get_user_total_allocated_ram, nim)
-        requested_ram = 150
-        if (existing_allocated_ram + requested_ram) > max_account_ram:
+        active_container_count, live_ram_used_mb = await asyncio.to_thread(_get_user_active_project_metrics, nim)
+        p_run_cur = await db.execute("SELECT COUNT(*) FROM projects WHERE user_id = ? AND status = 'running'", (current_user["id"],))
+        db_running_count = (await p_run_cur.fetchone())[0]
+        project_count = max(active_container_count, db_running_count)
+
+        if project_count >= max_allowed_projects:
             raise HTTPException(
                 status_code=400,
-                detail=f"Gagal Membuat Project: Total alokasi RAM akun Anda telah mencapai batas maksimal ({int(max_account_ram)} MB). Hentikan atau hapus project lain terlebih dahulu."
+                detail=f"Batas Maksimal Tercapai: Akun {role_label} dapat menjalankan maksimal {max_allowed_projects} project aktif bersamaan. Hentikan atau hapus project yang tidak terpakai."
+            )
+
+        if (live_ram_used_mb + 64.0) > max_account_ram:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Gagal Membuat Project: Konsumsi RAM riil akun Anda ({live_ram_used_mb} MB) mendekati batas maksimal ({int(max_account_ram)} MB). Hentikan atau hapus project lain terlebih dahulu."
             )
 
         c_cur = await db.execute("SELECT COUNT(*) FROM projects WHERE user_id = ?", (current_user["id"],))
@@ -818,10 +835,11 @@ async def create_project(
     q_cur = await db.execute("SELECT * FROM quotas WHERE user_id = ?", (current_user["id"],))
     quota = await q_cur.fetchone()
     raw_mem_limit = quota["max_memory_mb"] if quota else 512
-    if current_user.get("role") == "admin":
+    user_role_lower = (current_user.get("role") or "student").lower()
+    if user_role_lower == "admin":
         mem_limit = raw_mem_limit
-    elif raw_mem_limit <= 512:
-        mem_limit = 170
+    elif user_role_lower == "dosen":
+        mem_limit = min(raw_mem_limit, 512)
     else:
         mem_limit = min(raw_mem_limit, 256)
     cpus = quota["max_cpu_cores"] if quota else 0.5
@@ -946,10 +964,11 @@ async def update_project_config(
     q_cur = await db.execute("SELECT * FROM quotas WHERE user_id = ?", (current_user["id"],))
     quota = await q_cur.fetchone()
     raw_mem_limit = quota["max_memory_mb"] if quota else 512
-    if current_user.get("role") == "admin":
+    user_role_lower = (current_user.get("role") or "student").lower()
+    if user_role_lower == "admin":
         mem_limit = raw_mem_limit
-    elif raw_mem_limit <= 512:
-        mem_limit = 170
+    elif user_role_lower == "dosen":
+        mem_limit = min(raw_mem_limit, 512)
     else:
         mem_limit = min(raw_mem_limit, 256)
     cpus = quota["max_cpu_cores"] if quota else 0.5
@@ -1032,10 +1051,11 @@ async def set_project_startup_file(
     q_cur = await db.execute("SELECT * FROM quotas WHERE user_id = ?", (current_user["id"],))
     quota = await q_cur.fetchone()
     raw_mem_limit = quota["max_memory_mb"] if quota else 512
-    if current_user.get("role") == "admin":
+    user_role_lower = (current_user.get("role") or "student").lower()
+    if user_role_lower == "admin":
         mem_limit = raw_mem_limit
-    elif raw_mem_limit <= 512:
-        mem_limit = 170
+    elif user_role_lower == "dosen":
+        mem_limit = min(raw_mem_limit, 512)
     else:
         mem_limit = min(raw_mem_limit, 256)
     cpus = quota["max_cpu_cores"] if quota else 0.5
