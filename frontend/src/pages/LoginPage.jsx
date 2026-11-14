@@ -17,30 +17,33 @@ import { Spinner } from '../components/Skeletons'
 const SHOWCASE_STEPS = [
   {
     id: 'auth',
-    number: '01 / MULTI-TENANT WORKSPACE',
-    title: 'Lingkungan Cloud Terdedikasi untuk Setiap Akun.',
+    number: '01 / PROVISIONING OTOMATIS',
+    title: 'Satu Kredensial untuk Seluruh Infrastruktur Lab.',
     description:
-      'Setiap pengguna langsung memperoleh direktori home terisolasi, kuota storage mandiri, serta manajemen database dan file berbasis web.',
-    label: 'Multi-Tenant Cloud',
-    type: 'card'
+      'Gunakan akun terdaftar Anda untuk masuk ke sistem. Lingkungan kerja, alokasi ruang penyimpanan, dan konfigurasi jaringan langsung disiapkan secara otomatis tanpa perlu setup server manual.',
+    label: 'Akses Lingkungan Kerja',
+    statusText: 'Sandbox Gateway: Ready • Automated Workspace Provisioning',
+    icon: ShieldCheck
   },
   {
     id: 'sandbox',
     number: '02 / KERNEL SANDBOXING',
-    title: 'Ruang Eksekusi Terisolasi dengan Cgroup V2.',
+    title: 'Batas Memori & CPU yang Aman di Level Kernel.',
     description:
-      'Batas memori dan CPU dikunci ketat per container. Skrip error atau looping tak terbatas tidak akan mengganggu praktikum mahasiswa lain.',
-    label: 'Isolasi Komputasi',
-    type: 'terminal'
+      'Setiap proyek berjalan di dalam container terisolasi dengan proteksi cgroup v2. Program yang mengalami kegagalan eksekusi atau konsumsi memori berlebih tidak akan mengganggu stabilitas server maupun proyek pengguna lain.',
+    label: 'Isolasi Resource',
+    statusText: 'Kernel Sandbox: cgroup v2 Active • OOM Protection Armed',
+    icon: Cpu
   },
   {
     id: 'ingress',
-    number: '03 / WILDCARD INGRESS',
-    title: 'Situs Mengudara di Subdomain *.miraigrid.web.id.',
+    number: '03 / INGRESS & NETWORKING',
+    title: 'Proyek Web Langsung Online di Jaringan Terenkripsi.',
     description:
-      'Dukungan multi-runtime PHP, Node.js, dan Python dengan routing SSL otomatis. Uji coba aplikasi web langsung dari smartphone Anda.',
+      'Dukungan runtime multi-bahasa terintegrasi penuh dengan reverse proxy modern. Aplikasi praktikum Anda langsung dapat diuji dari browser apa pun melalui subdomain resmi yang aman dengan sertifikat SSL.',
     label: 'Publikasi Instan',
-    type: 'browser'
+    statusText: 'Edge Routing: SSL Active • Multi-Runtime PHP, Node.js & Python',
+    icon: Globe
   }
 ]
 
@@ -207,45 +210,20 @@ export default function LoginPage({ onLoginSuccess }) {
               </p>
             </div>
 
-            {/* Step-specific Mini Visual */}
-            {currentStep.type === 'card' && (
-              <div className="bg-white border border-slate-200/80 rounded-xl p-4 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3 min-w-0">
+            {/* Step Status Card */}
+            {(() => {
+              const StatusIcon = currentStep.icon
+              return (
+                <div className="bg-white border border-slate-200/80 rounded-xl p-4 flex items-center gap-3">
                   <div className="h-9 w-9 rounded-lg bg-emerald-50 border border-emerald-200/80 flex items-center justify-center shrink-0">
-                    <ShieldCheck className="h-4 w-4 text-emerald-600" />
+                    <StatusIcon className="w-4 h-4 text-emerald-600" />
                   </div>
-                  <span className="font-mono text-xs text-slate-700 truncate">
-                    Tenant Provisioner: Ready • Quota &amp; Directory Isolation Active
+                  <span className="font-mono text-xs text-slate-700 leading-relaxed">
+                    {currentStep.statusText}
                   </span>
                 </div>
-              </div>
-            )}
-
-            {currentStep.type === 'terminal' && (
-              <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-2.5">
-                <div className="flex items-center gap-2 text-[11px] font-mono text-slate-400">
-                  <Cpu className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
-                  <span>kernel-isolation / cgroup-v2</span>
-                </div>
-                <div className="font-mono text-xs text-emerald-400 leading-relaxed break-words">
-                  cgroup: memory.max=512M • cpu.max=50000 • OOM-Killer: Armed
-                </div>
-              </div>
-            )}
-
-            {currentStep.type === 'browser' && (
-              <div className="bg-white border border-slate-200/80 rounded-xl p-4">
-                <div className="bg-slate-50 border border-slate-200/80 rounded-lg px-3.5 py-2.5 flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <Lock className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                    <span className="font-mono text-xs text-slate-700 truncate">
-                      https://web-26533xxx.miraigrid.web.id
-                    </span>
-                  </div>
-                  <Globe className="h-4 w-4 text-slate-400 shrink-0" />
-                </div>
-              </div>
-            )}
+              )
+            })()}
           </div>
         </div>
 
@@ -270,7 +248,7 @@ export default function LoginPage({ onLoginSuccess }) {
                 Masuk ke Workspace
               </h3>
               <p className="text-xs text-slate-500 mt-1.5 leading-relaxed font-sans">
-                Gunakan akun kampus Anda untuk mengakses workspace cloud Mahasiswa atau Dosen.
+                Masukkan kredensial akun terdaftar Anda untuk mengakses lingkungan kerja cloud.
               </p>
             </div>
 
@@ -287,10 +265,10 @@ export default function LoginPage({ onLoginSuccess }) {
 
             {/* Login Form */}
             <form onSubmit={handleLogin} className="space-y-4">
-              {/* Input NIM / Username / NIDN */}
+              {/* Input NIM / NIDN / Nama Pengguna */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                  NIM Mahasiswa / Username / NIDN Dosen
+                  NIM / NIDN / Nama Pengguna
                 </label>
                 <div className="relative group">
                   <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-700 transition-colors pointer-events-none">
@@ -302,17 +280,17 @@ export default function LoginPage({ onLoginSuccess }) {
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     className="w-full bg-slate-50/50 border border-slate-200 rounded-lg pl-10 pr-4 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-slate-400 transition font-sans"
-                    placeholder="NIM Mahasiswa / Username / NIDN Dosen"
+                    placeholder="NIM / NIDN / Nama Pengguna"
                     autoComplete="username"
                     autoFocus
                   />
                 </div>
               </div>
 
-              {/* Input Password */}
+              {/* Input Kata Sandi */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                  Password
+                  Kata Sandi
                 </label>
                 <div className="relative group">
                   <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-700 transition-colors pointer-events-none">
@@ -324,7 +302,7 @@ export default function LoginPage({ onLoginSuccess }) {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="w-full bg-slate-50/50 border border-slate-200 rounded-lg pl-10 pr-11 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-slate-400 transition font-sans"
-                    placeholder="Masukkan password akun"
+                    placeholder="Masukkan kata sandi"
                     autoComplete="current-password"
                   />
                   <button
@@ -355,7 +333,7 @@ export default function LoginPage({ onLoginSuccess }) {
                   </>
                 ) : (
                   <>
-                    <span>Masuk</span>
+                    <span>Masuk ke Workspace</span>
                     <ArrowRight className="h-4 w-4" />
                   </>
                 )}
