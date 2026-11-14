@@ -56,12 +56,10 @@ class UserPurgeService:
         except Exception as e:
             report["redis_error"] = str(e)
 
-        # 3b. Stop and purge ThingsBoard IoT Sandbox
+        # 3b. Clear ThingsBoard SSO session cache (shared multi-tenant core container is preserved)
         try:
             from app.services.thingsboard_manager import ThingsBoardManager
             await ThingsBoardManager.stop(user_id, clean_user)
-            async with ThingsBoardManager._get_docker_client() as tb_client:
-                await tb_client.delete(f"http://docker/containers/tb_{clean_user}?v=true&force=true")
             report["thingsboard_purged"] = True
         except Exception as e:
             report["thingsboard_error"] = str(e)

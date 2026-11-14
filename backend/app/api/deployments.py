@@ -130,7 +130,7 @@ async def resolve_subdomain(
         if not u_row:
             return Response(status_code=404, content="ThingsBoard User Not Found")
         
-        target_port = 15000 + u_row["id"]
+        target_port = 9090
         x_orig_uri = request.headers.get("x-original-uri", "")
         is_asset = bool(re.search(r'\.(js|css|png|jpg|jpeg|gif|ico|svg|woff2?|ttf|eot|map)(\?.*)?$', x_orig_uri, re.IGNORECASE))
         if not is_asset:

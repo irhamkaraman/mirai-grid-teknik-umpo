@@ -436,10 +436,30 @@ export default function AdminDashboardPage({ user }) {
                     <td className="py-3 px-4 font-mono">
                       {c.disk_used_mb !== null ? (
                         <div>
-                          <div>
-                            {formatMBSize(c.disk_used_mb)} / {formatMBSize(c.disk_limit_mb)}
-                          </div>
-                          <div className="text-[11px] text-slate-500">{c.disk_pct}% terpakai</div>
+                          {c.is_pool_storage ? (
+                            <>
+                              <div className="text-slate-900 font-semibold">
+                                {formatMBSize(c.disk_used_mb)}
+                              </div>
+                              <div className="text-[11px] text-slate-500">
+                                Pool Akun: {formatMBSize(c.account_disk_used_mb ?? c.disk_used_mb)} /{' '}
+                                {c.is_uncapped_disk
+                                  ? `Kapasitas Host (${formatMBSize(c.disk_limit_mb)})`
+                                  : formatMBSize(c.disk_limit_mb)}{' '}
+                                ({c.disk_pct ?? 0}%)
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <div>
+                                {formatMBSize(c.disk_used_mb)} /{' '}
+                                {c.is_uncapped_disk
+                                  ? `Kapasitas Host (${formatMBSize(c.disk_limit_mb)})`
+                                  : formatMBSize(c.disk_limit_mb)}
+                              </div>
+                              <div className="text-[11px] text-slate-500">{c.disk_pct}% terpakai</div>
+                            </>
+                          )}
                         </div>
                       ) : (
                         <span className="text-slate-400">-</span>

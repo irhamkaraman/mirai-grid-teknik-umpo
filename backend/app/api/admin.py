@@ -140,7 +140,7 @@ async def create_manual_user(
 
     # Create quota (admin: host tier, dosen: 20GB/1GB/1.5 Core, student: 10GB/512MB/0.5 Core)
     if body.role == "admin":
-        max_proj, max_db, def_mem, def_cpu, def_disk, def_db_disk = 999, 999, 1024, 2.0, 20000, 10000
+        max_proj, max_db, def_mem, def_cpu, def_disk, def_db_disk = 999, 999, 1024, 2.0, 116000, 10000
     elif body.role == "dosen":
         max_proj, max_db, def_mem, def_cpu, def_disk, def_db_disk = 5, 5, 1024, 1.5, 20480, 10240
     else:
@@ -1100,6 +1100,28 @@ async def get_containers_tracking(
             disk_cache[uname] = used_mb
         return disk_cache[uname]
 
+    def _get_project_dir_mb(uname: str, project_slug: str) -> float:
+        total_bytes = 0
+        for candidate in (
+            os.path.join("/app/data/home", uname, project_slug),
+            os.path.join("/app/data/projects", f"{uname}_{project_slug}"),
+        ):
+            if os.path.isdir(candidate):
+                try:
+                    for root, _, files in os.walk(candidate):
+                        for f in files:
+                            try:
+                                total_bytes += os.path.getsize(os.path.join(root, f))
+                            except OSError:
+                                pass
+                except Exception:
+                    pass
+                break
+        return round(total_bytes / (1024 * 1024), 1)
+
+    host_partitions = _collect_disk_partitions()
+    host_disk_mb = round(host_partitions[0]["total_gb"] * 1024, 1) if host_partitions else 116000.0
+
     sem = asyncio.Semaphore(10)
 
     async def _collect_one(c: Dict[str, Any]) -> Dict[str, Any]:
@@ -1157,12 +1179,26 @@ async def get_containers_tracking(
         ram_pct = round((ram_used_mb / ram_limit_mb) * 100.0, 1) if (ram_limit_mb and ram_limit_mb > 0) else None
 
         disk_used_mb = None
+        account_disk_used_mb = None
         disk_limit_mb = None
         disk_pct = None
+        is_pool_storage = False
+        is_uncapped_disk = False
         if owner_username and owner_info:
-            disk_used_mb = await asyncio.to_thread(_get_user_disk_mb, owner_username)
-            disk_limit_mb = float(owner_info.get("max_disk_mb") or 10240)
-            disk_pct = round((disk_used_mb / disk_limit_mb) * 100.0, 1) if disk_limit_mb > 0 else None
+            account_disk_used_mb = await asyncio.to_thread(_get_user_disk_mb, owner_username)
+            if cname.startswith(f"app_{owner_username}_"):
+                project_slug = cname[len(f"app_{owner_username}_"):]
+                disk_used_mb = await asyncio.to_thread(_get_project_dir_mb, owner_username, project_slug)
+                is_pool_storage = True
+            else:
+                disk_used_mb = account_disk_used_mb
+
+            if raw_role == "admin":
+                disk_limit_mb = host_disk_mb
+                is_uncapped_disk = True
+            else:
+                disk_limit_mb = float(owner_info.get("max_disk_mb") or (20480 if raw_role == "dosen" else 10240))
+            disk_pct = round((account_disk_used_mb / disk_limit_mb) * 100.0, 1) if disk_limit_mb > 0 else None
 
         is_high_ram = ram_pct is not None and ram_pct > 85.0
         is_high_disk = disk_pct is not None and disk_pct > 90.0
@@ -1204,8 +1240,11 @@ async def get_containers_tracking(
             "cpu_pct": cpu_pct,
             "cpu_quota_cores": cpu_quota_cores,
             "disk_used_mb": disk_used_mb,
+            "account_disk_used_mb": account_disk_used_mb,
             "disk_limit_mb": disk_limit_mb,
             "disk_pct": disk_pct,
+            "is_pool_storage": is_pool_storage,
+            "is_uncapped_disk": is_uncapped_disk,
             "is_alert": is_alert,
             "db_quota_memory_mb": db_mem,
             "db_quota_cpu_cores": db_cpu,

@@ -124,7 +124,7 @@ async def resolve_thingsboard_subdomain(
 
     user_id = row["id"]
     username = row["username"]
-    target_port = 15000 + user_id
+    target_port = 9090
 
     # Check if this is an IoT device request (HTTP/WS telemetry to /api/v1/)
     x_orig_uri = request.headers.get("x-original-uri", "")

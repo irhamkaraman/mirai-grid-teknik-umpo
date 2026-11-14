@@ -117,7 +117,7 @@ async def get_cpanel_stats(
 
     # 4c. ThingsBoard IoT Status
     tb_running = False
-    tb_port = 15000 + user_id
+    tb_port = 9090
     try:
         from app.services.thingsboard_manager import ThingsBoardManager
         tb_status = await ThingsBoardManager.get_status(user_id, username, db)
