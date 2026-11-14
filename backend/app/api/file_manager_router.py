@@ -4,6 +4,7 @@ import zipfile
 import pathlib
 import io
 import stat
+import mimetypes
 from typing import List, Optional, Union
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form, Body, status
 from fastapi.responses import FileResponse, StreamingResponse
@@ -485,10 +486,11 @@ async def extract_user_archive(
 @router.get("/download")
 async def download_user_file(
     path: str = Query(..., description="File path relative to /home/{username}"),
+    inline: bool = Query(False, description="Serve file inline for in-browser preview (PDF, images, media)"),
     current_user: dict = Depends(get_current_user)
 ):
     """
-    Downloads a single file or compresses a directory on-the-fly for download.
+    Downloads a single file (or serves inline for browser preview) or compresses a directory on-the-fly for download.
     """
     username = current_user["username"]
     home_dir = ensure_user_home(username, current_user.get("name"), current_user.get("email"))
@@ -498,7 +500,16 @@ async def download_user_file(
         raise HTTPException(status_code=404, detail="File atau folder tidak ditemukan.")
 
     if os.path.isfile(target):
-        return FileResponse(target, filename=os.path.basename(target))
+        guessed_mime, _ = mimetypes.guess_type(target)
+        media_type = guessed_mime or "application/octet-stream"
+        fname = os.path.basename(target)
+        if inline:
+            return FileResponse(
+                target,
+                media_type=media_type,
+                headers={"Content-Disposition": f'inline; filename="{fname}"'}
+            )
+        return FileResponse(target, media_type=media_type, filename=fname)
 
     # If directory, stream on-the-fly zip
     zip_buffer = io.BytesIO()
