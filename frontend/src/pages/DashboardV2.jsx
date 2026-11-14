@@ -267,77 +267,6 @@ export default function DashboardV2({
     return () => window.removeEventListener('click', handleGlobalClick)
   }, [contextMenu])
 
-  // Keyboard Shortcuts (Ctrl+C, Ctrl+V, Delete)
-  useEffect(() => {
-    const handleKeyDown = async (e) => {
-      // Ignore if inside an input or textarea
-      if (['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) return
-
-      // Ctrl + A / Cmd + A: Select all visible items only
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a') {
-        e.preventDefault()
-        setSelectedPaths(filteredItems.map((i) => i.path))
-      }
-
-      // Ctrl + C / Cmd + C: Copy selected
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c') {
-        if (selectedPaths.length > 0) {
-          e.preventDefault()
-          setClipboard({ action: 'copy', paths: [...selectedPaths] })
-          toast.success(`${selectedPaths.length} berkas disalin ke clipboard. Tekan Ctrl+V untuk menempel.`)
-        }
-      }
-
-      // Ctrl + V / Cmd + V: Paste into current directory
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
-        if (clipboard && clipboard.paths.length > 0) {
-          e.preventDefault()
-          const toastId = toast.loading('Menempel berkas...')
-          try {
-            for (const src of clipboard.paths) {
-              await api.post('/files/copy', {
-                source_path: src,
-                dest_dir: currentPath,
-                destination_dir: currentPath
-              })
-            }
-            toast.success('Berkas berhasil ditempel!', { id: toastId })
-            fetchDirectory(currentPath)
-          } catch (err) {
-            toast.error(err.response?.data?.detail || 'Gagal menempel berkas.', { id: toastId })
-          }
-        }
-      }
-
-      // Delete key: prompt delete for selected paths
-      if (e.key === 'Delete') {
-        if (selectedPaths.length > 0) {
-          e.preventDefault()
-          setSelectedItem(null) // Clear individual selectedItem so delete modal targets selectedPaths!
-          setActiveModal('delete')
-        }
-      }
-
-      // Escape key: close FAB, active dropdowns, context menu, modals, preview, drag overlay
-      if (e.key === 'Escape') {
-        dragCounter.current = 0
-        setIsDragOverWindow(false)
-        setFabOpen(false)
-        setActiveDropdown(null)
-        setContextMenu(null)
-        setActiveModal(null)
-        setBottomSheetItem(null)
-        setPreviewItem((prev) => {
-          if (prev?.url) window.URL.revokeObjectURL(prev.url)
-          return null
-        })
-      }
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [selectedPaths, clipboard, currentPath, filteredItems])
-
   // Global escape hatches for external drag-and-drop overlay
   useEffect(() => {
     const resetDragState = () => {
@@ -511,6 +440,77 @@ export default function DashboardV2({
 
     return result
   }, [items, showHidden, typeFilter, dateFilter, ownerFilter, localSearch, searchQuery, sortField, sortOrder])
+
+  // Keyboard Shortcuts (Ctrl+A, Ctrl+C, Ctrl+V, Delete, Escape)
+  useEffect(() => {
+    const handleKeyDown = async (e) => {
+      // Ignore if inside an input or textarea
+      if (['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) return
+
+      // Ctrl + A / Cmd + A: Select all visible items only
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a') {
+        e.preventDefault()
+        setSelectedPaths(filteredItems.map((i) => i.path))
+      }
+
+      // Ctrl + C / Cmd + C: Copy selected
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c') {
+        if (selectedPaths.length > 0) {
+          e.preventDefault()
+          setClipboard({ action: 'copy', paths: [...selectedPaths] })
+          toast.success(`${selectedPaths.length} berkas disalin ke clipboard. Tekan Ctrl+V untuk menempel.`)
+        }
+      }
+
+      // Ctrl + V / Cmd + V: Paste into current directory
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
+        if (clipboard && clipboard.paths.length > 0) {
+          e.preventDefault()
+          const toastId = toast.loading('Menempel berkas...')
+          try {
+            for (const src of clipboard.paths) {
+              await api.post('/files/copy', {
+                source_path: src,
+                dest_dir: currentPath,
+                destination_dir: currentPath
+              })
+            }
+            toast.success('Berkas berhasil ditempel!', { id: toastId })
+            fetchDirectory(currentPath)
+          } catch (err) {
+            toast.error(err.response?.data?.detail || 'Gagal menempel berkas.', { id: toastId })
+          }
+        }
+      }
+
+      // Delete key: prompt delete for selected paths
+      if (e.key === 'Delete') {
+        if (selectedPaths.length > 0) {
+          e.preventDefault()
+          setSelectedItem(null) // Clear individual selectedItem so delete modal targets selectedPaths!
+          setActiveModal('delete')
+        }
+      }
+
+      // Escape key: close FAB, active dropdowns, context menu, modals, preview, drag overlay
+      if (e.key === 'Escape') {
+        dragCounter.current = 0
+        setIsDragOverWindow(false)
+        setFabOpen(false)
+        setActiveDropdown(null)
+        setContextMenu(null)
+        setActiveModal(null)
+        setBottomSheetItem(null)
+        setPreviewItem((prev) => {
+          if (prev?.url) window.URL.revokeObjectURL(prev.url)
+          return null
+        })
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [selectedPaths, clipboard, currentPath, filteredItems])
 
   // Helpers
   const formatBytes = (bytes) => {
