@@ -127,3 +127,31 @@
 tbody tr:hover {
   background-color: rgba(248, 250, 252, 0.8) !important;
 }
+
+@keyframes showcase-progress {
+  0% {
+    width: 0%;
+  }
+  100% {
+    width: 100%;
+  }
+}
+
+@keyframes showcase-step-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-showcase-progress {
+  animation: showcase-progress 6s linear forwards;
+}
+
+.animate-showcase-step {
+  animation: showcase-step-enter 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
