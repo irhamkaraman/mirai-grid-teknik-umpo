@@ -70,6 +70,7 @@ export default function App() {
   const handleToggleTheme = () => {
     const nextTheme = theme === 'v1' ? 'v2' : 'v1'
     setTheme(nextTheme)
+    setSearchQuery('')
     localStorage.setItem('miraigrid_theme_mode', nextTheme)
   }
 
@@ -377,7 +378,7 @@ export default function App() {
             isCollapsed ? 'md:ml-20' : 'md:ml-64'
           }`}
         >
-          <div className="flex items-center space-x-3 w-full max-w-sm sm:max-w-md">
+          <div className="flex items-center space-x-3">
             {/* Mobile Hamburger on v2 */}
             <button
               type="button"
@@ -399,36 +400,10 @@ export default function App() {
                 <PanelLeftOpen className="h-4 w-4" />
               </button>
             )}
-
-            {/* Live Search Bar */}
-            <div className="relative w-full">
-              <Search className="h-4 w-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value)
-                  if (location.pathname !== '/dashboard' && e.target.value) {
-                    navigate('/dashboard')
-                  }
-                }}
-                placeholder="Cari berkas, tools, database, konfigurasi (/)..."
-                className="w-full bg-gray-50/80 hover:bg-gray-100/70 focus:bg-white border border-gray-200/80 focus:border-emerald-500 rounded-lg pl-9 pr-8 py-2 text-xs outline-none transition shadow-xs text-gray-900 placeholder-gray-400 font-sans"
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-0.5"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              )}
-            </div>
           </div>
 
           {/* Right actions: Theme Toggle + Profile Avatar */}
-          <div className="flex items-center space-x-2.5 sm:space-x-3 shrink-0">
+          <div className="flex items-center space-x-2.5 sm:space-x-3 shrink-0 ml-auto">
             <ThemeToggle theme={theme} onToggle={handleToggleTheme} />
             <ProfileAvatar
               user={user}
