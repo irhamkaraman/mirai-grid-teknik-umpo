@@ -1,7 +1,10 @@
 import asyncio
+import os
+import re
 import secrets
 import string
-from typing import List, Optional
+import subprocess
+from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
 import aiosqlite
 from app.core.database import get_db
@@ -854,4 +857,417 @@ async def get_system_capacity(
             "total_allocated_disk_mb": round(total_allocated_disk_mb, 1),
         },
         "accounts": accounts
+    }
+
+
+def _read_proc_meminfo() -> Dict[str, float]:
+    mem_total_kb = 0
+    mem_avail_kb = 0
+    try:
+        with open("/proc/meminfo", "r", encoding="utf-8") as f:
+            for line in f:
+                if line.startswith("MemTotal:"):
+                    mem_total_kb = int(line.split()[1])
+                elif line.startswith("MemAvailable:"):
+                    mem_avail_kb = int(line.split()[1])
+    except Exception:
+        pass
+    total_mb = round(mem_total_kb / 1024.0, 1)
+    avail_mb = round(mem_avail_kb / 1024.0, 1)
+    used_mb = round(max(0.0, total_mb - avail_mb), 1)
+    pct = round((used_mb / total_mb) * 100.0, 1) if total_mb > 0 else 0.0
+    return {
+        "total_mb": total_mb,
+        "used_mb": used_mb,
+        "available_mb": avail_mb,
+        "percent": pct,
+    }
+
+
+def _read_proc_cpu_stat() -> tuple[int, int]:
+    try:
+        with open("/proc/stat", "r", encoding="utf-8") as f:
+            first = f.readline().strip()
+        parts = [int(x) for x in first.split()[1:]]
+        idle = parts[3] + (parts[4] if len(parts) > 4 else 0)
+        total = sum(parts)
+        return idle, total
+    except Exception:
+        return 0, 0
+
+
+def _read_cpu_model() -> str:
+    try:
+        with open("/proc/cpuinfo", "r", encoding="utf-8") as f:
+            for line in f:
+                if line.lower().startswith("model name"):
+                    return line.split(":", 1)[1].strip()
+    except Exception:
+        pass
+    return "x86_64 Processor"
+
+
+def _detect_gpu_info() -> Dict[str, Any]:
+    try:
+        res = subprocess.run(["lspci"], capture_output=True, text=True, timeout=2)
+        if res.returncode == 0:
+            for line in res.stdout.splitlines():
+                low = line.lower()
+                if any(k in low for k in ("vga", "3d controller", "display controller")):
+                    name = line.split(":", 2)[-1].strip()
+                    dedicated = any(v in low for v in ("nvidia", "radeon", "amd"))
+                    return {"name": name, "status": "Active", "has_dedicated_gpu": dedicated}
+    except Exception:
+        pass
+
+    drm_dir = "/sys/class/drm"
+    vendor_map = {
+        "0x8086": "Intel Integrated / UHD Graphics",
+        "0x102b": "Matrox Integrated Graphics",
+        "0x10de": "NVIDIA GPU",
+        "0x1002": "AMD Radeon GPU",
+    }
+    if os.path.isdir(drm_dir):
+        try:
+            for entry in sorted(os.listdir(drm_dir)):
+                vpath = os.path.join(drm_dir, entry, "device", "vendor")
+                if os.path.isfile(vpath):
+                    vendor = open(vpath, "r", encoding="utf-8").read().strip().lower()
+                    name = vendor_map.get(vendor, f"DRM Graphics ({vendor})")
+                    return {
+                        "name": name,
+                        "status": "Integrated / Active",
+                        "has_dedicated_gpu": vendor in ("0x10de", "0x1002"),
+                    }
+            if any(e.startswith("card") for e in os.listdir(drm_dir)):
+                return {"name": "Virtual / Integrated Graphics (DRM)", "status": "Integrated", "has_dedicated_gpu": False}
+        except Exception:
+            pass
+    return {"name": "No Dedicated GPU Detected", "status": "Headless", "has_dedicated_gpu": False}
+
+
+def _collect_disk_partitions() -> List[Dict[str, Any]]:
+    partitions = []
+    seen_sigs = set()
+    for mount in ["/", "/home", "/data"]:
+        if not os.path.exists(mount):
+            continue
+        try:
+            st = os.statvfs(mount)
+            total_bytes = st.f_blocks * st.f_frsize
+            free_bytes = st.f_bavail * st.f_frsize
+            used_bytes = max(0, total_bytes - (st.f_bfree * st.f_frsize))
+            sig = (total_bytes, st.f_frsize)
+            if sig in seen_sigs or total_bytes == 0:
+                continue
+            seen_sigs.add(sig)
+            partitions.append({
+                "mount": mount,
+                "total_gb": round(total_bytes / (1024 ** 3), 2),
+                "used_gb": round(used_bytes / (1024 ** 3), 2),
+                "free_gb": round(free_bytes / (1024 ** 3), 2),
+                "percent": round((used_bytes / total_bytes) * 100.0, 1) if total_bytes > 0 else 0.0,
+            })
+        except Exception:
+            continue
+    return partitions
+
+
+def _extract_container_owner(name: str, labels: Dict[str, Any], known_usernames: set[str]) -> Optional[str]:
+    for key in ("miraigrid.user", "miraigrid.owner"):
+        val = (labels or {}).get(key)
+        if val and val in known_usernames:
+            return val
+    for prefix in ("app_", "miraigrid_"):
+        if name.startswith(prefix):
+            rest = name[len(prefix):]
+            parts = rest.split("_")
+            if parts and parts[0] in known_usernames:
+                return parts[0]
+            for uname in known_usernames:
+                if rest.startswith(f"{uname}_") or rest == uname:
+                    return uname
+    for prefix in ("vscode_", "tb_"):
+        if name.startswith(prefix):
+            cand = name[len(prefix):]
+            if cand in known_usernames:
+                return cand
+    return None
+
+
+@router.get("/host-metrics")
+async def get_host_metrics(admin: dict = Depends(require_admin)):
+    """
+    Returns live host/node CPU, RAM, disk partitions, GPU telemetry, and
+    container memory overcommitment status for the Admin Infrastructure Dashboard.
+    """
+    idle1, total1 = _read_proc_cpu_stat()
+    await asyncio.sleep(0.15)
+    idle2, total2 = _read_proc_cpu_stat()
+    total_delta = max(1, total2 - total1)
+    idle_delta = max(0, idle2 - idle1)
+    cpu_percent = round(max(0.0, min(100.0, (1.0 - (idle_delta / total_delta)) * 100.0)), 1)
+
+    ram = _read_proc_meminfo()
+    partitions = _collect_disk_partitions()
+    gpu = _detect_gpu_info()
+    cpu_model = _read_cpu_model()
+    cpu_cores = os.cpu_count() or 1
+
+    containers = portainer.list_containers_socket(all_containers=True)
+    if containers is None:
+        containers = await portainer.list_containers(all_containers=True)
+
+    running_count = 0
+    allocated_ram_bytes = 0
+    sem = asyncio.Semaphore(10)
+
+    async def _inspect_mem(c: Dict[str, Any]):
+        nonlocal running_count, allocated_ram_bytes
+        state = (c.get("State") or "").lower()
+        if state == "running":
+            running_count += 1
+        cid = c.get("Id") or ""
+        async with sem:
+            info = await asyncio.to_thread(portainer.inspect_container_socket, cid)
+        if info:
+            mem = (info.get("HostConfig") or {}).get("Memory") or 0
+            if state == "running" and mem > 0:
+                allocated_ram_bytes += int(mem)
+
+    await asyncio.gather(*[_inspect_mem(c) for c in containers])
+
+    allocated_ram_mb = round(allocated_ram_bytes / (1024 * 1024), 1)
+    total_ram_mb = ram["total_mb"]
+    overcommitment_ratio = round((allocated_ram_mb / total_ram_mb) * 100.0, 1) if total_ram_mb > 0 else 0.0
+    overcommitment_alert = total_ram_mb > 0 and allocated_ram_mb > total_ram_mb
+
+    return {
+        "ram": {
+            **ram,
+            "allocated_container_mb": allocated_ram_mb,
+            "overcommitment_percent": overcommitment_ratio,
+            "overcommitment_alert": overcommitment_alert,
+        },
+        "cpu": {
+            "model": cpu_model,
+            "cores": cpu_cores,
+            "usage_percent": cpu_percent,
+        },
+        "disk": partitions,
+        "gpu": gpu,
+        "containers_summary": {
+            "total": len(containers),
+            "running": running_count,
+            "stopped": max(0, len(containers) - running_count),
+        },
+    }
+
+
+@router.get("/containers/tracking")
+async def get_containers_tracking(
+    admin: dict = Depends(require_admin),
+    db: aiosqlite.Connection = Depends(get_db)
+):
+    """
+    Returns real-time Docker fleet tracking with owner role mapping, RAM/Disk/CPU
+    utilization, alert row flags (RAM > 85% or Disk > 90%), and DB vs Docker quota drift.
+    """
+    cursor = await db.execute("""
+        SELECT u.id, u.username, u.name, u.role,
+               COALESCE(q.max_memory_mb, CASE WHEN u.role = 'dosen' THEN 1024 WHEN u.role = 'admin' THEN 1024 ELSE 512 END) as max_memory_mb,
+               COALESCE(q.max_cpu_cores, CASE WHEN u.role = 'dosen' THEN 1.5 WHEN u.role = 'admin' THEN 2.0 ELSE 0.5 END) as max_cpu_cores,
+               COALESCE(q.max_disk_mb, CASE WHEN u.role = 'dosen' THEN 20480 WHEN u.role = 'admin' THEN 20000 ELSE 10240 END) as max_disk_mb
+        FROM users u
+        LEFT JOIN quotas q ON q.user_id = u.id
+    """)
+    user_rows = await cursor.fetchall()
+    users_map: Dict[str, Dict[str, Any]] = {r["username"]: dict(r) for r in user_rows}
+    known_usernames = set(users_map.keys())
+
+    containers = portainer.list_containers_socket(all_containers=True)
+    if containers is None:
+        containers = await portainer.list_containers(all_containers=True)
+
+    disk_cache: Dict[str, float] = {}
+    for uname in known_usernames:
+        # Pre-compute only if referenced later, or lazily cache below
+        pass
+
+    def _get_user_disk_mb(uname: str) -> float:
+        if uname not in disk_cache:
+            used_mb, _ = calculate_account_disk_usage(uname, 0)
+            disk_cache[uname] = used_mb
+        return disk_cache[uname]
+
+    sem = asyncio.Semaphore(10)
+
+    async def _collect_one(c: Dict[str, Any]) -> Dict[str, Any]:
+        names = [n.lstrip("/") for n in (c.get("Names") or [])]
+        cname = names[0] if names else (c.get("Id") or "")[:12]
+        cid = c.get("Id") or cname
+        state = (c.get("State") or "unknown").lower()
+        status_text = c.get("Status") or state
+        image = c.get("Image") or ""
+        labels = c.get("Labels") or {}
+
+        owner_username = _extract_container_owner(cname, labels, known_usernames)
+        owner_info = users_map.get(owner_username) if owner_username else None
+
+        if owner_info:
+            raw_role = (owner_info.get("role") or "student").lower()
+            role_label = "Dosen" if raw_role == "dosen" else ("Admin" if raw_role == "admin" else "Mahasiswa")
+            owner_name = owner_info.get("name") or owner_username
+        else:
+            raw_role = "system"
+            role_label = "Sistem"
+            owner_name = "Core Infrastructure"
+
+        async with sem:
+            inspect_data = await asyncio.to_thread(portainer.inspect_container_socket, cid)
+            stats_data = await asyncio.to_thread(portainer.get_container_stats_socket, cid) if state == "running" else None
+
+        host_cfg = (inspect_data or {}).get("HostConfig") or {}
+        mem_limit_bytes = host_cfg.get("Memory") or 0
+        nano_cpus = host_cfg.get("NanoCpus") or 0
+
+        ram_limit_mb = round(mem_limit_bytes / (1024 * 1024), 1) if mem_limit_bytes > 0 else None
+        cpu_quota_cores = round(nano_cpus / 1e9, 2) if nano_cpus > 0 else None
+
+        ram_used_mb = 0.0
+        cpu_pct = 0.0
+        if stats_data:
+            mem_stats = stats_data.get("memory_stats") or {}
+            raw_usage = mem_stats.get("usage") or 0
+            st_detail = mem_stats.get("stats") or {}
+            cache = st_detail.get("inactive_file") or st_detail.get("cache") or 0
+            ram_used_mb = round(max(0.0, (raw_usage - cache) / (1024 * 1024)), 1)
+            if ram_limit_mb is None and (mem_stats.get("limit") or 0) > 0:
+                # Only use stats limit if container actually has a cgroup cap smaller than host
+                pass
+
+            cpu_stats = stats_data.get("cpu_stats") or {}
+            precpu_stats = stats_data.get("precpu_stats") or {}
+            cpu_delta = (cpu_stats.get("cpu_usage") or {}).get("total_usage", 0) - (precpu_stats.get("cpu_usage") or {}).get("total_usage", 0)
+            sys_delta = (cpu_stats.get("system_cpu_usage") or 0) - (precpu_stats.get("system_cpu_usage") or 0)
+            online_cpus = cpu_stats.get("online_cpus") or len((cpu_stats.get("cpu_usage") or {}).get("percpu_usage") or []) or 1
+            if sys_delta > 0 and cpu_delta > 0:
+                cpu_pct = round((cpu_delta / sys_delta) * online_cpus * 100.0, 1)
+
+        ram_pct = round((ram_used_mb / ram_limit_mb) * 100.0, 1) if (ram_limit_mb and ram_limit_mb > 0) else None
+
+        disk_used_mb = None
+        disk_limit_mb = None
+        disk_pct = None
+        if owner_username and owner_info:
+            disk_used_mb = await asyncio.to_thread(_get_user_disk_mb, owner_username)
+            disk_limit_mb = float(owner_info.get("max_disk_mb") or 10240)
+            disk_pct = round((disk_used_mb / disk_limit_mb) * 100.0, 1) if disk_limit_mb > 0 else None
+
+        is_high_ram = ram_pct is not None and ram_pct > 85.0
+        is_high_disk = disk_pct is not None and disk_pct > 90.0
+        is_alert = is_high_ram or is_high_disk
+
+        if state != "running":
+            health_status = "Exited"
+        elif is_high_ram:
+            health_status = "High Memory"
+        elif is_high_disk:
+            health_status = "High Disk"
+        else:
+            health_status = "Running"
+
+        # DB vs Docker drift check (applies to user app containers)
+        db_mem = float(owner_info["max_memory_mb"]) if owner_info else None
+        db_cpu = float(owner_info["max_cpu_cores"]) if owner_info else None
+        is_user_app = owner_info is not None and (cname.startswith("app_") or cname.startswith("miraigrid_"))
+        has_drift = False
+        if is_user_app and db_mem is not None and db_cpu is not None:
+            mem_mismatch = ram_limit_mb is None or abs(ram_limit_mb - db_mem) > 2.0
+            cpu_mismatch = cpu_quota_cores is None or abs(cpu_quota_cores - db_cpu) > 0.05
+            has_drift = mem_mismatch or cpu_mismatch
+
+        return {
+            "id": cid[:12],
+            "name": cname,
+            "image": image,
+            "state": state,
+            "status_text": status_text,
+            "health_status": health_status,
+            "owner_username": owner_username,
+            "owner_name": owner_name,
+            "role": raw_role,
+            "role_label": role_label,
+            "ram_used_mb": ram_used_mb,
+            "ram_limit_mb": ram_limit_mb,
+            "ram_pct": ram_pct,
+            "cpu_pct": cpu_pct,
+            "cpu_quota_cores": cpu_quota_cores,
+            "disk_used_mb": disk_used_mb,
+            "disk_limit_mb": disk_limit_mb,
+            "disk_pct": disk_pct,
+            "is_alert": is_alert,
+            "db_quota_memory_mb": db_mem,
+            "db_quota_cpu_cores": db_cpu,
+            "has_drift": has_drift,
+        }
+
+    items = await asyncio.gather(*[_collect_one(c) for c in containers])
+    items.sort(key=lambda x: (not x["is_alert"], x["role"] == "system", x["name"]))
+    return {"containers": items, "total": len(items)}
+
+
+@router.post("/containers/{container_name}/sync-limit")
+async def sync_container_limit(
+    container_name: str,
+    request: Request,
+    admin: dict = Depends(require_admin),
+    db: aiosqlite.Connection = Depends(get_db)
+):
+    """
+    Reconciles a user container's Docker cgroup RAM and CPU limits with the database quota.
+    """
+    cursor = await db.execute("""
+        SELECT u.id, u.username, u.role,
+               COALESCE(q.max_memory_mb, CASE WHEN u.role = 'dosen' THEN 1024 WHEN u.role = 'admin' THEN 1024 ELSE 512 END) as max_memory_mb,
+               COALESCE(q.max_cpu_cores, CASE WHEN u.role = 'dosen' THEN 1.5 WHEN u.role = 'admin' THEN 2.0 ELSE 0.5 END) as max_cpu_cores
+        FROM users u
+        LEFT JOIN quotas q ON q.user_id = u.id
+    """)
+    user_rows = await cursor.fetchall()
+    users_map = {r["username"]: dict(r) for r in user_rows}
+
+    inspect_data = await asyncio.to_thread(portainer.inspect_container_socket, container_name)
+    if not inspect_data:
+        raise HTTPException(status_code=404, detail=f"Container '{container_name}' tidak ditemukan.")
+
+    labels = (inspect_data.get("Config") or {}).get("Labels") or {}
+    owner_username = _extract_container_owner(container_name, labels, set(users_map.keys()))
+    if not owner_username or owner_username not in users_map:
+        raise HTTPException(status_code=400, detail="Container ini bukan container proyek pengguna atau pemilik tidak ditemukan di DB.")
+
+    target_user = users_map[owner_username]
+    max_mem_mb = int(target_user["max_memory_mb"])
+    max_cpu_cores = float(target_user["max_cpu_cores"])
+
+    ok = await portainer.update_container_resources(
+        container_name=container_name,
+        mem_limit_mb=max_mem_mb,
+        cpu_cores=max_cpu_cores
+    )
+    if not ok:
+        raise HTTPException(status_code=500, detail=f"Gagal menyinkronkan limit Docker untuk '{container_name}'.")
+
+    ip = get_client_ip(request)
+    await db.execute("""
+        INSERT INTO audit_logs (actor_id, action, target_resource, ip_address, details)
+        VALUES (?, 'SYNC_CONTAINER_LIMIT', ?, ?, ?)
+    """, (admin["id"], container_name, ip, f"Synced {container_name} to RAM={max_mem_mb}MB, CPU={max_cpu_cores} cores"))
+    await db.commit()
+
+    return {
+        "success": True,
+        "message": f"Limit '{container_name}' berhasil disinkronkan ({max_mem_mb} MB RAM, {max_cpu_cores} Cores).",
+        "max_memory_mb": max_mem_mb,
+        "max_cpu_cores": max_cpu_cores,
     }

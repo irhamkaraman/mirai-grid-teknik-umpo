@@ -304,16 +304,17 @@ export default function DashboardV2({
 
   // Breadcrumbs calculation
   const breadcrumbs = useMemo(() => {
-    if (!currentPath) return [{ name: 'Home', path: '' }]
+    const rootName = user?.role === 'admin' ? 'Home (/home)' : 'Home'
+    if (!currentPath) return [{ name: rootName, path: '' }]
     const parts = currentPath.split('/').filter(Boolean)
-    const crumbs = [{ name: 'Home', path: '' }]
+    const crumbs = [{ name: rootName, path: '' }]
     let accumulated = ''
     parts.forEach((part) => {
       accumulated = accumulated ? `${accumulated}/${part}` : part
       crumbs.push({ name: part, path: accumulated })
     })
     return crumbs
-  }, [currentPath])
+  }, [currentPath, user?.role])
 
   // Sort click handlers
   const handleSortByName = () => {
@@ -1854,9 +1855,9 @@ export default function DashboardV2({
                     <td className="py-3 px-4 hidden md:table-cell">
                       <div className="flex items-center space-x-2">
                         <div className="h-5 w-5 rounded-full bg-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-700 shrink-0">
-                          S
+                          {(item.owner_label || 'Saya').charAt(0).toUpperCase()}
                         </div>
-                        <span className="text-slate-600 text-xs">Saya</span>
+                        <span className="text-slate-600 text-xs">{item.owner_label || 'Saya'}</span>
                       </div>
                     </td>
                     <td className="py-3 px-4 hidden md:table-cell font-mono text-slate-500 text-xs">
@@ -2096,7 +2097,9 @@ export default function DashboardV2({
 
                     <div className="space-y-1">
                       <span className="text-[11px] font-semibold text-slate-900 block">Pemilik</span>
-                      <span className="text-xs text-slate-600 block">Saya ({getRoleLabel(user?.role)})</span>
+                      <span className="text-xs text-slate-600 block">
+                        {infoItem.owner_label || `Saya (${getRoleLabel(user?.role)})`}
+                      </span>
                     </div>
 
                     <div className="space-y-1">

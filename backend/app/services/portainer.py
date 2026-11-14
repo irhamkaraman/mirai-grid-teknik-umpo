@@ -288,19 +288,63 @@ class PortainerClient:
     ) -> bool:
         """
         Dynamically updates container resources (pids limit, memory, CPU) with zero downtime
-        via Portainer Docker proxy.
+        via Docker socket (primary) or Portainer Docker proxy (fallback).
         """
-        headers = await self._get_headers()
         payload = {}
         if pids_limit is not None:
             payload["PidsLimit"] = int(pids_limit)
         if mem_limit_mb is not None:
-            payload["Memory"] = int(mem_limit_mb) * 1024 * 1024
+            mem_bytes = int(mem_limit_mb) * 1024 * 1024
+            payload["Memory"] = mem_bytes
+            payload["MemorySwap"] = mem_bytes
         if cpu_cores is not None:
             payload["NanoCPUs"] = int(float(cpu_cores) * 1e9)
+
+        status_code, _ = self._docker_socket_request(
+            "POST",
+            f"/containers/{container_name}/update",
+            json.dumps(payload).encode("utf-8")
+        )
+        if status_code in [200, 204]:
+            return True
+
+        headers = await self._get_headers()
         async with httpx.AsyncClient(verify=self.ssl_verify, timeout=15.0) as client:
             url = f"{self.base_url}/api/endpoints/{self.endpoint_id}/docker/containers/{container_name}/update"
             res = await client.post(url, json=payload, headers=headers)
             return res.status_code in [200, 204]
+
+    def list_containers_socket(self, all_containers: bool = True) -> Optional[List[Dict[str, Any]]]:
+        """Lists containers directly via /var/run/docker.sock for low-latency admin telemetry."""
+        q = "true" if all_containers else "false"
+        status_code, content = self._docker_socket_request("GET", f"/containers/json?all={q}")
+        if status_code == 200:
+            try:
+                return json.loads(content)
+            except Exception:
+                return None
+        return None
+
+    def inspect_container_socket(self, container_name_or_id: str) -> Optional[Dict[str, Any]]:
+        """Inspects a container directly via /var/run/docker.sock."""
+        clean_id = container_name_or_id.lstrip("/")
+        status_code, content = self._docker_socket_request("GET", f"/containers/{clean_id}/json")
+        if status_code == 200:
+            try:
+                return json.loads(content)
+            except Exception:
+                return None
+        return None
+
+    def get_container_stats_socket(self, container_name_or_id: str) -> Optional[Dict[str, Any]]:
+        """Fetches single-shot container stats (stream=false) via /var/run/docker.sock."""
+        clean_id = container_name_or_id.lstrip("/")
+        status_code, content = self._docker_socket_request("GET", f"/containers/{clean_id}/stats?stream=false")
+        if status_code == 200:
+            try:
+                return json.loads(content)
+            except Exception:
+                return None
+        return None
 
 portainer = PortainerClient()

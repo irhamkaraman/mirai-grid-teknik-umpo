@@ -20,7 +20,8 @@ import {
   Terminal,
   Cpu,
   PanelLeftClose,
-  PanelLeftOpen
+  PanelLeftOpen,
+  LayoutDashboard
 } from 'lucide-react'
 import { launchJupyterLab } from '../api/jupyter'
 import { useUpload } from '../context/UploadContext'
@@ -50,6 +51,7 @@ export default function NavigationV2({
   const location = useLocation()
   const { requestGuardedNavigation } = useUpload()
   const [showPlatformMenu, setShowPlatformMenu] = useState(false)
+  const [showWorkspaceMenu, setShowWorkspaceMenu] = useState(userRole === 'admin')
   const [logoFailed, setLogoFailed] = useState(false)
 
   const diskTotalMb = quota?.max_disk_mb || 500
@@ -64,7 +66,13 @@ export default function NavigationV2({
       label: 'Workspace',
       path: '/dashboard',
       icon: Folder,
-      activeCheck: (p) => p === '/' || p === '/dashboard' || p.startsWith('/files'),
+      isDropdown: userRole === 'admin',
+      dropdownKey: 'workspace',
+      activeCheck: (p) =>
+        p === '/' ||
+        p === '/dashboard' ||
+        p.startsWith('/files') ||
+        (userRole === 'admin' && p === '/admin/dashboard'),
     },
     {
       id: 'tools',
@@ -109,7 +117,11 @@ export default function NavigationV2({
 
   const handleItemClick = (item) => {
     if (item.isDropdown) {
-      setShowPlatformMenu(!showPlatformMenu)
+      if (item.dropdownKey === 'workspace') {
+        setShowWorkspaceMenu(!showWorkspaceMenu)
+      } else {
+        setShowPlatformMenu(!showPlatformMenu)
+      }
       return
     }
     if (item.path) {
@@ -276,14 +288,52 @@ export default function NavigationV2({
                     {!effectiveCollapsed && item.isDropdown && (
                       <ChevronRight
                         className={`h-3.5 w-3.5 text-gray-400 transition-transform ${
-                          showPlatformMenu ? 'rotate-90 text-emerald-600' : ''
+                          (item.dropdownKey === 'workspace' ? showWorkspaceMenu : showPlatformMenu)
+                            ? 'rotate-90 text-emerald-600'
+                            : ''
                         }`}
                       />
                     )}
                   </button>
 
+                  {/* Submenu Workspace (Admin: Dashboard & File Manager) */}
+                  {!effectiveCollapsed && item.isDropdown && item.dropdownKey === 'workspace' && showWorkspaceMenu && (
+                    <div className="ml-4 mt-1 pl-3 border-l-2 border-emerald-100 space-y-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMobileOpen(false)
+                          requestGuardedNavigation('/admin/dashboard', navigate)
+                        }}
+                        className={`w-full flex items-center space-x-2 px-2.5 py-1.5 rounded-xl text-[11px] font-medium transition text-left ${
+                          location.pathname === '/admin/dashboard'
+                            ? 'bg-emerald-50 text-emerald-700 font-bold'
+                            : 'text-gray-600 hover:text-emerald-700 hover:bg-emerald-50/50'
+                        }`}
+                      >
+                        <LayoutDashboard className="h-3.5 w-3.5 shrink-0" />
+                        <span>Dashboard</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMobileOpen(false)
+                          requestGuardedNavigation('/dashboard', navigate)
+                        }}
+                        className={`w-full flex items-center space-x-2 px-2.5 py-1.5 rounded-xl text-[11px] font-medium transition text-left ${
+                          location.pathname === '/dashboard' || location.pathname.startsWith('/files')
+                            ? 'bg-emerald-50 text-emerald-700 font-bold'
+                            : 'text-gray-600 hover:text-emerald-700 hover:bg-emerald-50/50'
+                        }`}
+                      >
+                        <Folder className="h-3.5 w-3.5 shrink-0" />
+                        <span>File Manager</span>
+                      </button>
+                    </div>
+                  )}
+
                   {/* Submenu Platform & Lab */}
-                  {!effectiveCollapsed && item.isDropdown && showPlatformMenu && (
+                  {!effectiveCollapsed && item.isDropdown && item.dropdownKey !== 'workspace' && showPlatformMenu && (
                     <div className="ml-4 mt-1 pl-3 border-l-2 border-emerald-100 space-y-1">
                       <button
                         onClick={() => handleLaunchPlatform('jupyter')}
