@@ -11,9 +11,11 @@ import { api } from '../api/client'
 import { Spinner, SkeletonBox, SkeletonTable } from './Skeletons'
 import ConfirmModal from './ConfirmModal'
 import ModalPortal from './ModalPortal'
+import { useUpload } from '../context/UploadContext'
 import { syncFileRoute, checkUrlTampering, triggerRouteSecurityAlarm } from '../utils/securityRoute'
 
 export default function FileManager({ project: initialProject, projects: propProjects, onClose, user: propUser, isHomeRoot = true }) {
+  const { enqueueUploads } = useUpload()
   const [currentUser] = useState(() => {
     try {
       return propUser || JSON.parse(localStorage.getItem('miraigrid_user') || '{}')
@@ -595,6 +597,21 @@ export default function FileManager({ project: initialProject, projects: propPro
   const handleUploadFiles = async (e) => {
     e.preventDefault()
     if (uploadFiles.length === 0 || !activeProject) return
+    const isHome = (!activeProject || activeProject.is_home_root || activeProject.id === 'root')
+    if (isHome) {
+      const filesToQueue = [...uploadFiles]
+      setModalType(null)
+      setUploadFiles([])
+      enqueueUploads(filesToQueue, {
+        targetPath: currentPath,
+        autoExtractZip: false,
+        onComplete: () => {
+          fetchDirectory(activeProject, currentPath)
+          fetchAllTrees()
+        },
+      })
+      return
+    }
     setUploading(true)
     const toastId = toast.loading(`Meng-upload ${uploadFiles.length} file...`)
     try {

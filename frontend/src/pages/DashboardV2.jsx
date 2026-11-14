@@ -45,6 +45,7 @@ import { toast } from 'sonner'
 import { api } from '../api/client'
 import { Spinner, SkeletonCard } from '../components/Skeletons'
 import ModalPortal from '../components/ModalPortal'
+import { useUpload } from '../context/UploadContext'
 
 export default function DashboardV2({
   user,
@@ -54,6 +55,7 @@ export default function DashboardV2({
   onOpenResources = () => {}
 }) {
   const username = user?.username || 'user'
+  const { enqueueUploads, queue } = useUpload()
 
   // State
   const [currentPath, setCurrentPath] = useState('')
@@ -121,10 +123,19 @@ export default function DashboardV2({
     localStorage.setItem('mig_cloud_view_mode', mode)
   }
 
-  // Initial load
+  // Initial load & auto-refresh when background upload queue completes an item
   useEffect(() => {
     fetchDirectory(currentPath)
     fetchDashboardMeta()
+  }, [currentPath])
+
+  useEffect(() => {
+    const handleFilesUpdated = () => {
+      fetchDirectory(currentPath)
+      fetchDashboardMeta()
+    }
+    window.addEventListener('miraigrid:files_updated', handleFilesUpdated)
+    return () => window.removeEventListener('miraigrid:files_updated', handleFilesUpdated)
   }, [currentPath])
 
   const fetchDashboardMeta = async () => {
@@ -633,48 +644,27 @@ export default function DashboardV2({
     }
   }
 
-  // Upload Files
-  const handleFilesUpload = async (fileList) => {
+  // Upload Files via Google Drive Floating Upload Manager (Non-blocking Queue + Progress + AbortController)
+  const handleFilesUpload = (fileList) => {
     if (!fileList || fileList.length === 0) return
-    const toastId = toast.loading(`Mengunggah ${fileList.length} berkas...`)
-    try {
-      for (let i = 0; i < fileList.length; i++) {
-        const file = fileList[i]
-        const formData = new FormData()
-        formData.append('file', file)
-        formData.append('path', currentPath)
-        await api.post('/files/upload', formData, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        })
-      }
-      toast.success('Semua berkas berhasil diunggah!', { id: toastId })
-      fetchDirectory(currentPath)
-    } catch (err) {
-      toast.error(err.response?.data?.detail || 'Gagal mengunggah berkas.', { id: toastId })
+    enqueueUploads(fileList, {
+      targetPath: currentPath,
+      autoExtractZip: false,
+    })
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
     }
   }
 
-  // Upload ZIP with auto-extract option
-  const handleZipUpload = async (file) => {
+  // Upload ZIP with auto-extract option via Floating Upload Manager
+  const handleZipUpload = (file) => {
     if (!file) return
-    const toastId = toast.loading('Mengunggah dan mengekstrak arsip ZIP...')
-    try {
-      const formData = new FormData()
-      formData.append('file', file)
-      formData.append('path', currentPath)
-      const uploadRes = await api.post('/files/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      })
-      const uploadedPath = currentPath ? `${currentPath}/${file.name}` : file.name
-      // Auto-extract ZIP
-      await api.post('/files/extract', {
-        zip_path: uploadedPath,
-        extract_to: currentPath,
-      })
-      toast.success('ZIP berhasil diunggah & diekstrak!', { id: toastId })
-      fetchDirectory(currentPath)
-    } catch (err) {
-      toast.error(err.response?.data?.detail || 'Gagal memproses arsip ZIP.', { id: toastId })
+    enqueueUploads([file], {
+      targetPath: currentPath,
+      autoExtractZip: true,
+    })
+    if (zipInputRef.current) {
+      zipInputRef.current.value = ''
     }
   }
 
@@ -1723,7 +1713,12 @@ export default function DashboardV2({
       </ModalPortal>
 
       {/* 8. FLOATING ACTION BUTTON (FAB) EXPANDABLE (Google Drive Modern Minimalist Style) */}
-      <div className="fixed bottom-8 right-8 z-50 select-none" ref={fabRef}>
+      <div
+        className={`fixed bottom-8 z-50 select-none transition-all duration-200 ${
+          queue.length > 0 ? 'right-8 sm:right-[26rem]' : 'right-8'
+        }`}
+        ref={fabRef}
+      >
         {/* Speed Dial Menu */}
         {fabOpen && (
           <div className="absolute bottom-16 right-0 mb-2 w-72 bg-white rounded-2xl border border-slate-200/90 shadow-2xl p-1.5 z-50 animate-in slide-in-from-bottom-2 duration-150">

@@ -446,7 +446,7 @@ async def extract_user_archive(
 
     # Storage Quota Check before unzipping
     is_admin = current_user.get("role") == "admin"
-    max_disk_mb = 2000.0 if is_admin else 500.0
+    max_disk_mb = 20000.0 if is_admin else 10240.0
     user_id = current_user.get("id")
     if user_id:
         try:
@@ -547,7 +547,7 @@ async def upload_user_files(
 
     # Storage Quota Check before writing files
     is_admin = current_user.get("role") == "admin"
-    max_disk_mb = 2000.0 if is_admin else 500.0
+    max_disk_mb = 20000.0 if is_admin else 10240.0
     user_id = current_user.get("id")
     if user_id:
         try:
@@ -562,35 +562,58 @@ async def upload_user_files(
 
     disk_used_mb, _ = calculate_account_disk_usage(username)
 
-    # Read uploaded bytes and calculate total incoming size
-    read_items = []
+    # Stream-friendly size inspection without loading large files (1GB+) into RAM
+    incoming_files = []
     total_incoming_bytes = 0
     for upload in file_list:
-        clean_fname = os.path.basename(upload.filename)
+        clean_fname = os.path.basename(upload.filename or "")
         if not clean_fname:
             continue
-        content = await upload.read()
-        total_incoming_bytes += len(content)
-        read_items.append((clean_fname, content))
+        try:
+            upload.file.seek(0, os.SEEK_END)
+            fsize = upload.file.tell()
+            upload.file.seek(0)
+        except Exception:
+            fsize = 0
+        total_incoming_bytes += fsize
+        incoming_files.append((clean_fname, upload, fsize))
 
     if disk_used_mb + (total_incoming_bytes / (1024 * 1024)) > max_disk_mb:
+        for _, up, _ in incoming_files:
+            try:
+                await up.close()
+            except Exception:
+                pass
         raise HTTPException(
             status_code=413,
             detail=f"Kapasitas penyimpanan workspace mahasiswa telah mencapai batas kuota ({int(max_disk_mb)} MB). Sisa kuota: {max(0.0, round(max_disk_mb - disk_used_mb, 1))} MB."
         )
 
     saved_count = 0
-    for clean_fname, content in read_items:
+    for clean_fname, upload, fsize in incoming_files:
         dest_file = os.path.join(dst_dir, clean_fname)
+        temp_dest = f"{dest_file}.uploading.part"
         try:
-            with open(dest_file, "wb") as f:
-                f.write(content)
+            upload.file.seek(0)
+            with open(temp_dest, "wb") as f:
+                shutil.copyfileobj(upload.file, f, length=1024 * 1024)
+            os.replace(temp_dest, dest_file)
             os.chmod(dest_file, 0o644)
             saved_count += 1
         except Exception as e:
+            if os.path.exists(temp_dest):
+                try:
+                    os.remove(temp_dest)
+                except Exception:
+                    pass
             raise HTTPException(status_code=500, detail=f"Gagal mengunggah {clean_fname}: {e}")
+        finally:
+            try:
+                await upload.close()
+            except Exception:
+                pass
 
-    return {"success": True, "message": f"{saved_count} file berhasil diunggah."}
+    return {"success": True, "message": f"{saved_count} file berhasil diunggah.", "bytes_written": total_incoming_bytes}
 
 
 @router.delete("")

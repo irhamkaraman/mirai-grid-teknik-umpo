@@ -23,6 +23,7 @@ import {
   PanelLeftOpen
 } from 'lucide-react'
 import { launchJupyterLab } from '../api/jupyter'
+import { useUpload } from '../context/UploadContext'
 
 export function JupyterIcon({ className = "h-4 w-4" }) {
   return (
@@ -46,6 +47,7 @@ export default function NavigationV2({
 }) {
   const navigate = useNavigate()
   const location = useLocation()
+  const { requestGuardedNavigation } = useUpload()
   const [showPlatformMenu, setShowPlatformMenu] = useState(false)
   const [logoFailed, setLogoFailed] = useState(false)
 
@@ -117,8 +119,8 @@ export default function NavigationV2({
       return
     }
     if (item.path) {
-      navigate(item.path)
       setMobileOpen(false)
+      requestGuardedNavigation(item.path, navigate)
     }
   }
 
@@ -134,27 +136,29 @@ export default function NavigationV2({
       return
     }
     if (type === 'thingsboard') {
-      try {
-        const { getThingsBoardSSO } = await import('../api/thingsboard')
-        const ssoData = await getThingsBoardSSO()
-        if (ssoData && ssoData.ready && ssoData.sso_url) {
-          window.location.href = ssoData.sso_url
-          return
-        }
-      } catch (e) {}
-      navigate('/thingsboard')
+      requestGuardedNavigation('/thingsboard', async () => {
+        try {
+          const { getThingsBoardSSO } = await import('../api/thingsboard')
+          const ssoData = await getThingsBoardSSO()
+          if (ssoData && ssoData.ready && ssoData.sso_url) {
+            window.location.href = ssoData.sso_url
+            return
+          }
+        } catch (e) {}
+        navigate('/thingsboard')
+      })
       return
     }
     if (type === 'vscode') {
-      navigate('/vscode')
+      requestGuardedNavigation('/vscode', navigate)
       return
     }
     if (type === 'terminal') {
-      navigate('/terminal')
+      requestGuardedNavigation('/terminal', navigate)
       return
     }
     if (type === 'redis') {
-      navigate('/redis')
+      requestGuardedNavigation('/redis', navigate)
       return
     }
   }
@@ -346,12 +350,8 @@ export default function NavigationV2({
               <button
                 type="button"
                 onClick={() => {
-                  if (onOpenResources) {
-                    onOpenResources()
-                  } else {
-                    navigate('/resources')
-                  }
                   if (isMobile) setMobileOpen(false)
+                  requestGuardedNavigation('/resources', navigate)
                 }}
                 className="w-full py-1.5 px-2.5 bg-white hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 rounded-lg text-[11px] font-bold text-slate-700 hover:text-emerald-700 transition-colors flex items-center justify-center space-x-1.5"
               >
@@ -363,7 +363,7 @@ export default function NavigationV2({
             <div className="flex flex-col items-center space-y-2">
               <button
                 type="button"
-                onClick={onOpenResources || (() => navigate('/resources'))}
+                onClick={() => requestGuardedNavigation('/resources', navigate)}
                 title={`Detail Resource: ${diskPercent}% terpakai`}
                 className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100/70 transition-colors"
               >

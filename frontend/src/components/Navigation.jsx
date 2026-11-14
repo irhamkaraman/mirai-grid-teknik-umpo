@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { Wrench, Users, Server, ChevronLeft, ChevronRight, Info, Code, Loader2, Activity } from 'lucide-react'
 import { launchJupyterLab } from '../api/jupyter'
+import { useUpload } from '../context/UploadContext'
 
 export function JupyterIcon({ className = "h-4 w-4" }) {
   return (
@@ -37,6 +38,7 @@ export function VSCodeIcon({ className = "h-4 w-4" }) {
 export default function Navigation({ userRole, isCollapsed, setIsCollapsed }) {
   const navigate = useNavigate()
   const location = useLocation()
+  const { requestGuardedNavigation } = useUpload()
   const [isLaunchingJupyter, setIsLaunchingJupyter] = useState(false)
   const [jupyterError, setJupyterError] = useState(null)
 
@@ -113,7 +115,7 @@ export default function Navigation({ userRole, isCollapsed, setIsCollapsed }) {
     }
 
     if (item.path) {
-      navigate(item.path)
+      requestGuardedNavigation(item.path, navigate)
     }
   }
 

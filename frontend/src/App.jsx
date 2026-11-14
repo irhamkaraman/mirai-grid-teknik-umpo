@@ -3,6 +3,8 @@ import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-
 import { Toaster } from 'sonner'
 import { Search, X, Menu, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import { ThemeProvider } from './context/ThemeContext'
+import { UploadProvider } from './context/UploadContext'
+import FloatingUploadManager from './components/FloatingUploadManager'
 import Navigation from './components/Navigation'
 import NavigationV2 from './components/NavigationV2'
 import ThemeToggle from './components/ThemeToggle'
@@ -82,11 +84,16 @@ export default function App() {
   }), [theme])
 
   useEffect(() => {
-    if (user) {
-      api.get('/quotas/my-quota').then((res) => {
-        setUserQuota(res.data)
-      }).catch(() => {})
+    const refreshQuota = () => {
+      if (user) {
+        api.get('/quotas/my-quota').then((res) => {
+          setUserQuota(res.data)
+        }).catch(() => {})
+      }
     }
+    refreshQuota()
+    window.addEventListener('miraigrid:files_updated', refreshQuota)
+    return () => window.removeEventListener('miraigrid:files_updated', refreshQuota)
   }, [user])
 
   useEffect(() => {
@@ -251,22 +258,25 @@ export default function App() {
       return <Navigate to="/dashboard" replace />
     }
     return (
-      <div className="h-screen w-screen bg-[#E6D7BE] p-2.5 sm:p-4 md:p-6 flex flex-col font-sans overflow-hidden select-none m-0">
-        <Toaster
-          richColors
-          position="top-right"
-          toastOptions={{
-            style: {
-              background: '#2B1810',
-              border: '1px solid #5A3521',
-              color: '#FAF5EC',
-              borderRadius: '18px',
-              fontFamily: 'Plus Jakarta Sans, sans-serif',
-            },
-          }}
-        />
-        <FilesView onNavigate={(path) => navigate(path.startsWith('/') ? path : '/' + path)} isStandalone={true} />
-      </div>
+      <UploadProvider>
+        <div className="h-screen w-screen bg-[#E6D7BE] p-2.5 sm:p-4 md:p-6 flex flex-col font-sans overflow-hidden select-none m-0">
+          <Toaster
+            richColors
+            position="top-right"
+            toastOptions={{
+              style: {
+                background: '#2B1810',
+                border: '1px solid #5A3521',
+                color: '#FAF5EC',
+                borderRadius: '18px',
+                fontFamily: 'Plus Jakarta Sans, sans-serif',
+              },
+            }}
+          />
+          <FilesView onNavigate={(path) => navigate(path.startsWith('/') ? path : '/' + path)} isStandalone={true} />
+          <FloatingUploadManager />
+        </div>
+      </UploadProvider>
     )
   }
 
@@ -320,6 +330,7 @@ export default function App() {
 
   return (
     <ThemeProvider value={themeContextValue}>
+      <UploadProvider>
       <div
         className={`min-h-screen ${
           isV2 ? 'bg-[#F8FAFC] text-gray-900' : 'bg-[#E6D7BE] text-[#26160F]'
@@ -600,7 +611,11 @@ export default function App() {
         quota={userQuota}
         user={user}
       />
+
+      {/* Global Google Drive Style Floating Upload Manager & Navigation Guard Modal */}
+      <FloatingUploadManager />
     </div>
+      </UploadProvider>
     </ThemeProvider>
   )
 }
