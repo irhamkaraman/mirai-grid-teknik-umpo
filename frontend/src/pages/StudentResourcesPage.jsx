@@ -18,13 +18,11 @@ import {
   ExternalLink,
   Terminal
 } from 'lucide-react'
-import { useTheme } from '../context/ThemeContext'
 import { api } from '../api/client'
 import { SkeletonCard, SkeletonTable } from '../components/Skeletons'
 import { formatMBSize } from '../utils/formatters'
 
 export default function StudentResourcesPage({ user, onNavigate }) {
-  const { isV2 } = useTheme()
   const [data, setData] = useState(null)
   const [connectionMode, setConnectionMode] = useState('connecting') // 'ws' | 'polling' | 'connecting'
   const [lastUpdated, setLastUpdated] = useState(null)
@@ -243,7 +241,7 @@ export default function StudentResourcesPage({ user, onNavigate }) {
   const getProgressTrack = (percent) => {
     if (percent > 90) return 'bg-rose-100'
     if (percent > 80) return 'bg-amber-100'
-    return isV2 ? 'bg-slate-100' : 'bg-[#3A2216]'
+    return 'bg-slate-100'
   }
 
   return (
@@ -254,15 +252,15 @@ export default function StudentResourcesPage({ user, onNavigate }) {
           type="button"
           onClick={() => onNavigate('/dashboard')}
           className={`font-medium transition hover:underline ${
-            isV2 ? 'text-slate-500 hover:text-slate-900' : 'text-[#D0B8A2] hover:text-[#FAF5EC]'
+            'text-slate-500 hover:text-slate-900'
           }`}
         >
           Dashboard
         </button>
-        <ChevronRight className={`h-3.5 w-3.5 ${isV2 ? 'text-slate-400' : 'text-[#8C6D58]'}`} />
+        <ChevronRight className={`h-3.5 w-3.5 ${'text-slate-400'}`} />
         <span
           className={`font-semibold ${
-            isV2 ? 'text-slate-800' : 'text-[#FAF5EC]'
+            'text-slate-800'
           }`}
         >
           Resource &amp; Kuota Akun
@@ -285,9 +283,7 @@ export default function StudentResourcesPage({ user, onNavigate }) {
       {/* 2. Header Halaman & Status Bar (Floating Clean Card) */}
       <div
         className={`rounded-2xl p-6 transition-colors duration-150 ${
-          isV2
-            ? 'bg-white border border-slate-200/80'
-            : 'bg-[#2B1810] border border-[#4D2D1E] shadow-sm text-[#FAF5EC]'
+          'bg-white border border-slate-200/80'
         }`}
       >
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -295,22 +291,22 @@ export default function StudentResourcesPage({ user, onNavigate }) {
             <div className="flex items-center space-x-3">
               <div
                 className={`p-2 rounded-xl flex items-center justify-center shrink-0 ${
-                  isV2 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/60' : 'bg-[#3D2317] text-[#E8C58D] border border-[#5A3521]'
+                  'bg-emerald-50 text-emerald-700 border border-emerald-200/60'
                 }`}
               >
                 <Gauge className="h-5 w-5" />
               </div>
               <h1
                 className={`text-xl sm:text-2xl font-bold tracking-tight ${
-                  isV2 ? 'text-slate-900' : 'text-[#FAF5EC]'
+                  'text-slate-900'
                 }`}
               >
                 Spesifikasi &amp; Kuota Resource Mahasiswa
               </h1>
             </div>
-            <p className={`text-xs sm:text-sm pl-0 sm:pl-11 ${isV2 ? 'text-slate-500' : 'text-[#D0B8A2]'}`}>
+            <p className={`text-xs sm:text-sm pl-0 sm:pl-11 ${'text-slate-500'}`}>
               Alokasi lingkungan komputasi mandiri dan terisolasi untuk NIM:{' '}
-              <span className={`font-mono font-semibold ${isV2 ? 'text-slate-800' : 'text-[#FAF5EC]'}`}>
+              <span className={`font-mono font-semibold ${'text-slate-800'}`}>
                 {nim}
               </span>
               {' '}&bull; {studentName}
@@ -322,9 +318,7 @@ export default function StudentResourcesPage({ user, onNavigate }) {
             {/* Status Sandbox Aktif */}
             <div
               className={`inline-flex items-center space-x-2 px-3 py-1.5 rounded-xl text-xs font-medium border ${
-                isV2
-                  ? 'bg-emerald-50 text-emerald-800 border-emerald-200/80'
-                  : 'bg-[#1E3A2B] text-emerald-300 border-emerald-800/60'
+                'bg-emerald-50 text-emerald-800 border-emerald-200/80'
               }`}
             >
               <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0" />
@@ -335,12 +329,8 @@ export default function StudentResourcesPage({ user, onNavigate }) {
             <div
               className={`inline-flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-mono border ${
                 connectionMode === 'ws'
-                  ? isV2
-                    ? 'bg-sky-50 text-sky-800 border-sky-200/80'
-                    : 'bg-[#142E3D] text-sky-300 border-sky-800/60'
-                  : isV2
-                  ? 'bg-amber-50 text-amber-800 border-amber-200/80'
-                  : 'bg-[#3D2F14] text-amber-300 border-amber-800/60'
+                  ? 'bg-sky-50 text-sky-800 border-sky-200/80'
+                  : 'bg-amber-50 text-amber-800 border-amber-200/80'
               }`}
             >
               <Activity className="h-3 w-3 shrink-0" />
@@ -354,9 +344,7 @@ export default function StudentResourcesPage({ user, onNavigate }) {
               disabled={isRefreshing}
               title="Perbarui Data Resource"
               className={`p-2 rounded-lg border transition-colors flex items-center justify-center ${
-                isV2
-                  ? 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700'
-                  : 'bg-[#341F14] hover:bg-[#3D2518] border-[#4D2D1E] text-[#D0B8A2]'
+                'bg-white hover:bg-slate-50 border-slate-200 text-slate-700'
               } ${isRefreshing ? 'opacity-50 cursor-wait' : ''}`}
             >
               <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
@@ -370,9 +358,7 @@ export default function StudentResourcesPage({ user, onNavigate }) {
         {/* Card 1: Penggunaan Memori RAM */}
         <div
           className={`rounded-2xl p-5 flex flex-col justify-between transition-colors duration-150 ${
-            isV2
-              ? 'bg-white border border-slate-200/80 hover:border-slate-300'
-              : 'bg-[#2B1810] border border-[#4D2D1E] shadow-sm text-[#FAF5EC]'
+            'bg-white border border-slate-200/80 hover:border-slate-300'
           }`}
         >
           <div className="space-y-3">
@@ -380,12 +366,12 @@ export default function StudentResourcesPage({ user, onNavigate }) {
               <div className="flex items-center space-x-2">
                 <div
                   className={`p-2 rounded-xl shrink-0 ${
-                    isV2 ? 'bg-indigo-50 text-indigo-600' : 'bg-[#361E28] text-rose-300'
+                    'bg-indigo-50 text-indigo-600'
                   }`}
                 >
                   <Cpu className="h-4 w-4" />
                 </div>
-                <span className={`text-xs font-semibold ${isV2 ? 'text-slate-700' : 'text-[#FAF5EC]'}`}>
+                <span className={`text-xs font-semibold ${'text-slate-700'}`}>
                   Penggunaan Memori RAM
                 </span>
               </div>
@@ -393,9 +379,7 @@ export default function StudentResourcesPage({ user, onNavigate }) {
                 className={`font-mono text-xs font-bold px-2 py-0.5 rounded ${
                   ramMetric.percent > 80
                     ? 'bg-amber-100 text-amber-800'
-                    : isV2
-                    ? 'bg-slate-100 text-slate-700'
-                    : 'bg-[#3D2317] text-[#E8C58D]'
+                    : 'bg-slate-100 text-slate-700'
                 }`}
               >
                 {ramMetric.percent}%
@@ -404,10 +388,10 @@ export default function StudentResourcesPage({ user, onNavigate }) {
 
             <div className="space-y-1.5 pt-1">
               <div className="flex items-baseline justify-between">
-                <span className={`text-xl sm:text-2xl font-bold font-mono ${isV2 ? 'text-slate-900' : 'text-[#FAF5EC]'}`}>
+                <span className={`text-xl sm:text-2xl font-bold font-mono ${'text-slate-900'}`}>
                   {formatMBSize(ramMetric.used_mb)}
                 </span>
-                <span className={`text-xs font-mono ${isV2 ? 'text-slate-500' : 'text-[#D0B8A2]'}`}>
+                <span className={`text-xs font-mono ${'text-slate-500'}`}>
                   / {formatMBSize(ramMetric.max_mb)}
                 </span>
               </div>
@@ -423,7 +407,7 @@ export default function StudentResourcesPage({ user, onNavigate }) {
           </div>
 
           <p className={`text-[11px] leading-relaxed pt-4 mt-3 border-t ${
-            isV2 ? 'border-slate-100 text-slate-500' : 'border-[#3D2317] text-[#A47E65]'
+            'border-slate-100 text-slate-500'
           }`}>
             {ramMetric.description}
           </p>
@@ -432,9 +416,7 @@ export default function StudentResourcesPage({ user, onNavigate }) {
         {/* Card 2: CPU & Proses Aktif */}
         <div
           className={`rounded-2xl p-5 flex flex-col justify-between transition-colors duration-150 ${
-            isV2
-              ? 'bg-white border border-slate-200/80 hover:border-slate-300'
-              : 'bg-[#2B1810] border border-[#4D2D1E] shadow-sm text-[#FAF5EC]'
+            'bg-white border border-slate-200/80 hover:border-slate-300'
           }`}
         >
           <div className="space-y-3">
@@ -442,18 +424,18 @@ export default function StudentResourcesPage({ user, onNavigate }) {
               <div className="flex items-center space-x-2">
                 <div
                   className={`p-2 rounded-xl shrink-0 ${
-                    isV2 ? 'bg-sky-50 text-sky-600' : 'bg-[#182E3B] text-sky-300'
+                    'bg-sky-50 text-sky-600'
                   }`}
                 >
                   <Activity className="h-4 w-4" />
                 </div>
-                <span className={`text-xs font-semibold ${isV2 ? 'text-slate-700' : 'text-[#FAF5EC]'}`}>
+                <span className={`text-xs font-semibold ${'text-slate-700'}`}>
                   CPU &amp; Proses Aktif
                 </span>
               </div>
               <span
                 className={`font-mono text-[11px] font-bold px-2 py-0.5 rounded ${
-                  isV2 ? 'bg-slate-100 text-slate-700' : 'bg-[#3D2317] text-[#E8C58D]'
+                  'bg-slate-100 text-slate-700'
                 }`}
               >
                 {cpuMetric.cores_label}
@@ -462,10 +444,10 @@ export default function StudentResourcesPage({ user, onNavigate }) {
 
             <div className="space-y-1.5 pt-1">
               <div className="flex items-baseline justify-between">
-                <span className={`text-xl sm:text-2xl font-bold font-mono ${isV2 ? 'text-slate-900' : 'text-[#FAF5EC]'}`}>
+                <span className={`text-xl sm:text-2xl font-bold font-mono ${'text-slate-900'}`}>
                   {cpuMetric.process_count} <span className="text-xs font-normal text-slate-400">/ {cpuMetric.max_processes} Proses</span>
                 </span>
-                <span className={`text-xs font-mono font-medium ${isV2 ? 'text-slate-500' : 'text-[#D0B8A2]'}`}>
+                <span className={`text-xs font-mono font-medium ${'text-slate-500'}`}>
                   Alokasi: {cpuMetric.cores_label}
                 </span>
               </div>
@@ -481,7 +463,7 @@ export default function StudentResourcesPage({ user, onNavigate }) {
           </div>
 
           <p className={`text-[11px] leading-relaxed pt-4 mt-3 border-t ${
-            isV2 ? 'border-slate-100 text-slate-500' : 'border-[#3D2317] text-[#A47E65]'
+            'border-slate-100 text-slate-500'
           }`}>
             {cpuMetric.description}
           </p>
@@ -490,9 +472,7 @@ export default function StudentResourcesPage({ user, onNavigate }) {
         {/* Card 3: Penyimpanan Berkas & Web (Disk Usage) */}
         <div
           className={`rounded-2xl p-5 flex flex-col justify-between transition-colors duration-150 ${
-            isV2
-              ? 'bg-white border border-slate-200/80 hover:border-slate-300'
-              : 'bg-[#2B1810] border border-[#4D2D1E] shadow-sm text-[#FAF5EC]'
+            'bg-white border border-slate-200/80 hover:border-slate-300'
           }`}
         >
           <div className="space-y-3">
@@ -500,12 +480,12 @@ export default function StudentResourcesPage({ user, onNavigate }) {
               <div className="flex items-center space-x-2">
                 <div
                   className={`p-2 rounded-xl shrink-0 ${
-                    isV2 ? 'bg-amber-50 text-amber-600' : 'bg-[#3A2C18] text-amber-300'
+                    'bg-amber-50 text-amber-600'
                   }`}
                 >
                   <HardDrive className="h-4 w-4" />
                 </div>
-                <span className={`text-xs font-semibold ${isV2 ? 'text-slate-700' : 'text-[#FAF5EC]'}`}>
+                <span className={`text-xs font-semibold ${'text-slate-700'}`}>
                   Penyimpanan Berkas &amp; Web
                 </span>
               </div>
@@ -513,9 +493,7 @@ export default function StudentResourcesPage({ user, onNavigate }) {
                 className={`font-mono text-xs font-bold px-2 py-0.5 rounded ${
                   diskMetric.percent > 80
                     ? 'bg-amber-100 text-amber-800'
-                    : isV2
-                    ? 'bg-slate-100 text-slate-700'
-                    : 'bg-[#3D2317] text-[#E8C58D]'
+                    : 'bg-slate-100 text-slate-700'
                 }`}
               >
                 {diskMetric.percent}%
@@ -524,10 +502,10 @@ export default function StudentResourcesPage({ user, onNavigate }) {
 
             <div className="space-y-1.5 pt-1">
               <div className="flex items-baseline justify-between">
-                <span className={`text-xl sm:text-2xl font-bold font-mono ${isV2 ? 'text-slate-900' : 'text-[#FAF5EC]'}`}>
+                <span className={`text-xl sm:text-2xl font-bold font-mono ${'text-slate-900'}`}>
                   {formatMBSize(diskMetric.used_mb)}
                 </span>
-                <span className={`text-xs font-mono ${isV2 ? 'text-slate-500' : 'text-[#D0B8A2]'}`}>
+                <span className={`text-xs font-mono ${'text-slate-500'}`}>
                   / {formatMBSize(diskMetric.max_mb)}
                 </span>
               </div>
@@ -543,7 +521,7 @@ export default function StudentResourcesPage({ user, onNavigate }) {
           </div>
 
           <p className={`text-[11px] leading-relaxed pt-4 mt-3 border-t ${
-            isV2 ? 'border-slate-100 text-slate-500' : 'border-[#3D2317] text-[#A47E65]'
+            'border-slate-100 text-slate-500'
           }`}>
             {diskMetric.description}
           </p>
@@ -552,9 +530,7 @@ export default function StudentResourcesPage({ user, onNavigate }) {
         {/* Card 4: Storage Database Praktikum */}
         <div
           className={`rounded-2xl p-5 flex flex-col justify-between transition-colors duration-150 ${
-            isV2
-              ? 'bg-white border border-slate-200/80 hover:border-slate-300'
-              : 'bg-[#2B1810] border border-[#4D2D1E] shadow-sm text-[#FAF5EC]'
+            'bg-white border border-slate-200/80 hover:border-slate-300'
           }`}
         >
           <div className="space-y-3">
@@ -562,12 +538,12 @@ export default function StudentResourcesPage({ user, onNavigate }) {
               <div className="flex items-center space-x-2">
                 <div
                   className={`p-2 rounded-xl shrink-0 ${
-                    isV2 ? 'bg-violet-50 text-violet-600' : 'bg-[#2B1D3A] text-violet-300'
+                    'bg-violet-50 text-violet-600'
                   }`}
                 >
                   <Database className="h-4 w-4" />
                 </div>
-                <span className={`text-xs font-semibold ${isV2 ? 'text-slate-700' : 'text-[#FAF5EC]'}`}>
+                <span className={`text-xs font-semibold ${'text-slate-700'}`}>
                   Storage Database
                 </span>
               </div>
@@ -575,9 +551,7 @@ export default function StudentResourcesPage({ user, onNavigate }) {
                 className={`font-mono text-xs font-bold px-2 py-0.5 rounded ${
                   dbMetric.percent > 80
                     ? 'bg-amber-100 text-amber-800'
-                    : isV2
-                    ? 'bg-slate-100 text-slate-700'
-                    : 'bg-[#3D2317] text-[#E8C58D]'
+                    : 'bg-slate-100 text-slate-700'
                 }`}
               >
                 {dbMetric.percent}%
@@ -586,10 +560,10 @@ export default function StudentResourcesPage({ user, onNavigate }) {
 
             <div className="space-y-1.5 pt-1">
               <div className="flex items-baseline justify-between">
-                <span className={`text-xl sm:text-2xl font-bold font-mono ${isV2 ? 'text-slate-900' : 'text-[#FAF5EC]'}`}>
+                <span className={`text-xl sm:text-2xl font-bold font-mono ${'text-slate-900'}`}>
                   {formatMBSize(dbMetric.used_mb)}
                 </span>
-                <span className={`text-xs font-mono ${isV2 ? 'text-slate-500' : 'text-[#D0B8A2]'}`}>
+                <span className={`text-xs font-mono ${'text-slate-500'}`}>
                   / {formatMBSize(dbMetric.max_mb)}
                 </span>
               </div>
@@ -605,7 +579,7 @@ export default function StudentResourcesPage({ user, onNavigate }) {
           </div>
 
           <p className={`text-[11px] leading-relaxed pt-4 mt-3 border-t ${
-            isV2 ? 'border-slate-100 text-slate-500' : 'border-[#3D2317] text-[#A47E65]'
+            'border-slate-100 text-slate-500'
           }`}>
             {dbMetric.description}
           </p>
@@ -615,14 +589,12 @@ export default function StudentResourcesPage({ user, onNavigate }) {
       {/* 4. Kartu Spesifikasi Jaringan, Port & Server */}
       <div
         className={`rounded-2xl p-6 transition-colors duration-150 ${
-          isV2
-            ? 'bg-white border border-slate-200/80'
-            : 'bg-[#2B1810] border border-[#4D2D1E] shadow-sm text-[#FAF5EC]'
+          'bg-white border border-slate-200/80'
         }`}
       >
         <div className="flex items-center space-x-2.5 pb-5 border-b border-gray-100 dark:border-gray-800">
-          <Server className={`h-5 w-5 ${isV2 ? 'text-slate-700' : 'text-[#FAF5EC]'}`} />
-          <h2 className={`text-base font-bold tracking-tight ${isV2 ? 'text-slate-900' : 'text-[#FAF5EC]'}`}>
+          <Server className={`h-5 w-5 ${'text-slate-700'}`} />
+          <h2 className={`text-base font-bold tracking-tight ${'text-slate-900'}`}>
             Spesifikasi Jaringan, Port &amp; Server Sandbox
           </h2>
         </div>
@@ -631,12 +603,12 @@ export default function StudentResourcesPage({ user, onNavigate }) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-8 pt-5 text-xs">
           {/* Item 1: Domain Publik */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between py-2 border-b border-gray-50 dark:border-gray-800/40 gap-1">
-            <span className={`font-medium ${isV2 ? 'text-slate-500' : 'text-[#D0B8A2]'}`}>
+            <span className={`font-medium ${'text-slate-500'}`}>
               Domain Publik
             </span>
             <div className="flex items-center space-x-1.5">
               <span className={`font-mono text-xs px-2.5 py-1 rounded-md ${
-                isV2 ? 'bg-slate-100 text-slate-800 font-semibold' : 'bg-[#341F14] text-[#FAF5EC]'
+                'bg-slate-100 text-slate-800 font-semibold'
               }`}>
                 {specs.domain}
               </span>
@@ -644,7 +616,7 @@ export default function StudentResourcesPage({ user, onNavigate }) {
                 href={`https://${specs.domain}`}
                 target="_blank"
                 rel="noreferrer"
-                className={`p-1 rounded hover:bg-slate-100 transition ${isV2 ? 'text-slate-400 hover:text-slate-700' : 'text-[#A47E65] hover:text-[#FAF5EC]'}`}
+                className={`p-1 rounded hover:bg-slate-100 transition ${'text-slate-400 hover:text-slate-700'}`}
                 title="Buka Domain Publik"
               >
                 <ExternalLink className="h-3.5 w-3.5" />
@@ -654,11 +626,11 @@ export default function StudentResourcesPage({ user, onNavigate }) {
 
           {/* Item 2: Port Internal Mahasiswa */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between py-2 border-b border-gray-50 dark:border-gray-800/40 gap-1">
-            <span className={`font-medium ${isV2 ? 'text-slate-500' : 'text-[#D0B8A2]'}`}>
+            <span className={`font-medium ${'text-slate-500'}`}>
               Port Internal Mahasiswa
             </span>
             <span className={`font-mono text-xs px-2.5 py-1 rounded-md ${
-              isV2 ? 'bg-slate-100 text-slate-800 font-semibold' : 'bg-[#341F14] text-[#FAF5EC]'
+              'bg-slate-100 text-slate-800 font-semibold'
             }`}>
               {specs.internal_port}
             </span>
@@ -666,21 +638,21 @@ export default function StudentResourcesPage({ user, onNavigate }) {
 
           {/* Item 3: Reverse Proxy */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between py-2 border-b border-gray-50 dark:border-gray-800/40 gap-1">
-            <span className={`font-medium ${isV2 ? 'text-slate-500' : 'text-[#D0B8A2]'}`}>
+            <span className={`font-medium ${'text-slate-500'}`}>
               Reverse Proxy
             </span>
-            <span className={`font-sans text-xs font-semibold ${isV2 ? 'text-slate-700' : 'text-[#FAF5EC]'}`}>
+            <span className={`font-sans text-xs font-semibold ${'text-slate-700'}`}>
               {specs.reverse_proxy}
             </span>
           </div>
 
           {/* Item 4: Port Database Dedicated */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between py-2 border-b border-gray-50 dark:border-gray-800/40 gap-1">
-            <span className={`font-medium ${isV2 ? 'text-slate-500' : 'text-[#D0B8A2]'}`}>
+            <span className={`font-medium ${'text-slate-500'}`}>
               Port Database Dedicated
             </span>
             <span className={`font-mono text-xs px-2.5 py-1 rounded-md ${
-              isV2 ? 'bg-slate-100 text-slate-800 font-semibold' : 'bg-[#341F14] text-[#FAF5EC]'
+              'bg-slate-100 text-slate-800 font-semibold'
             }`}>
               {specs.database_ports}
             </span>
@@ -688,11 +660,11 @@ export default function StudentResourcesPage({ user, onNavigate }) {
 
           {/* Item 5: Shared Gateway IP */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between py-2 border-b border-gray-50 dark:border-gray-800/40 gap-1">
-            <span className={`font-medium ${isV2 ? 'text-slate-500' : 'text-[#D0B8A2]'}`}>
+            <span className={`font-medium ${'text-slate-500'}`}>
               Shared Gateway IP
             </span>
             <span className={`font-mono text-xs px-2.5 py-1 rounded-md ${
-              isV2 ? 'bg-slate-100 text-slate-800 font-semibold' : 'bg-[#341F14] text-[#FAF5EC]'
+              'bg-slate-100 text-slate-800 font-semibold'
             }`}>
               {specs.gateway_ip}
             </span>
@@ -700,10 +672,10 @@ export default function StudentResourcesPage({ user, onNavigate }) {
 
           {/* Item 6: Bandwidth Jaringan */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between py-2 border-b border-gray-50 dark:border-gray-800/40 gap-1">
-            <span className={`font-medium ${isV2 ? 'text-slate-500' : 'text-[#D0B8A2]'}`}>
+            <span className={`font-medium ${'text-slate-500'}`}>
               Bandwidth Jaringan
             </span>
-            <span className={`font-sans text-xs font-semibold ${isV2 ? 'text-slate-700' : 'text-[#FAF5EC]'}`}>
+            <span className={`font-sans text-xs font-semibold ${'text-slate-700'}`}>
               {specs.bandwidth}
             </span>
           </div>
@@ -713,14 +685,12 @@ export default function StudentResourcesPage({ user, onNavigate }) {
       {/* 5. Jaminan Isolasi Multi-Tenant Banner */}
       <div
         className={`rounded-2xl p-4 sm:p-5 flex items-start space-x-3.5 border transition-all duration-200 ${
-          isV2
-            ? 'bg-slate-50/80 border-slate-200/70 text-slate-600'
-            : 'bg-[#24140D] border-[#4D2D1E] text-[#D0B8A2]'
+          'bg-slate-50/80 border-slate-200/70 text-slate-600'
         }`}
       >
         <ShieldCheck className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
         <div className="space-y-1 text-xs">
-          <h4 className={`font-semibold ${isV2 ? 'text-slate-900' : 'text-[#FAF5EC]'}`}>
+          <h4 className={`font-semibold ${'text-slate-900'}`}>
             Jaminan Isolasi Multi-Tenant Tingkat Kernel &amp; Sandboxing
           </h4>
           <p className="leading-relaxed">

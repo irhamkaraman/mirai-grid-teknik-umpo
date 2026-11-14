@@ -26,8 +26,8 @@ export async function launchDatabaseSSO(engine, dbId = null) {
   <style>
     body {
       margin: 0;
-      background-color: #190D07;
-      color: #FAF5EC;
+      background-color: #F8FAFC;
+      color: #0F172A;
       font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       display: flex;
       align-items: center;
@@ -38,8 +38,8 @@ export async function launchDatabaseSSO(engine, dbId = null) {
     .spinner {
       width: 44px;
       height: 44px;
-      border: 3px solid rgba(232, 220, 184, 0.2);
-      border-top-color: #E8C58D;
+      border: 3px solid #E2E8F0;
+      border-top-color: #10B981;
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
       margin-bottom: 20px;
@@ -51,12 +51,12 @@ export async function launchDatabaseSSO(engine, dbId = null) {
       margin: 0 0 8px 0;
       font-size: 20px;
       font-weight: 600;
-      color: #FAF5EC;
+      color: #0F172A;
     }
     p {
       margin: 0;
       font-size: 13px;
-      color: #C49767;
+      color: #64748B;
     }
   </style>
 </head>

@@ -411,27 +411,27 @@ export default function TerminalPage({ user, onNavigate }) {
   return (
     <div className="space-y-6 w-full animate-in fade-in duration-200 pb-12 font-sans">
       {/* Top Header Halaman Konsisten */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#DECDBD]">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
         <div className="flex items-center space-x-3.5">
           <button
             type="button"
             onClick={() => onNavigate('/dashboard')}
-            className="p-2.5 rounded-2xl bg-[#DECDBD] hover:bg-[#D1BDAB] text-[#5A3521] hover:text-[#26160F] transition shadow-sm flex items-center justify-center shrink-0 group"
+            className="p-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-emerald-600 hover:text-slate-900 transition shadow-sm flex items-center justify-center shrink-0 group"
             title="Kembali ke Dasbor"
           >
-            <ArrowLeft className="h-4 w-4 text-[#5A3521] group-hover:-translate-x-0.5 transition-transform" />
+            <ArrowLeft className="h-4 w-4 text-emerald-600 group-hover:-translate-x-0.5 transition-transform" />
           </button>
           <div>
             <div className="flex items-center space-x-2.5">
-              <h2 className="text-2xl font-serif font-bold text-[#26160F] flex items-center space-x-2.5">
-                <TerminalIcon className="h-6 w-6 text-[#5A3521]" />
+              <h2 className="text-2xl font-sans font-bold text-slate-900 flex items-center space-x-2.5">
+                <TerminalIcon className="h-6 w-6 text-emerald-600" />
                 <span>Terminal™</span>
               </h2>
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-[#DECDBD] text-[#5A3521] border border-[#BFAB96]">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-slate-100 text-emerald-600 border border-slate-200">
                 Sandboxed Cage
               </span>
             </div>
-            <p className="text-xs text-[#5C3B29] font-sans mt-0.5">
+            <p className="text-xs text-slate-500 font-sans mt-0.5">
               Command Line Interface (CLI) terisolasi mandiri per akun praktikum.
             </p>
           </div>
@@ -442,25 +442,25 @@ export default function TerminalPage({ user, onNavigate }) {
           <button
             type="button"
             onClick={handleCopyHistory}
-            className="px-3.5 py-2 rounded-xl bg-[#DECDBD] hover:bg-[#D1BDAB] text-[#26160F] border border-[#BFAB96] text-xs font-semibold transition shadow-sm flex items-center space-x-1.5"
+            className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-900 border border-slate-200 text-xs font-semibold transition shadow-sm flex items-center space-x-1.5"
             title="Salin seluruh riwayat sesi"
           >
-            {copied ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5 text-[#5A3521]" />}
+            {copied ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5 text-emerald-600" />}
             <span>{copied ? 'Tersalin' : 'Salin'}</span>
           </button>
           <button
             type="button"
             onClick={handleResetSession}
-            className="px-3.5 py-2 rounded-xl bg-[#DECDBD] hover:bg-[#D1BDAB] text-[#26160F] border border-[#BFAB96] text-xs font-semibold transition shadow-sm flex items-center space-x-1.5"
+            className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-900 border border-slate-200 text-xs font-semibold transition shadow-sm flex items-center space-x-1.5"
             title="Kembali ke root sandbox direktori awal"
           >
-            <RotateCcw className="h-3.5 w-3.5 text-[#5A3521]" />
+            <RotateCcw className="h-3.5 w-3.5 text-emerald-600" />
             <span>Reset CWD</span>
           </button>
           <button
             type="button"
             onClick={() => setHistory([])}
-            className="px-3.5 py-2 rounded-xl bg-[#2B1810] hover:bg-[#3D2317] border border-[#4D2D1E] text-xs font-semibold text-rose-300 hover:text-white transition shadow-sm flex items-center space-x-1.5"
+            className="px-3.5 py-2 rounded-xl bg-white hover:bg-slate-200 border border-slate-200 text-xs font-semibold text-rose-300 hover:text-white transition shadow-sm flex items-center space-x-1.5"
             title="Bersihkan layar terminal"
           >
             <Trash2 className="h-3.5 w-3.5" />
@@ -473,20 +473,20 @@ export default function TerminalPage({ user, onNavigate }) {
       <div
         ref={containerRef}
         onClick={handleContainerClick}
-        className="bg-[#120906] border border-[#4D2D1E] rounded-3xl shadow-2xl overflow-hidden font-mono text-xs sm:text-sm text-[#DFCDB5] flex flex-col h-[560px] sm:h-[600px] lg:h-[calc(100vh-210px)] min-h-[460px] max-h-[720px] cursor-text select-text"
+        className="bg-slate-50 border border-slate-200 rounded-3xl shadow-2xl overflow-hidden font-mono text-xs sm:text-sm text-slate-600 flex flex-col h-[560px] sm:h-[600px] lg:h-[calc(100vh-210px)] min-h-[460px] max-h-[720px] cursor-text select-text"
       >
         {/* Terminal Window Titlebar */}
-        <div className="flex items-center justify-between px-5 py-3 bg-[#1B0D08] border-b border-[#3D2316] select-none shrink-0">
+        <div className="flex items-center justify-between px-5 py-3 bg-slate-50 border-b border-slate-200 select-none shrink-0">
           <div className="flex items-center space-x-2">
-            <span className="h-3 w-3 rounded-full bg-[#5C2317] border border-[#7A3322] inline-block"></span>
-            <span className="h-3 w-3 rounded-full bg-[#6E4B1B] border border-[#8C6226] inline-block"></span>
-            <span className="h-3 w-3 rounded-full bg-[#2B542C] border border-[#3E733F] inline-block"></span>
-            <span className="text-xs text-[#A47E65] font-sans font-semibold ml-2">
+            <span className="h-3 w-3 rounded-full bg-rose-50 border border-rose-200 inline-block"></span>
+            <span className="h-3 w-3 rounded-full bg-amber-50 border border-amber-200 inline-block"></span>
+            <span className="h-3 w-3 rounded-full bg-emerald-50 border border-emerald-200 inline-block"></span>
+            <span className="text-xs text-slate-500 font-sans font-semibold ml-2">
               bash — {username}@{serverIp}
             </span>
           </div>
-          <div className="flex items-center space-x-3 text-[11px] font-mono text-[#A47E65]">
-            <span className="hidden sm:inline text-[#7A5A43]">Scrollable Buffer</span>
+          <div className="flex items-center space-x-3 text-[11px] font-mono text-slate-500">
+            <span className="hidden sm:inline text-slate-500">Scrollable Buffer</span>
             <span>Strict Account Jail</span>
           </div>
         </div>
@@ -497,7 +497,7 @@ export default function TerminalPage({ user, onNavigate }) {
           className="p-5 sm:p-6 flex-1 overflow-y-auto space-y-2 overscroll-contain focus:outline-none"
           style={{
             scrollbarWidth: 'thin',
-            scrollbarColor: '#4D2D1E #140A07'
+            scrollbarColor: '#CBD5E1 #F1F5F9'
           }}
         >
           {history.map((item, idx) => {
@@ -517,7 +517,7 @@ export default function TerminalPage({ user, onNavigate }) {
                   <span className="text-emerald-400 font-bold select-none shrink-0 font-mono">
                     {item.prompt}
                   </span>
-                  <span className="text-[#FAF5EC] font-semibold break-all">
+                  <span className="text-slate-900 font-semibold break-all">
                     {item.cmd}
                   </span>
                 </div>
@@ -527,7 +527,7 @@ export default function TerminalPage({ user, onNavigate }) {
               return (
                 <pre
                   key={idx}
-                  className="text-[#DFCDB5] font-mono text-xs sm:text-sm whitespace-pre-wrap leading-relaxed pl-1"
+                  className="text-slate-600 font-mono text-xs sm:text-sm whitespace-pre-wrap leading-relaxed pl-1"
                 >
                   {item.content}
                 </pre>
@@ -565,7 +565,7 @@ export default function TerminalPage({ user, onNavigate }) {
                 autoFocus
                 spellCheck={false}
                 autoComplete="off"
-                className="w-full bg-transparent text-[#FAF5EC] font-mono text-xs sm:text-sm outline-none border-none p-0 focus:ring-0 leading-normal"
+                className="w-full bg-transparent text-slate-900 font-mono text-xs sm:text-sm outline-none border-none p-0 focus:ring-0 leading-normal"
               />
             </div>
             {loading && (

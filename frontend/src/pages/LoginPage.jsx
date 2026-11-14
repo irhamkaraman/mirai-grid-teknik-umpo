@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { api } from '../api/client'
 import { Spinner } from '../components/Skeletons'
+import Button from '../components/Button'
 
 export default function LoginPage({ onLoginSuccess }) {
   const [username, setUsername] = useState('')
@@ -87,24 +88,13 @@ export default function LoginPage({ onLoginSuccess }) {
   }
 
   return (
-    <div className="min-h-screen bg-[#E6D7BE] text-[#26160F] flex flex-col lg:flex-row relative overflow-hidden font-sans select-none">
-      {/* Background Decorative Subtle Texture & Ambient Warmth */}
-      <div
-        className="absolute inset-0 pointer-events-none opacity-[0.08]"
-        style={{
-          backgroundImage: `radial-gradient(circle at 1px 1px, #5A3521 1px, transparent 0)`,
-          backgroundSize: '28px 28px'
-        }}
-      />
-      <div className="absolute -top-32 left-1/4 w-[600px] h-[500px] bg-[#C49767]/15 rounded-full blur-[170px] pointer-events-none" />
-      <div className="absolute -bottom-32 right-1/4 w-[600px] h-[500px] bg-[#A47E65]/15 rounded-full blur-[170px] pointer-events-none" />
-
+    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 flex flex-col lg:flex-row relative overflow-x-hidden font-sans select-none">
       {/* LEFT COLUMN: Visual Elements, Architecture & System Branding */}
-      <div className="lg:w-7/12 p-8 sm:p-12 lg:p-16 flex flex-col justify-between relative z-10 border-b lg:border-b-0 lg:border-r border-[#DECDBD]">
+      <div className="lg:w-7/12 p-6 sm:p-10 lg:p-14 flex flex-col justify-between relative z-10 border-b lg:border-b-0 lg:border-r border-slate-200/80 bg-white">
         {/* Top Brand Logo & Identity */}
         <div>
           <div className="flex items-center space-x-3.5 mb-8">
-            <div className="h-12 w-12 rounded-2xl bg-white p-2 border border-[#C5B3A1] shadow-md flex items-center justify-center">
+            <div className="h-11 w-11 rounded-xl bg-slate-50 p-2 border border-slate-200 flex items-center justify-center">
               <img
                 src="/logos/miraigrid-logo.svg"
                 alt="MiraiGrid Logo"
@@ -112,57 +102,56 @@ export default function LoginPage({ onLoginSuccess }) {
               />
             </div>
             <div>
-              <h1 className="text-2xl font-serif font-bold tracking-tight text-[#26160F]">
+              <h1 className="text-xl font-bold tracking-tight text-slate-900">
                 MiraiGrid
               </h1>
-              <p className="text-[10px] font-bold tracking-[0.2em] text-[#9E4E2C] uppercase font-mono">
+              <p className="text-[11px] font-semibold tracking-wider text-emerald-700 uppercase font-mono">
                 Lab Teknik Informatika UMPO
               </p>
             </div>
           </div>
 
           <div className="max-w-xl">
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-serif font-bold text-[#26160F] leading-[1.15] tracking-tight">
+            <h2 className="text-2xl sm:text-4xl font-bold text-slate-900 leading-[1.18] tracking-tight">
               Infrastruktur Cloud Laboratorium Teknik Informatika UMPO
             </h2>
-            <p className="text-sm text-[#5C3B29] mt-4 leading-relaxed font-sans">
+            <p className="text-sm text-slate-600 mt-4 leading-relaxed font-sans">
               Platform laboratorium modern untuk deployment aplikasi berbasis container terisolasi, manajemen multi-database, dan kontrol versi kode bagi mahasiswa Teknik Informatika.
             </p>
           </div>
         </div>
 
-        {/* Visual Architecture Cards (Elemen Grafis Visual Keren) */}
+        {/* Visual Architecture Cards (Flat Clean Minimalist V2) */}
         <div className="my-8 lg:my-10 space-y-4 max-w-xl">
           {/* Card 1: Container Engines Showcase */}
-          <div className="bg-[#2B1810] border border-[#4D2D1E] rounded-3xl p-5 shadow-xl relative overflow-hidden group hover:border-[#C49767]/50 transition-all duration-300 text-[#FAF5EC]">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-[#C49767]/5 rounded-full blur-2xl group-hover:bg-[#C49767]/10 transition-colors pointer-events-none" />
+          <div className="bg-slate-50/70 border border-slate-200/80 rounded-xl p-5 transition-colors duration-200">
             <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center space-x-2 text-xs font-semibold text-[#DFCDB5]">
-                <Cpu className="h-4 w-4 text-[#C49767]" />
+              <div className="flex items-center space-x-2 text-xs font-semibold text-slate-700">
+                <Cpu className="h-4 w-4 text-emerald-600" />
                 <span>Isolated Application Runtimes</span>
               </div>
-              <span className="text-[10px] font-mono text-[#A47454]">PHP • Python • Node.js</span>
+              <span className="text-[11px] font-mono text-slate-500">PHP • Python • Node.js</span>
             </div>
-            <div className="grid grid-cols-3 gap-3">
-              <div className="bg-[#1C0F0A] border border-[#3E2316] rounded-2xl p-3 flex items-center space-x-2.5 hover:border-[#543221] transition">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="bg-white border border-slate-200/80 rounded-xl p-3 flex items-center space-x-2.5">
                 <img src="/logos/php.svg" alt="PHP" className="h-6 w-6 object-contain" />
                 <div>
-                  <div className="text-xs font-bold text-[#FAF5EC]">PHP</div>
-                  <div className="text-[9px] text-[#A47454] font-mono">v8.3 • Apache</div>
+                  <div className="text-xs font-bold text-slate-900">PHP</div>
+                  <div className="text-[10px] text-slate-500 font-mono">v8.3 • Apache</div>
                 </div>
               </div>
-              <div className="bg-[#1C0F0A] border border-[#3E2316] rounded-2xl p-3 flex items-center space-x-2.5 hover:border-[#543221] transition">
+              <div className="bg-white border border-slate-200/80 rounded-xl p-3 flex items-center space-x-2.5">
                 <img src="/logos/python.svg" alt="Python" className="h-6 w-6 object-contain" />
                 <div>
-                  <div className="text-xs font-bold text-[#FAF5EC]">Python</div>
-                  <div className="text-[9px] text-[#A47454] font-mono">v3.11 • Flask</div>
+                  <div className="text-xs font-bold text-slate-900">Python</div>
+                  <div className="text-[10px] text-slate-500 font-mono">v3.11 • Flask</div>
                 </div>
               </div>
-              <div className="bg-[#1C0F0A] border border-[#3E2316] rounded-2xl p-3 flex items-center space-x-2.5 hover:border-[#543221] transition">
+              <div className="bg-white border border-slate-200/80 rounded-xl p-3 flex items-center space-x-2.5">
                 <img src="/logos/node.svg" alt="Node.js" className="h-6 w-6 object-contain" />
                 <div>
-                  <div className="text-xs font-bold text-[#FAF5EC]">Node.js</div>
-                  <div className="text-[9px] text-[#A47454] font-mono">v20 • LTS</div>
+                  <div className="text-xs font-bold text-slate-900">Node.js</div>
+                  <div className="text-[10px] text-slate-500 font-mono">v20 • LTS</div>
                 </div>
               </div>
             </div>
@@ -170,42 +159,42 @@ export default function LoginPage({ onLoginSuccess }) {
 
           {/* Card 2 & 3: Multi-Database Cluster & Version Control */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="bg-[#2B1810] border border-[#4D2D1E] rounded-3xl p-4 shadow-xl hover:border-[#C49767]/50 transition-all duration-300 text-[#FAF5EC]">
-              <div className="flex items-center space-x-2 text-xs font-semibold text-[#DFCDB5] mb-2.5">
-                <Database className="h-4 w-4 text-[#D97757]" />
+            <div className="bg-slate-50/70 border border-slate-200/80 rounded-xl p-4">
+              <div className="flex items-center space-x-2 text-xs font-semibold text-slate-700 mb-2.5">
+                <Database className="h-4 w-4 text-emerald-600" />
                 <span>Multi-Database Cluster</span>
               </div>
-              <div className="flex items-center space-x-3">
-                <div className="flex items-center space-x-1.5 text-xs text-[#FAF5EC] font-mono bg-[#1C0F0A] px-2.5 py-1.5 rounded-xl border border-[#3E2316]">
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center space-x-1.5 text-xs text-slate-800 font-mono bg-white px-2.5 py-1.5 rounded-lg border border-slate-200">
                   <img src="/logos/mariadb.svg" alt="MariaDB" className="h-4 w-4 object-contain" />
                   <span>MariaDB</span>
                 </div>
-                <div className="flex items-center space-x-1.5 text-xs text-[#FAF5EC] font-mono bg-[#1C0F0A] px-2.5 py-1.5 rounded-xl border border-[#3E2316]">
+                <div className="flex items-center space-x-1.5 text-xs text-slate-800 font-mono bg-white px-2.5 py-1.5 rounded-lg border border-slate-200">
                   <img src="/logos/postgres.svg" alt="PostgreSQL" className="h-4 w-4 object-contain" />
                   <span>PostgreSQL</span>
                 </div>
               </div>
-              <p className="text-[10px] text-[#A47454] mt-2 font-mono">
-                Port terisolasi & kuota storage mandiri.
+              <p className="text-[11px] text-slate-500 mt-2.5 font-mono">
+                Port terisolasi &amp; kuota storage mandiri.
               </p>
             </div>
 
-            <div className="bg-[#2B1810] border border-[#4D2D1E] rounded-3xl p-4 shadow-xl hover:border-[#C49767]/50 transition-all duration-300 text-[#FAF5EC]">
-              <div className="flex items-center space-x-2 text-xs font-semibold text-[#DFCDB5] mb-2.5">
-                <Code2 className="h-4 w-4 text-emerald-400" />
-                <span>Git™ & Sandbox Files</span>
+            <div className="bg-slate-50/70 border border-slate-200/80 rounded-xl p-4">
+              <div className="flex items-center space-x-2 text-xs font-semibold text-slate-700 mb-2.5">
+                <Code2 className="h-4 w-4 text-emerald-600" />
+                <span>Git &amp; Sandbox Files</span>
               </div>
-              <div className="flex items-center space-x-2">
-                <div className="flex items-center space-x-1.5 text-xs text-[#FAF5EC] font-mono bg-[#1C0F0A] px-2.5 py-1.5 rounded-xl border border-[#3E2316]">
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center space-x-1.5 text-xs text-slate-800 font-mono bg-white px-2.5 py-1.5 rounded-lg border border-slate-200">
                   <img src="/logos/git.svg" alt="Git" className="h-4 w-4 object-contain" />
                   <span>Version Control</span>
                 </div>
-                <div className="flex items-center space-x-1.5 text-xs text-[#FAF5EC] font-mono bg-[#1C0F0A] px-2.5 py-1.5 rounded-xl border border-[#3E2316]">
-                  <Terminal className="h-3.5 w-3.5 text-amber-400" />
+                <div className="flex items-center space-x-1.5 text-xs text-slate-800 font-mono bg-white px-2.5 py-1.5 rounded-lg border border-slate-200">
+                  <Terminal className="h-3.5 w-3.5 text-slate-600" />
                   <span>Web Console</span>
                 </div>
               </div>
-              <p className="text-[10px] text-[#A47454] mt-2 font-mono">
+              <p className="text-[11px] text-slate-500 mt-2.5 font-mono">
                 Sandbox terisolasi per akun praktikum.
               </p>
             </div>
@@ -213,35 +202,35 @@ export default function LoginPage({ onLoginSuccess }) {
         </div>
 
         {/* Bottom Left System Footnote */}
-        <div className="pt-4 border-t border-[#DECDBD]">
-          <p className="text-xs text-[#5C3B29] font-light italic">
+        <div className="pt-4 border-t border-slate-200/80">
+          <p className="text-xs text-slate-600 italic">
             "Memberikan pengalaman nyata mengelola komputasi awan mandiri dan arsitektur server berstandar industri."
           </p>
-          <p className="text-[10px] text-[#7A5844] font-mono mt-1 font-semibold">
+          <p className="text-[11px] text-slate-400 font-mono mt-1 font-medium">
             Fakultas Teknik • Universitas Muhammadiyah Ponorogo
           </p>
         </div>
       </div>
 
-      {/* RIGHT COLUMN: Elevated Dark Chocolate Login Card on Cream Background */}
-      <div className="lg:w-5/12 p-6 sm:p-10 lg:p-14 flex flex-col justify-center items-center relative z-10">
-        <div className="w-full max-w-md bg-[#2B1810] border border-[#4D2D1E] rounded-3xl p-7 sm:p-9 shadow-2xl text-[#FAF5EC]">
+      {/* RIGHT COLUMN: Clean V2 Login Card */}
+      <div className="lg:w-5/12 p-5 sm:p-10 lg:p-14 flex flex-col justify-center items-center relative z-10 bg-[#F8FAFC]">
+        <div className="w-full max-w-md bg-white border border-slate-200 rounded-xl p-6 sm:p-8 text-slate-900">
           {/* Form Header */}
-          <div className="mb-7">
-            <h3 className="text-2xl sm:text-3xl font-serif font-bold text-[#FAF5EC]">
+          <div className="mb-6">
+            <h3 className="text-xl sm:text-2xl font-bold text-slate-900">
               Masuk ke Workspace
             </h3>
-            <p className="text-xs text-[#DFCDB5] mt-1.5 font-sans">
+            <p className="text-xs text-slate-500 mt-1.5 font-sans">
               Masukkan NIM atau Username beserta kata sandi Anda untuk mengakses platform.
             </p>
           </div>
 
           {/* Error Notification Alert */}
           {error && (
-            <div className="mb-5 p-3.5 rounded-2xl bg-rose-950/40 border border-rose-500/30 flex items-start space-x-2.5 text-rose-300 text-xs">
-              <AlertCircle className="h-4 w-4 shrink-0 text-rose-400 mt-0.5" />
-              <div className="flex-1 text-[11px] leading-relaxed">
-                <span className="font-semibold block text-rose-200">Gagal Masuk</span>
+            <div className="mb-5 p-3.5 rounded-xl bg-rose-50 border border-rose-200 flex items-start space-x-2.5 text-rose-700 text-xs">
+              <AlertCircle className="h-4 w-4 shrink-0 text-rose-600 mt-0.5" />
+              <div className="flex-1 text-xs leading-relaxed">
+                <span className="font-semibold block text-rose-800">Gagal Masuk</span>
                 {error}
               </div>
             </div>
@@ -251,11 +240,11 @@ export default function LoginPage({ onLoginSuccess }) {
           <form onSubmit={handleLogin} className="space-y-4">
             {/* Input NIM / Username */}
             <div>
-              <label className="block text-xs font-semibold text-[#DFCDB5] mb-1.5">
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                 NIM atau Username
               </label>
               <div className="relative group">
-                <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#A47454] group-focus-within:text-[#C49767] transition-colors pointer-events-none">
+                <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-700 transition-colors pointer-events-none">
                   <User className="h-4 w-4" />
                 </div>
                 <input
@@ -263,7 +252,7 @@ export default function LoginPage({ onLoginSuccess }) {
                   required
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-2xl pl-10 pr-4 py-3 text-xs text-[#FAF5EC] placeholder-[#705241] focus:outline-none focus:border-[#C49767] focus:ring-1 focus:ring-[#C49767] transition font-sans shadow-inner"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-10 pr-4 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-slate-400 transition font-sans"
                   placeholder="Contoh: 23533xxx atau admin"
                   autoComplete="username"
                   autoFocus
@@ -273,11 +262,11 @@ export default function LoginPage({ onLoginSuccess }) {
 
             {/* Input Password */}
             <div>
-              <label className="block text-xs font-semibold text-[#DFCDB5] mb-1.5">
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                 Kata Sandi / Password
               </label>
               <div className="relative group">
-                <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#A47454] group-focus-within:text-[#C49767] transition-colors pointer-events-none">
+                <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-700 transition-colors pointer-events-none">
                   <Lock className="h-4 w-4" />
                 </div>
                 <input
@@ -285,14 +274,14 @@ export default function LoginPage({ onLoginSuccess }) {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-2xl pl-10 pr-11 py-3 text-xs text-[#FAF5EC] placeholder-[#705241] focus:outline-none focus:border-[#C49767] focus:ring-1 focus:ring-[#C49767] transition font-sans shadow-inner"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-10 pr-11 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-slate-400 transition font-sans"
                   placeholder="Password akun Anda"
                   autoComplete="current-password"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#A47454] hover:text-[#FAF5EC] transition p-1.5 rounded-md"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition p-1.5 rounded-md"
                   title={showPassword ? 'Sembunyikan Password' : 'Lihat Password'}
                 >
                   {showPassword ? (
@@ -305,13 +294,13 @@ export default function LoginPage({ onLoginSuccess }) {
             </div>
 
             {/* Submit Button */}
-            <button
+            <Button
               type="submit"
+              variant="primary"
+              size="lg"
               disabled={loading}
-              className="w-full mt-6 relative group overflow-hidden flex items-center justify-center space-x-2 bg-gradient-to-r from-chocolate-700 to-chocolate-600 hover:from-chocolate-600 hover:to-terracotta-600 text-[#FAF5EC] font-semibold py-3.5 rounded-2xl shadow-xl border border-chocolate-500/40 transition-all duration-200 disabled:opacity-50 text-xs active:scale-[0.99]"
+              className="w-full mt-4 justify-center py-3"
             >
-              <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full duration-1000 bg-gradient-to-r from-transparent via-white/10 to-transparent transition-transform" />
-
               {loading ? (
                 <span className="flex items-center space-x-2">
                   <Spinner size="xs" />
@@ -320,15 +309,15 @@ export default function LoginPage({ onLoginSuccess }) {
               ) : (
                 <>
                   <span>Masuk ke Workspace</span>
-                  <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
+                  <ArrowRight className="h-4 w-4" />
                 </>
               )}
-            </button>
+            </Button>
           </form>
 
           {/* Clean Subtle Footer */}
-          <div className="mt-7 text-center">
-            <p className="text-[11px] text-[#A47E65] font-mono">
+          <div className="mt-6 text-center">
+            <p className="text-[11px] text-slate-400 font-mono">
               MiraiGrid Lab TI UMPO © 2026
             </p>
           </div>

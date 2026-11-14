@@ -53,11 +53,14 @@ import {
   Music,
   FolderOpen,
   Clock,
+  Eye,
+  EyeOff,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { api } from '../api/client'
 import { Spinner, SkeletonCard, SkeletonTable } from '../components/Skeletons'
 import ModalPortal from '../components/ModalPortal'
+import Button from '../components/Button'
 import { useUpload } from '../context/UploadContext'
 
 export default function DashboardV2({
@@ -128,6 +131,10 @@ export default function DashboardV2({
   const [viewMode, setViewMode] = useState(() => {
     return localStorage.getItem('mig_cloud_view_mode') || 'grid'
   })
+  const [showHidden, setShowHidden] = useState(() => {
+    return localStorage.getItem('miraigrid_show_hidden') === 'true'
+  })
+  const [showMobileToolbarSheet, setShowMobileToolbarSheet] = useState(false)
   const [typeFilter, setTypeFilter] = useState('all') // all, folders, documents, media, archives
   const [dateFilter, setDateFilter] = useState('all') // all, today, 7days, 30days
   const [ownerFilter, setOwnerFilter] = useState('all') // all, me
@@ -266,6 +273,12 @@ export default function DashboardV2({
       // Ignore if inside an input or textarea
       if (['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName)) return
 
+      // Ctrl + A / Cmd + A: Select all visible items only
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a') {
+        e.preventDefault()
+        setSelectedPaths(filteredItems.map((i) => i.path))
+      }
+
       // Ctrl + C / Cmd + C: Copy selected
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c') {
         if (selectedPaths.length > 0) {
@@ -323,7 +336,7 @@ export default function DashboardV2({
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [selectedPaths, clipboard, currentPath])
+  }, [selectedPaths, clipboard, currentPath, filteredItems])
 
   // Global escape hatches for external drag-and-drop overlay
   useEffect(() => {
@@ -400,9 +413,34 @@ export default function DashboardV2({
     }
   }
 
+  const hiddenCount = useMemo(() => {
+    return items.filter((it) => it.name && it.name !== '.' && it.name !== '..' && it.name.startsWith('.')).length
+  }, [items])
+
+  const handleToggleShowHidden = () => {
+    setShowHidden((prev) => {
+      const next = !prev
+      localStorage.setItem('miraigrid_show_hidden', String(next))
+      if (!next) {
+        setSelectedPaths((curr) =>
+          curr.filter((p) => {
+            const name = p.split('/').pop() || ''
+            return !name.startsWith('.')
+          })
+        )
+      }
+      return next
+    })
+  }
+
   // Filtering & Sorting items by filter chips, search & sort state (Google Drive Real-time)
   const filteredItems = useMemo(() => {
-    let result = [...items]
+    let result = items.filter((it) => it.name && it.name !== '.' && it.name !== '..')
+
+    if (!showHidden) {
+      result = result.filter((it) => !it.name.startsWith('.'))
+    }
+
     const q = (localSearch || searchQuery).trim().toLowerCase()
     if (q) {
       result = result.filter((it) => it.name.toLowerCase().includes(q))
@@ -472,7 +510,7 @@ export default function DashboardV2({
     })
 
     return result
-  }, [items, typeFilter, dateFilter, ownerFilter, localSearch, searchQuery, sortField, sortOrder])
+  }, [items, showHidden, typeFilter, dateFilter, ownerFilter, localSearch, searchQuery, sortField, sortOrder])
 
   // Helpers
   const formatBytes = (bytes) => {
@@ -1085,7 +1123,14 @@ export default function DashboardV2({
       </ModalPortal>
 
       {/* KOLOM KIRI: AREA TABEL BERKAS (SCROLLABLE SECARA MANDIRI) */}
-      <div className="flex-1 h-full overflow-y-auto p-4 sm:p-6 md:p-7 space-y-6 min-w-0 transition-all duration-200 custom-scrollbar">
+      <div
+        onContextMenu={(e) => {
+          if (e.target.closest('tr, [data-file-card], button, input, a')) return
+          e.preventDefault()
+          setContextMenu({ x: e.clientX, y: e.clientY, item: null })
+        }}
+        className="flex-1 h-full overflow-y-auto p-4 sm:p-6 md:p-7 space-y-6 min-w-0 transition-all duration-200 custom-scrollbar"
+      >
       {/* 1. BREADCRUMB PATH & SEARCH BAR */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border border-slate-200/90 rounded-xl px-4 py-2.5">
         {/* Breadcrumb Path Navigation */}
@@ -1319,8 +1364,39 @@ export default function DashboardV2({
           )}
         </div>
 
-        {/* Sisi Kanan: Tata Letak, View Switcher & Tombol Info Panel (Google Drive Style) */}
+        {/* Sisi Kanan: Tata Letak, Dotfiles Toggle, View Switcher & Tombol Info Panel (Google Drive Style) */}
         <div className="flex items-center self-end sm:self-auto gap-2">
+          <span className="hidden lg:inline-flex items-center text-xs text-slate-500 mr-1">
+            {filteredItems.length} item
+            {!showHidden && hiddenCount > 0 ? ` · ${hiddenCount} tersembunyi` : ''}
+          </span>
+
+          <button
+            type="button"
+            onClick={handleToggleShowHidden}
+            className={`hidden sm:inline-flex items-center justify-center p-2 rounded-lg border border-slate-200 transition ${
+              showHidden
+                ? 'bg-slate-100 text-slate-900'
+                : 'bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+            }`}
+            title={
+              showHidden
+                ? 'Sembunyikan file tersembunyi'
+                : 'Tampilkan file tersembunyi (file sistem yang diawali titik, seperti .ssh dan .config)'
+            }
+          >
+            {showHidden ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setShowMobileToolbarSheet(true)}
+            className="sm:hidden inline-flex items-center justify-center p-2 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition"
+            title="Opsi tampilan toolbar"
+          >
+            <MoreVertical className="h-4 w-4" />
+          </button>
+
           <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200">
             <button
               type="button"
@@ -1461,53 +1537,76 @@ export default function DashboardV2({
         )
       ) : filteredItems.length === 0 ? (
         /* Empty State */
-        <div className="bg-white border border-slate-200 rounded-xl p-8 sm:p-12 text-center text-slate-600 flex flex-col items-center justify-center space-y-4 shadow-xs">
-          <div className="h-16 w-16 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-500">
-            <Folder className="h-8 w-8 stroke-[1.5]" />
-          </div>
-          <div className="max-w-md space-y-1">
-            <h4 className="text-base font-bold text-slate-900">
-              {items.length === 0 ? 'Folder ini masih kosong' : 'Tidak ada berkas yang cocok dengan filter'}
-            </h4>
-            <p className="text-xs text-slate-500 leading-relaxed">
-              {items.length === 0
-                ? 'Tarik berkas PHP, HTML, JavaScript, atau ZIP kamu ke area ini atau gunakan tombol aksi di pojok kanan bawah untuk memulai praktikum!'
-                : 'Coba sesuaikan jenis berkas, rentang tanggal diubah, atau kata kunci pencarian kamu.'}
-            </p>
-          </div>
-          {items.length === 0 ? (
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold shadow-xs transition"
-            >
-              Unggah Berkas Sekarang
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => {
-                setTypeFilter('all')
-                setDateFilter('all')
-                setOwnerFilter('all')
-                setLocalSearch('')
-              }}
-              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-xs font-semibold shadow-xs transition"
-            >
-              Reset Semua Filter
-            </button>
-          )}
-        </div>
+        (() => {
+          const nonNavItemsCount = items.filter((it) => it.name && it.name !== '.' && it.name !== '..').length
+          const isHiddenOnly = !showHidden && nonNavItemsCount > 0 && hiddenCount === nonNavItemsCount && !localSearch && typeFilter === 'all' && dateFilter === 'all'
+          return (
+            <div className="bg-white border border-slate-200 rounded-xl p-8 sm:p-12 text-center text-slate-600 flex flex-col items-center justify-center space-y-4">
+              <div className="h-16 w-16 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-500">
+                {isHiddenOnly ? <EyeOff className="h-8 w-8 stroke-[1.5]" /> : <Folder className="h-8 w-8 stroke-[1.5]" />}
+              </div>
+              <div className="max-w-md space-y-1">
+                <h4 className="text-base font-bold text-slate-900">
+                  {isHiddenOnly
+                    ? 'Folder ini hanya berisi file tersembunyi.'
+                    : nonNavItemsCount === 0
+                    ? 'Folder ini masih kosong'
+                    : 'Tidak ada berkas yang cocok dengan filter'}
+                </h4>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  {isHiddenOnly
+                    ? `Terdapat ${hiddenCount} file atau folder sistem yang diawali titik (dotfiles) di folder ini.`
+                    : nonNavItemsCount === 0
+                    ? 'Tarik berkas PHP, HTML, JavaScript, atau ZIP kamu ke area ini atau gunakan tombol aksi di pojok kanan bawah untuk memulai praktikum!'
+                    : 'Coba sesuaikan jenis berkas, rentang tanggal diubah, atau kata kunci pencarian kamu.'}
+                </p>
+              </div>
+              {isHiddenOnly ? (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  icon={Eye}
+                  onClick={handleToggleShowHidden}
+                >
+                  Tampilkan file tersembunyi
+                </Button>
+              ) : nonNavItemsCount === 0 ? (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  Unggah Berkas Sekarang
+                </Button>
+              ) : (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    setTypeFilter('all')
+                    setDateFilter('all')
+                    setOwnerFilter('all')
+                    setLocalSearch('')
+                  }}
+                >
+                  Reset Semua Filter
+                </Button>
+              )}
+            </div>
+          )
+        })()
       ) : viewMode === 'grid' ? (
         /* GRID VIEW */
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5">
           {filteredItems.map((item, index) => {
             const isSelected = selectedPaths.includes(item.path)
             const isDropTarget = dragOverFolder === item.path
+            const isDotfile = item.name?.startsWith('.')
 
             return (
               <div
                 key={item.path}
+                data-file-card="true"
                 draggable
                 onDragStart={() => setDraggingItem(item)}
                 onDragEnd={() => setDraggingItem(null)}
@@ -1549,7 +1648,7 @@ export default function DashboardV2({
                         <Square className="h-4 w-4 opacity-40 group-hover:opacity-100" />
                       )}
                     </button>
-                    <div className="p-1 rounded-lg bg-slate-50 group-hover:bg-slate-100 transition">
+                    <div className={`p-1 rounded-lg bg-slate-50 group-hover:bg-slate-100 transition ${isDotfile ? 'opacity-60' : ''}`}>
                       {getFileIcon(item)}
                     </div>
                   </div>
@@ -1579,7 +1678,7 @@ export default function DashboardV2({
                 {/* File Name & Info */}
                 <div className="space-y-1">
                   <h4
-                    className="text-xs font-semibold text-slate-900 group-hover:text-slate-700 transition truncate"
+                    className={`text-xs font-semibold text-slate-900 group-hover:text-slate-700 transition truncate ${isDotfile ? 'opacity-60' : ''}`}
                     title={item.name}
                   >
                     {item.name}
@@ -1739,7 +1838,7 @@ export default function DashboardV2({
                       </button>
                     </td>
                     <td className="py-3 px-4">
-                      <div className="flex items-center space-x-3">
+                      <div className={`flex items-center space-x-3 ${item.name?.startsWith('.') ? 'opacity-60' : ''}`}>
                         <div className="shrink-0">{getFileIcon(item)}</div>
                         <div className="overflow-hidden">
                           <span className="font-medium text-slate-900 truncate block max-w-xs sm:max-w-md">
@@ -1803,6 +1902,24 @@ export default function DashboardV2({
               })}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Footer Item & Hidden Count */}
+      {!loading && (filteredItems.length > 0 || hiddenCount > 0) && (
+        <div className="flex items-center justify-between text-xs text-slate-500 pt-1 px-1">
+          <span>
+            {filteredItems.length} item{!showHidden && hiddenCount > 0 ? ` · ${hiddenCount} tersembunyi` : ''}
+          </span>
+          {hiddenCount > 0 && (
+            <button
+              type="button"
+              onClick={handleToggleShowHidden}
+              className="text-xs font-medium text-slate-600 hover:text-slate-900 transition"
+            >
+              {showHidden ? 'Sembunyikan file tersembunyi' : 'Tampilkan file tersembunyi'}
+            </button>
+          )}
         </div>
       )}
       </div>
@@ -2045,9 +2162,43 @@ export default function DashboardV2({
             top: Math.min(contextMenu.y, window.innerHeight - 280),
             left: Math.min(contextMenu.x, window.innerWidth - 230),
           }}
-          className="fixed z-50 w-56 bg-white border border-slate-200 rounded-2xl p-1.5 text-xs text-slate-700 animate-in fade-in zoom-in-95 duration-150 select-none"
+          className="fixed z-50 w-60 bg-white border border-slate-200 rounded-xl p-1.5 text-xs text-slate-700 animate-in fade-in zoom-in-95 duration-150 select-none"
           onClick={(e) => e.stopPropagation()}
         >
+          {!contextMenu.item ? (
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  handleToggleShowHidden()
+                  setContextMenu(null)
+                }}
+                className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-slate-100 hover:text-slate-900 transition text-left font-medium"
+              >
+                <span className="flex items-center space-x-2.5">
+                  {showHidden ? (
+                    <Eye className="h-4 w-4 text-slate-600" />
+                  ) : (
+                    <EyeOff className="h-4 w-4 text-slate-500" />
+                  )}
+                  <span>Tampilkan file tersembunyi</span>
+                </span>
+                {showHidden && <Check className="h-4 w-4 text-emerald-600" />}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  fetchDirectory(currentPath)
+                  setContextMenu(null)
+                }}
+                className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-lg hover:bg-slate-100 hover:text-slate-900 transition text-left"
+              >
+                <RefreshCw className="h-4 w-4 text-slate-500" />
+                <span>Refresh Direktori</span>
+              </button>
+            </>
+          ) : (
+            <>
           {!contextMenu.item.is_dir && getFileCategory(contextMenu.item) === 'text' && (
             <button
               onClick={() => {
@@ -2151,8 +2302,59 @@ export default function DashboardV2({
             <Trash2 className="h-4 w-4" />
             <span>Hapus Berkas</span>
           </button>
+            </>
+          )}
         </div>
       )}
+
+      {/* 6B. MOBILE TOOLBAR OPTIONS BOTTOM SHEET */}
+      <ModalPortal isOpen={showMobileToolbarSheet}>
+        <div
+          onClick={() => setShowMobileToolbarSheet(false)}
+          className="fixed inset-0 !mt-0 z-[9999] sm:hidden flex flex-col justify-end bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="relative bg-white rounded-t-2xl p-5 border-t border-slate-200 z-10 space-y-4 animate-in slide-in-from-bottom duration-200"
+          >
+            <div className="w-12 h-1.5 bg-slate-300 rounded-full mx-auto" />
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <span className="text-sm font-bold text-slate-900">Opsi Tampilan Workspace</span>
+              <span className="text-xs text-slate-500">
+                {filteredItems.length} item{!showHidden && hiddenCount > 0 ? ` · ${hiddenCount} tersembunyi` : ''}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={handleToggleShowHidden}
+              className="w-full flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 transition"
+            >
+              <div className="flex items-center space-x-3 text-left">
+                {showHidden ? (
+                  <Eye className="h-4 w-4 text-slate-900 shrink-0" />
+                ) : (
+                  <EyeOff className="h-4 w-4 text-slate-500 shrink-0" />
+                )}
+                <div>
+                  <p className="text-xs font-semibold text-slate-900">Tampilkan file tersembunyi</p>
+                  <p className="text-[11px] text-slate-500">File sistem yang diawali titik (.ssh, .config)</p>
+                </div>
+              </div>
+              <span
+                className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${
+                  showHidden ? 'bg-emerald-600' : 'bg-slate-300'
+                }`}
+              >
+                <span
+                  className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+                    showHidden ? 'translate-x-4' : 'translate-x-1'
+                  }`}
+                />
+              </span>
+            </button>
+          </div>
+        </div>
+      </ModalPortal>
 
       {/* 7. MOBILE ACTION BOTTOM SHEET (Responsive Smartphone Menu) */}
       <ModalPortal isOpen={Boolean(bottomSheetItem)}>

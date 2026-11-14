@@ -5,18 +5,14 @@ import { Search, X, Menu, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import { ThemeProvider } from './context/ThemeContext'
 import { UploadProvider } from './context/UploadContext'
 import FloatingUploadManager from './components/FloatingUploadManager'
-import Navigation from './components/Navigation'
 import NavigationV2 from './components/NavigationV2'
-import ThemeToggle from './components/ThemeToggle'
 import ResourceDetailModal from './components/ResourceDetailModal'
 import ProfileAvatar from './components/ProfileFloating'
 import ChangePasswordModal from './components/ChangePasswordModal'
 import LoginPage from './pages/LoginPage'
-import StudentDashboard from './pages/StudentDashboard'
 import DashboardV2 from './pages/DashboardV2'
 import ProjectsView from './pages/ProjectsView'
 import DatabasesView from './pages/DatabasesView'
-import FilesView from './pages/FilesView'
 import AdminView from './pages/AdminView'
 import DiskUsagePage from './pages/DiskUsagePage'
 import RemoteDatabasePage from './pages/RemoteDatabasePage'
@@ -48,40 +44,24 @@ export default function App() {
     return localStorage.getItem('miraigrid_sidebar_collapsed') === 'true'
   })
   const [securityBreach, setSecurityBreach] = useState(null)
-  const [theme, setTheme] = useState(() => {
-    return localStorage.getItem('miraigrid_theme_mode') || 'v1'
-  })
   const [showResourceModal, setShowResourceModal] = useState(false)
   const [userQuota, setUserQuota] = useState(null)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
 
   useEffect(() => {
-    if (theme === 'v2') {
-      document.documentElement.classList.add('theme-v2', 'theme-mig-cloud')
-      document.body.classList.add('theme-v2', 'theme-mig-cloud')
-      document.documentElement.classList.remove('bg-[#E6D7BE]')
-      document.body.classList.remove('bg-[#E6D7BE]')
-    } else {
-      document.documentElement.classList.remove('theme-v2', 'theme-mig-cloud')
-      document.body.classList.remove('theme-v2', 'theme-mig-cloud')
-      document.documentElement.classList.add('bg-[#E6D7BE]')
-      document.body.classList.add('bg-[#E6D7BE]')
-    }
-  }, [theme])
-
-  const handleToggleTheme = () => {
-    const nextTheme = theme === 'v1' ? 'v2' : 'v1'
-    setTheme(nextTheme)
-    setSearchQuery('')
-    localStorage.setItem('miraigrid_theme_mode', nextTheme)
-  }
+    try {
+      localStorage.removeItem('miraigrid_theme_mode')
+    } catch {}
+    document.documentElement.classList.add('theme-v2', 'theme-mig-cloud')
+    document.body.classList.add('theme-v2', 'theme-mig-cloud')
+  }, [])
 
   const themeContextValue = useMemo(() => ({
-    theme,
-    isV2: theme === 'v2',
-    toggleTheme: handleToggleTheme,
-    setTheme,
-  }), [theme])
+    theme: 'v2',
+    isV2: true,
+    toggleTheme: () => {},
+    setTheme: () => {},
+  }), [])
 
   useEffect(() => {
     const refreshQuota = () => {
@@ -205,17 +185,16 @@ export default function App() {
 
   if (!user) {
     return (
-      <div className="bg-[#E6D7BE] min-h-screen">
+      <div className="bg-[#F8FAFC] min-h-screen">
         <Toaster
           richColors
           position="top-right"
-          theme="dark"
           toastOptions={{
             style: {
-              background: '#2B1810',
-              border: '1px solid #5A3521',
-              color: '#FAF5EC',
-              borderRadius: '18px',
+              background: '#FFFFFF',
+              border: '1px solid #E2E8F0',
+              color: '#0F172A',
+              borderRadius: '12px',
               fontFamily: 'Plus Jakarta Sans, sans-serif',
             },
           }}
@@ -232,16 +211,16 @@ export default function App() {
   const isOnboardingGated = user && user.role !== 'admin' && !user.onboarding_completed
   if (isOnboardingGated) {
     return (
-      <div className="min-h-screen w-screen bg-[#E6D7BE] flex flex-col font-sans select-none m-0 p-0">
+      <div className="min-h-screen w-screen bg-[#F8FAFC] flex flex-col font-sans select-none m-0 p-0">
         <Toaster
           richColors
           position="top-right"
           toastOptions={{
             style: {
-              background: '#2B1810',
-              border: '1px solid #5A3521',
-              color: '#FAF5EC',
-              borderRadius: '18px',
+              background: '#FFFFFF',
+              border: '1px solid #E2E8F0',
+              color: '#0F172A',
+              borderRadius: '12px',
               fontFamily: 'Plus Jakarta Sans, sans-serif',
             },
           }}
@@ -251,51 +230,28 @@ export default function App() {
     )
   }
 
-  // 1. STANDALONE LAYOUT FOR FILE MANAGER (Latar Belakang Krim Cerah Sesuai Dasbor)
+  // 1. STANDALONE /files ROUTE -> REDIRECT TO WORKSPACE V2
   const isStandaloneFilesView = location.pathname.startsWith('/files')
   if (isStandaloneFilesView) {
-    if (theme === 'v2') {
-      const searchParams = new URLSearchParams(location.search)
-      const targetSubpath = (searchParams.get('path') || searchParams.get('dir') || '').replace(/^\/+|\/+$/g, '')
-      return <Navigate to={targetSubpath ? `/dashboard?path=${encodeURIComponent(targetSubpath)}` : '/dashboard'} replace />
-    }
-    return (
-      <UploadProvider>
-        <div className="h-screen w-screen bg-[#E6D7BE] p-2.5 sm:p-4 md:p-6 flex flex-col font-sans overflow-hidden select-none m-0">
-          <Toaster
-            richColors
-            position="top-right"
-            toastOptions={{
-              style: {
-                background: '#2B1810',
-                border: '1px solid #5A3521',
-                color: '#FAF5EC',
-                borderRadius: '18px',
-                fontFamily: 'Plus Jakarta Sans, sans-serif',
-              },
-            }}
-          />
-          <FilesView onNavigate={(path) => navigate(path.startsWith('/') ? path : '/' + path)} isStandalone={true} />
-          <FloatingUploadManager />
-        </div>
-      </UploadProvider>
-    )
+    const searchParams = new URLSearchParams(location.search)
+    const targetSubpath = (searchParams.get('path') || searchParams.get('dir') || '').replace(/^\/+|\/+$/g, '')
+    return <Navigate to={targetSubpath ? `/dashboard?path=${encodeURIComponent(targetSubpath)}` : '/dashboard'} replace />
   }
 
   // 2. STANDALONE LAYOUT FOR WEB IDE (VS CODE SERVER) (Tampilan Terpisah Bebas Distraksi Tanpa Sidebar & Header Utama)
   const isStandaloneIDE = location.pathname.startsWith('/vscode')
   if (isStandaloneIDE) {
     return (
-      <div className="h-screen w-screen bg-[#1E110A] flex flex-col font-sans overflow-hidden select-none m-0 p-0">
+      <div className="h-screen w-screen bg-[#F8FAFC] flex flex-col font-sans overflow-hidden select-none m-0 p-0">
         <Toaster
           richColors
           position="top-right"
           toastOptions={{
             style: {
-              background: '#2B1810',
-              border: '1px solid #5A3521',
-              color: '#FAF5EC',
-              borderRadius: '18px',
+              background: '#FFFFFF',
+              border: '1px solid #E2E8F0',
+              color: '#0F172A',
+              borderRadius: '12px',
               fontFamily: 'Plus Jakarta Sans, sans-serif',
             },
           }}
@@ -309,16 +265,16 @@ export default function App() {
   const isStandaloneThingsBoard = location.pathname.startsWith('/thingsboard')
   if (isStandaloneThingsBoard) {
     return (
-      <div className="min-h-screen w-full bg-[#E6D7BE] flex flex-col font-sans selection:bg-[#5A3521] selection:text-[#FAF5EC] select-none m-0 p-0">
+      <div className="min-h-screen w-full bg-[#F8FAFC] flex flex-col font-sans select-none m-0 p-0">
         <Toaster
           richColors
           position="top-right"
           toastOptions={{
             style: {
-              background: '#2B1810',
-              border: '1px solid #5A3521',
-              color: '#FAF5EC',
-              borderRadius: '18px',
+              background: '#FFFFFF',
+              border: '1px solid #E2E8F0',
+              color: '#0F172A',
+              borderRadius: '12px',
               fontFamily: 'Plus Jakarta Sans, sans-serif',
             },
           }}
@@ -327,177 +283,92 @@ export default function App() {
       </div>
     )
   }
-  // 2. MAIN LAYOUT WITH FLOATING SIDEBAR (Untuk Dashboard, Deploy, Databases, Admin)
-  const isV2 = theme === 'v2'
-
+  // 2. MAIN LAYOUT WITH FLOATING SIDEBAR (V2 Only)
   return (
     <ThemeProvider value={themeContextValue}>
       <UploadProvider>
-      <div
-        className={`min-h-screen ${
-          isV2
-            ? 'mig-shell-canvas bg-[#F8FAFC] text-gray-900 selection:bg-emerald-100 selection:text-emerald-900'
-            : 'bg-[#E6D7BE] text-[#26160F] selection:bg-[#5A3521] selection:text-[#FAF5EC]'
-        } flex flex-col font-sans relative transition-colors duration-300`}
-      >
+      <div className="min-h-screen mig-shell-canvas bg-[#F8FAFC] text-gray-900 selection:bg-emerald-100 selection:text-emerald-900 flex flex-col font-sans relative">
       <Toaster
         richColors
         position="top-right"
-        toastOptions={
-          isV2
-            ? {
-                style: {
-                  background: '#FFFFFF',
-                  border: '1px solid #E5E7EB',
-                  color: '#111827',
-                  borderRadius: '16px',
-                  boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.08)',
-                  fontFamily: 'Plus Jakarta Sans, sans-serif',
-                },
-              }
-            : {
-                style: {
-                  background: '#2B1810',
-                  border: '1px solid #5A3521',
-                  color: '#FAF5EC',
-                  borderRadius: '18px',
-                  fontFamily: 'Plus Jakarta Sans, sans-serif',
-                },
-              }
-        }
+        toastOptions={{
+          style: {
+            background: '#FFFFFF',
+            border: '1px solid #E2E8F0',
+            color: '#0F172A',
+            borderRadius: '12px',
+            fontFamily: 'Plus Jakarta Sans, sans-serif',
+          },
+        }}
       />
 
       {/* Floating Navigation Sidebar & Mobile Bar */}
-      {isV2 ? (
-        <NavigationV2
-          userRole={user.role}
-          isCollapsed={isCollapsed}
-          setIsCollapsed={handleToggleCollapse}
-          quota={userQuota}
-          onOpenResources={() => navigate('/resources')}
-          mobileOpen={mobileNavOpen}
-          setMobileOpen={setMobileNavOpen}
-        />
-      ) : (
-        <Navigation
-          userRole={user.role}
-          isCollapsed={isCollapsed}
-          setIsCollapsed={handleToggleCollapse}
-        />
-      )}
+      <NavigationV2
+        userRole={user.role}
+        isCollapsed={isCollapsed}
+        setIsCollapsed={handleToggleCollapse}
+        quota={userQuota}
+        onOpenResources={() => navigate('/resources')}
+        mobileOpen={mobileNavOpen}
+        setMobileOpen={setMobileNavOpen}
+      />
 
-      {/* Top Header Bar for Theme V2 (Floating Transparent Cloud Header - Zero Border) */}
-      {isV2 && (
-        <header
-          className={`h-14 bg-[#F8FAFC]/95 backdrop-blur-md sticky top-0 z-20 px-4 sm:px-6 flex items-center justify-between transition-all duration-300 ease-in-out ${
-            isCollapsed ? 'md:ml-20' : 'md:ml-64'
-          }`}
-        >
-          <div className="flex items-center space-x-3">
-            {/* Mobile Hamburger on v2 */}
+      {/* Top Header Bar (V2 Clean Cloud Header) */}
+      <header
+        className={`h-14 bg-[#F8FAFC]/95 backdrop-blur-md sticky top-0 z-20 px-4 sm:px-6 flex items-center justify-between transition-all duration-300 ease-in-out ${
+          isCollapsed ? 'md:ml-20' : 'md:ml-64'
+        }`}
+      >
+        <div className="flex items-center space-x-3">
+          {/* Mobile Hamburger */}
+          <button
+            type="button"
+            onClick={() => setMobileNavOpen(true)}
+            className="md:hidden p-2 rounded-lg bg-slate-50 border border-slate-200 text-slate-700 hover:bg-slate-100 transition-colors shrink-0"
+            title="Buka Menu Navigasi"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+
+          {/* Desktop Sidebar Expand Toggle Button in Header (shown ONLY when collapsed) */}
+          {isCollapsed && (
             <button
               type="button"
-              onClick={() => setMobileNavOpen(true)}
-              className="md:hidden p-2 rounded-lg bg-slate-50 border border-slate-200 text-slate-700 hover:bg-slate-100 transition-colors shrink-0"
-              title="Buka Menu Navigasi"
+              onClick={() => handleToggleCollapse(false)}
+              className="hidden md:flex p-2 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition shrink-0"
+              title="Perlebar Sidebar"
             >
-              <Menu className="h-5 w-5" />
+              <PanelLeftOpen className="h-4 w-4" />
             </button>
+          )}
+        </div>
 
-            {/* Desktop Sidebar Expand Toggle Button in Header (shown ONLY when collapsed) */}
-            {isCollapsed && (
-              <button
-                type="button"
-                onClick={() => handleToggleCollapse(false)}
-                className="hidden md:flex p-2 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition shrink-0"
-                title="Perlebar Sidebar"
-              >
-                <PanelLeftOpen className="h-4 w-4" />
-              </button>
-            )}
-          </div>
-
-          {/* Right actions: Theme Toggle + Profile Avatar */}
-          <div className="flex items-center space-x-2.5 sm:space-x-3 shrink-0 ml-auto">
-            <ThemeToggle theme={theme} onToggle={handleToggleTheme} />
-            <ProfileAvatar
-              user={user}
-              onLogout={handleLogout}
-              onChangePassword={() => {
-                setIsMandatoryPasswordChange(false)
-                setShowPasswordModal(true)
-              }}
-            />
-          </div>
-        </header>
-      )}
+        {/* Right actions: Profile Avatar */}
+        <div className="flex items-center space-x-2.5 sm:space-x-3 shrink-0 ml-auto">
+          <ProfileAvatar
+            user={user}
+            onLogout={handleLogout}
+            onChangePassword={() => {
+              setIsMandatoryPasswordChange(false)
+              setShowPasswordModal(true)
+            }}
+          />
+        </div>
+      </header>
 
       {/* Main Content Area */}
       <main
-        className={`flex-1 transition-all duration-300 ease-in-out ${
-          isV2
-            ? `mig-shell-canvas bg-transparent px-3 sm:px-4 md:pl-1 md:pr-4 pb-20 md:pb-4 pt-0 ${
-                isCollapsed ? 'md:ml-20' : 'md:ml-64'
-              }`
-            : `p-4 sm:p-6 md:p-8 pb-24 md:pb-12 ${
-                isCollapsed ? 'md:ml-[110px]' : 'md:ml-[290px]'
-              }`
+        className={`flex-1 transition-all duration-300 ease-in-out mig-shell-canvas bg-transparent px-3 sm:px-4 md:pl-1 md:pr-4 pb-20 md:pb-4 pt-0 ${
+          isCollapsed ? 'md:ml-20' : 'md:ml-64'
         }`}
       >
         <div
           className={
-            isV2
-              ? location.pathname === '/dashboard' || location.pathname === '/'
-                ? 'mig-main-card w-full h-[calc(100vh-4.5rem)] bg-white rounded-2xl border border-slate-200/80 overflow-hidden flex flex-col p-0'
-                : 'mig-main-card w-full h-[calc(100vh-4.5rem)] bg-white rounded-2xl border border-slate-200/80 overflow-y-auto overflow-x-hidden flex flex-col p-4 sm:p-6 md:p-7'
-              : 'w-full'
+            location.pathname === '/dashboard' || location.pathname === '/'
+              ? 'mig-main-card w-full h-[calc(100vh-4.5rem)] bg-white rounded-2xl border border-slate-200/80 overflow-hidden flex flex-col p-0'
+              : 'mig-main-card w-full h-[calc(100vh-4.5rem)] bg-white rounded-2xl border border-slate-200/80 overflow-y-auto overflow-x-hidden flex flex-col p-4 sm:p-6 md:p-7'
           }
         >
-          {/* Header Navbar for V1 ONLY */}
-          {!isV2 && (
-            <header className="flex items-center justify-between gap-4 pb-5 pt-1">
-              <div className="flex items-center space-x-3 w-full max-w-sm sm:max-w-md">
-                <div className="relative w-full">
-                  <Search className="h-4 w-4 absolute left-3.5 top-2.5 text-[#A47E65]" />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => {
-                      setSearchQuery(e.target.value)
-                      if (location.pathname !== '/dashboard' && e.target.value) {
-                        navigate('/dashboard')
-                      }
-                    }}
-                    placeholder="Cari tools, php, python, file, wizard (/)..."
-                    className="w-full bg-[#2B1810] border-[#4D2D1E] focus:border-[#C49767] text-[#FAF5EC] placeholder-[#A47E65] border rounded-2xl pl-10 pr-9 py-2 text-xs outline-none transition shadow-sm font-sans"
-                  />
-                  {searchQuery && (
-                    <button
-                      type="button"
-                      onClick={() => setSearchQuery('')}
-                      className="absolute right-3 top-2 text-[#A47E65] hover:text-[#FAF5EC] p-0.5"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* Right actions: Theme Toggle + Profile Avatar */}
-              <div className="flex items-center space-x-2.5 sm:space-x-3 shrink-0">
-                <ThemeToggle theme={theme} onToggle={handleToggleTheme} />
-                <ProfileAvatar
-                  user={user}
-                  onLogout={handleLogout}
-                  onChangePassword={() => {
-                    setIsMandatoryPasswordChange(false)
-                    setShowPasswordModal(true)
-                  }}
-                />
-              </div>
-            </header>
-          )}
-
           {/* Declarative URL Routes */}
           <Routes>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
@@ -505,22 +376,13 @@ export default function App() {
             <Route
               path="/dashboard"
               element={
-                isV2 ? (
-                  <DashboardV2
-                    user={user}
-                    onNavigate={(path) => navigate(path.startsWith('/') ? path : '/' + path)}
-                    searchQuery={searchQuery}
-                    setSearchQuery={setSearchQuery}
-                    onOpenResources={() => navigate('/resources')}
-                  />
-                ) : (
-                  <StudentDashboard
-                    user={user}
-                    onNavigate={(path) => navigate(path.startsWith('/') ? path : '/' + path)}
-                    searchQuery={searchQuery}
-                    setSearchQuery={setSearchQuery}
-                  />
-                )
+                <DashboardV2
+                  user={user}
+                  onNavigate={(path) => navigate(path.startsWith('/') ? path : '/' + path)}
+                  searchQuery={searchQuery}
+                  setSearchQuery={setSearchQuery}
+                  onOpenResources={() => navigate('/resources')}
+                />
               }
             />
             <Route path="/deploy/*" element={<ProjectsView user={user} />} />

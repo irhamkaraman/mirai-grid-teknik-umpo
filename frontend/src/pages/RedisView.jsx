@@ -410,21 +410,21 @@ export default function RedisView({ user: propUser, onNavigate }) {
             <button
               type="button"
               onClick={handleBack}
-              className="p-2 rounded-2xl bg-[#DECDBD] hover:bg-[#D1BDAB] text-[#26160F] border border-[#BFAB96] transition shadow-sm cursor-pointer"
+              className="p-2 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-900 border border-slate-200 transition shadow-sm cursor-pointer"
               title="Kembali ke Dashboard"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
             <div className="flex items-center space-x-2.5">
-              <div className="w-9 h-9 rounded-2xl bg-[#2B1810] border border-[#4D2D1E] p-1.5 flex items-center justify-center shadow-sm">
+              <div className="w-9 h-9 rounded-2xl bg-white border border-slate-200 p-1.5 flex items-center justify-center shadow-sm">
                 <img src="/logos/redis.svg" alt="Redis" className="w-6 h-6 object-contain" />
               </div>
-              <h2 className="text-2xl font-serif font-bold text-[#26160F]">
+              <h2 className="text-2xl font-sans font-bold text-slate-900">
                 Redis™ Manager
               </h2>
             </div>
           </div>
-          <p className="text-xs text-[#5C3B29] font-sans ml-12">
+          <p className="text-xs text-slate-500 font-sans ml-12">
             In-memory data caching, session storage mandiri, dan message broker terisolasi per akun mahasiswa.
           </p>
         </div>
@@ -435,7 +435,7 @@ export default function RedisView({ user: propUser, onNavigate }) {
             type="button"
             onClick={() => fetchStatus(true)}
             title="Segarkan Metrik"
-            className="p-2.5 rounded-2xl bg-[#DECDBD] hover:bg-[#D1BDAB] text-[#26160F] border border-[#BFAB96] transition shadow-sm cursor-pointer"
+            className="p-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-900 border border-slate-200 transition shadow-sm cursor-pointer"
           >
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
@@ -446,7 +446,7 @@ export default function RedisView({ user: propUser, onNavigate }) {
                 type="button"
                 onClick={handleRestart}
                 disabled={actionLoading}
-                className="px-4 py-2.5 rounded-2xl text-xs font-semibold bg-[#DECDBD] hover:bg-[#D1BDAB] text-[#26160F] border border-[#BFAB96] transition shadow-sm flex items-center space-x-1.5 cursor-pointer"
+                className="px-4 py-2.5 rounded-2xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-900 border border-slate-200 transition shadow-sm flex items-center space-x-1.5 cursor-pointer"
               >
                 <RotateCw className={`h-3.5 w-3.5 ${actionLoading ? 'animate-spin' : ''}`} />
                 <span>Restart</span>
@@ -475,7 +475,7 @@ export default function RedisView({ user: propUser, onNavigate }) {
               type="button"
               onClick={() => handleStart()}
               disabled={actionLoading}
-              className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-2xl text-xs font-semibold bg-[#2B1810] hover:bg-[#3D2317] text-[#FAF5EC] border border-[#4D2D1E] shadow-lg shadow-black/10 transition shrink-0 cursor-pointer"
+              className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-2xl text-xs font-semibold bg-white hover:bg-slate-200 text-slate-900 border border-slate-200 shadow-lg shadow-black/10 transition shrink-0 cursor-pointer"
             >
               <Play className="h-4 w-4 text-emerald-400 fill-current" />
               <span>Aktifkan Redis (Enable)</span>
@@ -494,14 +494,14 @@ export default function RedisView({ user: propUser, onNavigate }) {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           {/* Card 1: Socket & Runtime (Clean, NO AI SLOP, NO dot stopped badge) */}
-          <div className="bg-[#2B1810] border border-[#4D2D1E] rounded-3xl p-5 shadow-xl flex flex-col justify-between text-[#FAF5EC]">
+          <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-xl flex flex-col justify-between text-slate-900">
             <div>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center space-x-2">
-                  <span className="p-2 rounded-xl bg-[#1C0F0A] border border-[#3E2316] text-[#C49767]">
+                  <span className="p-2 rounded-xl bg-slate-50 border border-slate-200 text-emerald-600">
                     <Server className="h-4 w-4" />
                   </span>
-                  <span className="text-xs font-bold uppercase tracking-wider text-[#DFCDB5]">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-600">
                     Socket & Runtime
                   </span>
                 </div>
@@ -510,24 +510,24 @@ export default function RedisView({ user: propUser, onNavigate }) {
               <div className="space-y-3 font-mono text-xs">
                 {/* User */}
                 <div>
-                  <div className="text-[10px] uppercase font-bold text-[#A47E65]">Akun Pengguna:</div>
-                  <div className="text-sm font-semibold text-[#FAF5EC] mt-0.5">{currentUser?.username || 'user'}</div>
+                  <div className="text-[10px] uppercase font-bold text-slate-500">Akun Pengguna:</div>
+                  <div className="text-sm font-semibold text-slate-900 mt-0.5">{currentUser?.username || 'user'}</div>
                 </div>
 
                 {/* Unix Socket */}
                 <div>
-                  <div className="text-[10px] uppercase font-bold text-[#A47E65] flex items-center justify-between">
+                  <div className="text-[10px] uppercase font-bold text-slate-500 flex items-center justify-between">
                     <span>Unix Domain Socket (Terisolasi):</span>
                     <button
                       type="button"
                       onClick={() => copyWithFeedback(status?.socket_path, 'sock', 'Socket Path')}
-                      className="text-[#C49767] hover:text-[#FAF5EC] text-[10px] flex items-center gap-1 font-sans cursor-pointer"
+                      className="text-emerald-600 hover:text-slate-900 text-[10px] flex items-center gap-1 font-sans cursor-pointer"
                     >
                       {copiedKey === 'sock' ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
                       <span>Salin</span>
                     </button>
                   </div>
-                  <div className="p-2 rounded-xl bg-[#1C0F0A] border border-[#3E2316] text-[#E8DCB8] text-[11px] break-all select-all mt-1">
+                  <div className="p-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 text-[11px] break-all select-all mt-1">
                     {status?.socket_path || `/home/${currentUser?.username}/.redis/redis.sock`}
                   </div>
                 </div>
@@ -535,14 +535,14 @@ export default function RedisView({ user: propUser, onNavigate }) {
                 {/* TCP Port & Host */}
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <div className="text-[10px] uppercase font-bold text-[#A47E65]">Host IP:</div>
-                    <div className="p-2 rounded-xl bg-[#1C0F0A] border border-[#3E2316] text-[#E8DCB8] text-[11px] mt-0.5">
+                    <div className="text-[10px] uppercase font-bold text-slate-500">Host IP:</div>
+                    <div className="p-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 text-[11px] mt-0.5">
                       127.0.0.1
                     </div>
                   </div>
                   <div>
-                    <div className="text-[10px] uppercase font-bold text-[#A47E65]">Loopback Port:</div>
-                    <div className="p-2 rounded-xl bg-[#1C0F0A] border border-[#3E2316] text-[#E8DCB8] text-[11px] mt-0.5">
+                    <div className="text-[10px] uppercase font-bold text-slate-500">Loopback Port:</div>
+                    <div className="p-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 text-[11px] mt-0.5">
                       {status?.port || 13000}
                     </div>
                   </div>
@@ -550,13 +550,13 @@ export default function RedisView({ user: propUser, onNavigate }) {
 
                 {/* Password Token */}
                 <div>
-                  <div className="text-[10px] uppercase font-bold text-[#A47E65] flex items-center justify-between">
+                  <div className="text-[10px] uppercase font-bold text-slate-500 flex items-center justify-between">
                     <span>Password (requirepass):</span>
                     <div className="flex items-center space-x-1.5">
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="text-[#A47E65] hover:text-[#FAF5EC] p-0.5 cursor-pointer"
+                        className="text-slate-500 hover:text-slate-900 p-0.5 cursor-pointer"
                         title={showPassword ? 'Sembunyikan' : 'Lihat'}
                       >
                         {showPassword ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
@@ -564,47 +564,47 @@ export default function RedisView({ user: propUser, onNavigate }) {
                       <button
                         type="button"
                         onClick={() => copyWithFeedback(status?.password, 'pass', 'Password Redis')}
-                        className="text-[#C49767] hover:text-[#FAF5EC] text-[10px] flex items-center gap-1 font-sans cursor-pointer"
+                        className="text-emerald-600 hover:text-slate-900 text-[10px] flex items-center gap-1 font-sans cursor-pointer"
                       >
                         {copiedKey === 'pass' ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
                         <span>Salin</span>
                       </button>
                     </div>
                   </div>
-                  <div className="p-2 rounded-xl bg-[#1C0F0A] border border-[#3E2316] text-[#E8DCB8] text-[11px] font-mono mt-1 flex items-center justify-between">
+                  <div className="p-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 text-[11px] font-mono mt-1 flex items-center justify-between">
                     <span>{showPassword ? status?.password : '••••••••••••••••••••'}</span>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="mt-4 pt-3 border-t border-[#3E2316] flex items-center justify-between text-[11px] text-[#DFCDB5]">
+            <div className="mt-4 pt-3 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-600">
               <span className="flex items-center gap-1.5">
-                <Clock className="h-3.5 w-3.5 text-[#C49767]" />
+                <Clock className="h-3.5 w-3.5 text-emerald-600" />
                 <span>Status:</span>
               </span>
-              <span className="font-mono font-semibold text-[#FAF5EC]">
+              <span className="font-mono font-semibold text-slate-900">
                 {status?.is_running ? `Aktif (${status?.uptime_human})` : 'Offline (Siap Diaktifkan)'}
               </span>
             </div>
           </div>
 
           {/* Card 2: Alokasi Memori Akun */}
-          <div className="bg-[#2B1810] border border-[#4D2D1E] rounded-3xl p-5 shadow-xl flex flex-col justify-between text-[#FAF5EC]">
+          <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-xl flex flex-col justify-between text-slate-900">
             <div>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center space-x-2">
-                  <span className="p-2 rounded-xl bg-[#1C0F0A] border border-[#3E2316] text-[#C49767]">
+                  <span className="p-2 rounded-xl bg-slate-50 border border-slate-200 text-emerald-600">
                     <HardDrive className="h-4 w-4" />
                   </span>
-                  <span className="text-xs font-bold uppercase tracking-wider text-[#DFCDB5]">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-600">
                     Alokasi Memori Akun
                   </span>
                 </div>
                 <button
                   type="button"
                   onClick={() => setShowConfigModal(true)}
-                  className="px-2.5 py-1 rounded-xl bg-[#1C0F0A] hover:bg-[#3E2216] border border-[#3E2316] text-[11px] font-semibold text-[#C49767] hover:text-[#FAF5EC] transition flex items-center gap-1 cursor-pointer"
+                  className="px-2.5 py-1 rounded-xl bg-slate-50 hover:bg-slate-200 border border-slate-200 text-[11px] font-semibold text-emerald-600 hover:text-slate-900 transition flex items-center gap-1 cursor-pointer"
                 >
                   <Sliders className="h-3 w-3" />
                   <span>Ubah</span>
@@ -615,8 +615,8 @@ export default function RedisView({ user: propUser, onNavigate }) {
               <div className="space-y-3">
                 <div className="flex items-baseline justify-between font-mono">
                   <div>
-                    <span className="text-2xl font-black text-[#FAF5EC]">{status?.used_memory_human || '0B'}</span>
-                    <span className="text-xs text-[#DFCDB5]/70 ml-1.5">/ {status?.max_memory_mb || 32} MB</span>
+                    <span className="text-2xl font-black text-slate-900">{status?.used_memory_human || '0B'}</span>
+                    <span className="text-xs text-slate-500 ml-1.5">/ {status?.max_memory_mb || 32} MB</span>
                   </div>
                   <span
                     className={`text-xs font-bold ${
@@ -627,7 +627,7 @@ export default function RedisView({ user: propUser, onNavigate }) {
                   </span>
                 </div>
 
-                <div className="w-full bg-[#1C0F0A] h-3 rounded-full overflow-hidden p-0.5 border border-[#3E2316]">
+                <div className="w-full bg-slate-50 h-3 rounded-full overflow-hidden p-0.5 border border-slate-200">
                   <div
                     className={`h-full rounded-full transition-all duration-500 ${
                       isMemoryFull
@@ -641,17 +641,17 @@ export default function RedisView({ user: propUser, onNavigate }) {
                 </div>
 
                 <div className="space-y-2 text-xs pt-1 font-sans">
-                  <div className="flex items-center justify-between text-[#DFCDB5]/80">
+                  <div className="flex items-center justify-between text-slate-500">
                     <span>Memori Puncak (Peak):</span>
-                    <span className="font-mono font-semibold text-[#FAF5EC]">{status?.used_memory_peak_human || '0B'}</span>
+                    <span className="font-mono font-semibold text-slate-900">{status?.used_memory_peak_human || '0B'}</span>
                   </div>
-                  <div className="flex items-center justify-between text-[#DFCDB5]/80">
+                  <div className="flex items-center justify-between text-slate-500">
                     <span>Batas Kuota Workspace:</span>
-                    <span className="font-mono font-semibold text-[#C49767]">{status?.quota_max_memory_mb || 256} MB</span>
+                    <span className="font-mono font-semibold text-emerald-600">{status?.quota_max_memory_mb || 256} MB</span>
                   </div>
-                  <div className="flex items-center justify-between text-[#DFCDB5]/80">
+                  <div className="flex items-center justify-between text-slate-500">
                     <span>Kebijakan Eviction (Penuh):</span>
-                    <span className="font-mono text-[11px] px-2 py-0.5 rounded-lg bg-[#1C0F0A] border border-[#3E2316] text-amber-300">
+                    <span className="font-mono text-[11px] px-2 py-0.5 rounded-lg bg-slate-50 border border-slate-200 text-amber-300">
                       {status?.eviction_policy || 'allkeys-lru'}
                     </span>
                   </div>
@@ -671,12 +671,12 @@ export default function RedisView({ user: propUser, onNavigate }) {
               </div>
             </div>
 
-            <div className="mt-4 pt-3 border-t border-[#3E2316]">
+            <div className="mt-4 pt-3 border-t border-slate-200">
               <button
                 type="button"
                 onClick={handleFillMemoryTest}
                 disabled={fillTestLoading}
-                className="w-full py-2 px-3 rounded-xl bg-[#1C0F0A] hover:bg-[#3A2216] border border-[#3E2316] text-xs font-semibold text-[#C49767] hover:text-[#FAF5EC] transition flex items-center justify-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
+                className="w-full py-2 px-3 rounded-xl bg-slate-50 hover:bg-slate-200 border border-slate-200 text-xs font-semibold text-emerald-600 hover:text-slate-900 transition flex items-center justify-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
                 title="Simulasi penulisan data kapasitas penuh untuk menguji mekanisme eviction & proteksi OOM"
               >
                 <Flame className={`h-3.5 w-3.5 text-amber-400 ${fillTestLoading ? 'animate-bounce' : ''}`} />
@@ -686,21 +686,21 @@ export default function RedisView({ user: propUser, onNavigate }) {
           </div>
 
           {/* Card 3: Performa & Key Store */}
-          <div className="bg-[#2B1810] border border-[#4D2D1E] rounded-3xl p-5 shadow-xl flex flex-col justify-between text-[#FAF5EC]">
+          <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-xl flex flex-col justify-between text-slate-900">
             <div>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center space-x-2">
-                  <span className="p-2 rounded-xl bg-[#1C0F0A] border border-[#3E2316] text-[#C49767]">
+                  <span className="p-2 rounded-xl bg-slate-50 border border-slate-200 text-emerald-600">
                     <Activity className="h-4 w-4" />
                   </span>
-                  <span className="text-xs font-bold uppercase tracking-wider text-[#DFCDB5]">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-600">
                     Performa & Key Store
                   </span>
                 </div>
                 <button
                   type="button"
                   onClick={handlePing}
-                  className="px-2.5 py-1 rounded-xl bg-[#1C0F0A] hover:bg-[#3E2216] border border-[#3E2316] text-[11px] font-semibold text-emerald-400 hover:text-white transition flex items-center gap-1 cursor-pointer"
+                  className="px-2.5 py-1 rounded-xl bg-slate-50 hover:bg-slate-200 border border-slate-200 text-[11px] font-semibold text-emerald-400 hover:text-white transition flex items-center gap-1 cursor-pointer"
                   title="Ping socket redis"
                 >
                   <Zap className="h-3 w-3 fill-current" />
@@ -709,31 +709,31 @@ export default function RedisView({ user: propUser, onNavigate }) {
               </div>
 
               <div className="grid grid-cols-2 gap-3 mb-4">
-                <div className="p-3 rounded-2xl bg-[#1C0F0A] border border-[#3E2316] text-center">
-                  <div className="text-[10px] uppercase font-bold text-[#A47E65]">Total Keys Aktif</div>
-                  <div className="text-xl font-extrabold text-[#FAF5EC] font-mono mt-0.5">
+                <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 text-center">
+                  <div className="text-[10px] uppercase font-bold text-slate-500">Total Keys Aktif</div>
+                  <div className="text-xl font-extrabold text-slate-900 font-mono mt-0.5">
                     {status?.total_keys || 0}
                   </div>
                 </div>
 
-                <div className="p-3 rounded-2xl bg-[#1C0F0A] border border-[#3E2316] text-center">
-                  <div className="text-[10px] uppercase font-bold text-[#A47E65]">Koneksi Klien</div>
-                  <div className="text-xl font-extrabold text-[#FAF5EC] font-mono mt-0.5">
+                <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 text-center">
+                  <div className="text-[10px] uppercase font-bold text-slate-500">Koneksi Klien</div>
+                  <div className="text-xl font-extrabold text-slate-900 font-mono mt-0.5">
                     {status?.connected_clients || 0}
                   </div>
                 </div>
               </div>
 
               <div className="space-y-2 text-xs font-sans">
-                <div className="flex items-center justify-between text-[#DFCDB5]/80">
+                <div className="flex items-center justify-between text-slate-500">
                   <span>Cache Hit Rate:</span>
                   <span className="font-mono font-bold text-emerald-400">
                     {status?.hit_rate_percent || 0}% ({status?.keyspace_hits || 0} hits)
                   </span>
                 </div>
-                <div className="flex items-center justify-between text-[#DFCDB5]/80">
+                <div className="flex items-center justify-between text-slate-500">
                   <span>Keyspace Misses:</span>
-                  <span className="font-mono font-bold text-[#DFCDB5]">{status?.keyspace_misses || 0}</span>
+                  <span className="font-mono font-bold text-slate-600">{status?.keyspace_misses || 0}</span>
                 </div>
                 {pingResult && (
                   <div className="p-2 rounded-xl bg-emerald-950/60 border border-emerald-800/50 text-[11px] text-emerald-300 flex items-center justify-between font-mono mt-2">
@@ -744,7 +744,7 @@ export default function RedisView({ user: propUser, onNavigate }) {
               </div>
             </div>
 
-            <div className="mt-4 pt-3 border-t border-[#3E2316] flex items-center space-x-2">
+            <div className="mt-4 pt-3 border-t border-slate-200 flex items-center space-x-2">
               <button
                 type="button"
                 onClick={() => {
@@ -762,7 +762,7 @@ export default function RedisView({ user: propUser, onNavigate }) {
                   })
                 }}
                 disabled={actionLoading}
-                className="flex-1 py-2 px-3 rounded-xl bg-[#3D2516] hover:bg-[#52331F] border border-[#633C24] text-xs font-semibold text-[#E8C58D] hover:text-white transition flex items-center justify-center gap-1.5 cursor-pointer"
+                className="flex-1 py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-xs font-semibold text-emerald-600 hover:text-white transition flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <Trash2 className="h-3.5 w-3.5" />
                 <span>Flush Cache</span>
@@ -774,9 +774,9 @@ export default function RedisView({ user: propUser, onNavigate }) {
                   setActiveTab('explorer')
                   fetchKeys()
                 }}
-                className="flex-1 py-2 px-3 rounded-xl bg-[#2E1810] hover:bg-[#3E2216] border border-[#5A3521] text-xs font-semibold text-[#E8DCB8] hover:text-white transition flex items-center justify-center gap-1.5 cursor-pointer"
+                className="flex-1 py-2 px-3 rounded-xl bg-white hover:bg-slate-200 border border-slate-200 text-xs font-semibold text-slate-700 hover:text-white transition flex items-center justify-center gap-1.5 cursor-pointer"
               >
-                <Key className="h-3.5 w-3.5 text-[#C49767]" />
+                <Key className="h-3.5 w-3.5 text-emerald-600" />
                 <span>Kelola Key</span>
               </button>
             </div>
@@ -785,19 +785,19 @@ export default function RedisView({ user: propUser, onNavigate }) {
       )}
 
       {/* Tabs Section: Panduan Integrasi vs Key Explorer vs Admin Cluster */}
-      <div className="bg-[#2B1810] border border-[#4D2D1E] rounded-3xl overflow-hidden shadow-2xl text-[#FAF5EC]">
+      <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-2xl text-slate-900">
         {/* Tab Headers */}
-        <div className="flex items-center border-b border-[#3E2316] bg-[#1C0F0A] px-4 pt-2 overflow-x-auto gap-2">
+        <div className="flex items-center border-b border-slate-200 bg-slate-50 px-4 pt-2 overflow-x-auto gap-2">
           <button
             type="button"
             onClick={() => setActiveTab('guide')}
             className={`px-4 py-2.5 text-xs font-bold transition flex items-center gap-2 border-b-2 shrink-0 cursor-pointer ${
               activeTab === 'guide'
-                ? 'border-[#C49767] text-[#FAF5EC]'
-                : 'border-transparent text-[#DFCDB5]/70 hover:text-[#FAF5EC]'
+                ? 'border-emerald-500 text-slate-900'
+                : 'border-transparent text-slate-500 hover:text-slate-900'
             }`}
           >
-            <FileCode className="h-4 w-4 text-[#C49767]" />
+            <FileCode className="h-4 w-4 text-emerald-600" />
             <span>Cara Hubungkan (Panduan Integrasi Framework)</span>
           </button>
 
@@ -809,11 +809,11 @@ export default function RedisView({ user: propUser, onNavigate }) {
             }}
             className={`px-4 py-2.5 text-xs font-bold transition flex items-center gap-2 border-b-2 shrink-0 cursor-pointer ${
               activeTab === 'explorer'
-                ? 'border-[#C49767] text-[#FAF5EC]'
-                : 'border-transparent text-[#DFCDB5]/70 hover:text-[#FAF5EC]'
+                ? 'border-emerald-500 text-slate-900'
+                : 'border-transparent text-slate-500 hover:text-slate-900'
             }`}
           >
-            <Key className="h-4 w-4 text-[#C49767]" />
+            <Key className="h-4 w-4 text-emerald-600" />
             <span>Key Explorer & Caching Test</span>
           </button>
 
@@ -826,8 +826,8 @@ export default function RedisView({ user: propUser, onNavigate }) {
               }}
               className={`px-4 py-2.5 text-xs font-bold transition flex items-center gap-2 border-b-2 shrink-0 cursor-pointer ${
                 activeTab === 'admin'
-                  ? 'border-[#C49767] text-[#FAF5EC]'
-                  : 'border-transparent text-[#DFCDB5]/70 hover:text-[#FAF5EC]'
+                  ? 'border-emerald-500 text-slate-900'
+                  : 'border-transparent text-slate-500 hover:text-slate-900'
               }`}
             >
               <Radio className="h-4 w-4 text-emerald-400" />
@@ -839,7 +839,7 @@ export default function RedisView({ user: propUser, onNavigate }) {
         {/* Tab Content 1: Panduan Integrasi */}
         {activeTab === 'guide' && (
           <div className="p-6 space-y-6">
-            <div className="flex flex-wrap gap-2 pb-2 border-b border-[#3E2316]">
+            <div className="flex flex-wrap gap-2 pb-2 border-b border-slate-200">
               {[
                 { id: 'laravel', label: 'PHP / Laravel (.env)' },
                 { id: 'python', label: 'Python (Flask / Django / redis-py)' },
@@ -853,8 +853,8 @@ export default function RedisView({ user: propUser, onNavigate }) {
                   onClick={() => setGuideLang(t.id)}
                   className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
                     guideLang === t.id
-                      ? 'bg-[#C49767] text-[#1C0F0A]'
-                      : 'bg-[#1C0F0A] text-[#DFCDB5] hover:bg-[#3E2216]'
+                      ? 'bg-emerald-600 text-slate-900'
+                      : 'bg-slate-50 text-slate-600 hover:bg-slate-200'
                   }`}
                 >
                   {t.label}
@@ -865,7 +865,7 @@ export default function RedisView({ user: propUser, onNavigate }) {
             {/* Code Display */}
             <div>
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs text-[#DFCDB5]/80 font-mono">
+                <span className="text-xs text-slate-500 font-mono">
                   {guideLang === 'laravel' && 'Konfigurasi file .env project Laravel Anda:'}
                   {guideLang === 'python' && 'Script Python terisolasi menggunakan redis-py:'}
                   {guideLang === 'node' && 'Inisialisasi koneksi Node.js menggunakan paket ioredis:'}
@@ -894,14 +894,14 @@ export default function RedisView({ user: propUser, onNavigate }) {
                     }
                     copyWithFeedback(snippet, `snippet-${guideLang}`, 'Snippet Kode')
                   }}
-                  className="px-2.5 py-1 rounded-xl bg-[#1C0F0A] hover:bg-[#3E2216] border border-[#3E2316] text-xs font-semibold text-[#C49767] hover:text-[#FAF5EC] transition flex items-center gap-1.5 cursor-pointer"
+                  className="px-2.5 py-1 rounded-xl bg-slate-50 hover:bg-slate-200 border border-slate-200 text-xs font-semibold text-emerald-600 hover:text-slate-900 transition flex items-center gap-1.5 cursor-pointer"
                 >
                   {copiedKey === `snippet-${guideLang}` ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
                   <span>Salin Snippet</span>
                 </button>
               </div>
 
-              <div className="p-4 rounded-2xl bg-[#1C0F0A] border border-[#3E2316] font-mono text-xs text-[#E8DCB8] overflow-x-auto leading-relaxed select-all">
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 font-mono text-xs text-slate-700 overflow-x-auto leading-relaxed select-all">
                 {guideLang === 'laravel' && (
                   <pre>{`# ==========================================
 # Konfigurasi Redis Cache & Session Laravel
@@ -984,14 +984,14 @@ redis-cli -s ${status?.socket_path || `/home/${currentUser?.username}/.redis/red
           <div className="p-6 space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-sm font-bold text-[#FAF5EC]">Daftar Key di Instance Redis Anda</h3>
-                <p className="text-xs text-[#DFCDB5]/70">Daftar objek key-value aktif yang tersimpan dalam database Redis Anda saat ini.</p>
+                <h3 className="text-sm font-bold text-slate-900">Daftar Key di Instance Redis Anda</h3>
+                <p className="text-xs text-slate-500">Daftar objek key-value aktif yang tersimpan dalam database Redis Anda saat ini.</p>
               </div>
               <div className="flex items-center space-x-2">
                 <button
                   type="button"
                   onClick={fetchKeys}
-                  className="p-2 rounded-xl bg-[#1C0F0A] hover:bg-[#3E2216] border border-[#3E2316] text-[#DFCDB5] hover:text-[#FAF5EC] transition cursor-pointer"
+                  className="p-2 rounded-xl bg-slate-50 hover:bg-slate-200 border border-slate-200 text-slate-600 hover:text-slate-900 transition cursor-pointer"
                   title="Segarkan Key"
                 >
                   <RefreshCw className="h-3.5 w-3.5" />
@@ -999,7 +999,7 @@ redis-cli -s ${status?.socket_path || `/home/${currentUser?.username}/.redis/red
                 <button
                   type="button"
                   onClick={() => setShowKeyModal(true)}
-                  className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-[#C49767] hover:bg-[#D4A777] text-xs font-bold text-[#1C0F0A] transition shadow-sm cursor-pointer active:scale-95"
+                  className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-xs font-bold text-white transition shadow-sm cursor-pointer active:scale-95"
                 >
                   <Plus className="h-3.5 w-3.5" />
                   <span>Tambah Key Baru</span>
@@ -1008,14 +1008,14 @@ redis-cli -s ${status?.socket_path || `/home/${currentUser?.username}/.redis/red
             </div>
 
             {keyList.length === 0 ? (
-              <div className="py-12 text-center text-xs text-[#DFCDB5]/70 bg-[#1C0F0A] rounded-2xl border border-[#3E2316]">
-                <Key className="h-8 w-8 mx-auto mb-2 text-[#A47E65]" />
+              <div className="py-12 text-center text-xs text-slate-500 bg-slate-50 rounded-2xl border border-slate-200">
+                <Key className="h-8 w-8 mx-auto mb-2 text-slate-500" />
                 <p>Belum ada key yang tersimpan di instance Redis ini.</p>
                 <div className="mt-3 flex items-center justify-center gap-2">
                   <button
                     type="button"
                     onClick={() => setShowKeyModal(true)}
-                    className="px-4 py-2 rounded-xl bg-[#C49767] hover:bg-[#D4A777] text-xs font-bold text-[#1C0F0A] transition cursor-pointer"
+                    className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-xs font-bold text-white transition cursor-pointer"
                   >
                     + Buat Key Pertama
                   </button>
@@ -1023,7 +1023,7 @@ redis-cli -s ${status?.socket_path || `/home/${currentUser?.username}/.redis/red
                     <button
                       type="button"
                       onClick={() => handleStart()}
-                      className="px-4 py-2 rounded-xl bg-[#2B1810] hover:bg-[#3E2216] border border-[#5A3521] text-xs font-semibold text-[#E8DCB8] inline-flex items-center gap-1.5 cursor-pointer"
+                      className="px-4 py-2 rounded-xl bg-white hover:bg-slate-200 border border-slate-200 text-xs font-semibold text-slate-700 inline-flex items-center gap-1.5 cursor-pointer"
                     >
                       <Play className="h-3.5 w-3.5 text-emerald-400 fill-current" />
                       <span>Aktifkan Redis</span>
@@ -1032,9 +1032,9 @@ redis-cli -s ${status?.socket_path || `/home/${currentUser?.username}/.redis/red
                 </div>
               </div>
             ) : (
-              <div className="overflow-x-auto rounded-2xl border border-[#3E2316]">
+              <div className="overflow-x-auto rounded-2xl border border-slate-200">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-[#1C0F0A] text-[#DFCDB5] uppercase text-[10px] tracking-wider border-b border-[#3E2316]">
+                  <thead className="bg-slate-50 text-slate-600 uppercase text-[10px] tracking-wider border-b border-slate-200">
                     <tr>
                       <th className="p-3 font-semibold">Nama Key</th>
                       <th className="p-3 font-semibold">Tipe Data</th>
@@ -1042,12 +1042,12 @@ redis-cli -s ${status?.socket_path || `/home/${currentUser?.username}/.redis/red
                       <th className="p-3 text-right font-semibold">Aksi</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#3E2316] bg-[#2B1810]">
+                  <tbody className="divide-y divide-slate-200 bg-white">
                     {keyList.map((item, idx) => (
-                      <tr key={idx} className="hover:bg-[#361E13] transition font-mono">
-                        <td className="p-3 font-bold text-[#FAF5EC]">{item.key}</td>
-                        <td className="p-3 text-[#E8C58D] text-[11px] uppercase">{item.type}</td>
-                        <td className="p-3 text-[#DFCDB5] text-[11px]">
+                      <tr key={idx} className="hover:bg-slate-100 transition font-mono">
+                        <td className="p-3 font-bold text-slate-900">{item.key}</td>
+                        <td className="p-3 text-emerald-600 text-[11px] uppercase">{item.type}</td>
+                        <td className="p-3 text-slate-600 text-[11px]">
                           {item.ttl === -1 ? 'Persisten (No Expire)' : `${item.ttl} detik`}
                         </td>
                         <td className="p-3 text-right font-sans">
@@ -1074,21 +1074,21 @@ redis-cli -s ${status?.socket_path || `/home/${currentUser?.username}/.redis/red
           <div className="p-6 space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-sm font-bold text-[#FAF5EC]">Daftar Instance Redis Seluruh Mahasiswa</h3>
-                <p className="text-xs text-[#DFCDB5]/70">Pantau socket terisolasi, port loopback, dan status aktif Redis setiap akun di cluster.</p>
+                <h3 className="text-sm font-bold text-slate-900">Daftar Instance Redis Seluruh Mahasiswa</h3>
+                <p className="text-xs text-slate-500">Pantau socket terisolasi, port loopback, dan status aktif Redis setiap akun di cluster.</p>
               </div>
               <button
                 type="button"
                 onClick={fetchAdminInstances}
-                className="p-2 rounded-xl bg-[#1C0F0A] hover:bg-[#3E2216] border border-[#3E2316] text-[#DFCDB5] hover:text-[#FAF5EC] transition cursor-pointer"
+                className="p-2 rounded-xl bg-slate-50 hover:bg-slate-200 border border-slate-200 text-slate-600 hover:text-slate-900 transition cursor-pointer"
               >
                 <RefreshCw className="h-3.5 w-3.5" />
               </button>
             </div>
 
-            <div className="overflow-x-auto rounded-2xl border border-[#3E2316]">
+            <div className="overflow-x-auto rounded-2xl border border-slate-200">
               <table className="w-full text-left text-xs font-sans">
-                <thead className="bg-[#1C0F0A] text-[#DFCDB5] uppercase text-[10px] tracking-wider border-b border-[#3E2316]">
+                <thead className="bg-slate-50 text-slate-600 uppercase text-[10px] tracking-wider border-b border-slate-200">
                   <tr>
                     <th className="p-3 font-semibold">User / NIM</th>
                     <th className="p-3 font-semibold">Nama Mahasiswa</th>
@@ -1099,11 +1099,11 @@ redis-cli -s ${status?.socket_path || `/home/${currentUser?.username}/.redis/red
                     <th className="p-3 font-semibold">Eviction</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#3E2316] bg-[#2B1810]">
+                <tbody className="divide-y divide-slate-200 bg-white">
                   {allInstances.map((inst) => (
-                    <tr key={inst.id} className="hover:bg-[#361E13] transition font-mono">
-                      <td className="p-3 font-bold text-[#FAF5EC]">{inst.username}</td>
-                      <td className="p-3 font-sans text-[#DFCDB5]">{inst.user_name}</td>
+                    <tr key={inst.id} className="hover:bg-slate-100 transition font-mono">
+                      <td className="p-3 font-bold text-slate-900">{inst.username}</td>
+                      <td className="p-3 font-sans text-slate-600">{inst.user_name}</td>
                       <td className="p-3 font-sans">
                         {inst.is_running ? (
                           <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-950/60 text-emerald-400 border border-emerald-800/50 text-[10px]">
@@ -1117,10 +1117,10 @@ redis-cli -s ${status?.socket_path || `/home/${currentUser?.username}/.redis/red
                           </span>
                         )}
                       </td>
-                      <td className="p-3 text-[#E8DCB8] text-[11px]">{inst.socket_path}</td>
-                      <td className="p-3 text-[#E8C58D]">{inst.port}</td>
-                      <td className="p-3 text-[#FAF5EC]">{inst.max_memory_mb} MB</td>
-                      <td className="p-3 text-[#DFCDB5] text-[11px]">{inst.eviction_policy}</td>
+                      <td className="p-3 text-slate-700 text-[11px]">{inst.socket_path}</td>
+                      <td className="p-3 text-emerald-600">{inst.port}</td>
+                      <td className="p-3 text-slate-900">{inst.max_memory_mb} MB</td>
+                      <td className="p-3 text-slate-600 text-[11px]">{inst.eviction_policy}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -1138,30 +1138,30 @@ redis-cli -s ${status?.socket_path || `/home/${currentUser?.username}/.redis/red
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-[#2B1810] border border-[#5A3521] rounded-3xl p-6 w-full max-w-md shadow-2xl text-[#FAF5EC] relative animate-in zoom-in-95 duration-150"
+            className="bg-white border border-slate-200 rounded-3xl p-6 w-full max-w-md shadow-2xl text-slate-900 relative animate-in zoom-in-95 duration-150"
           >
             <button
               type="button"
               onClick={() => setShowConfigModal(false)}
-              className="absolute right-5 top-5 p-1 rounded-xl text-[#A47E65] hover:text-[#FAF5EC] hover:bg-[#3E2216] transition cursor-pointer"
+              className="absolute right-5 top-5 p-1 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-200 transition cursor-pointer"
             >
               <X className="h-4 w-4" />
             </button>
 
             <div className="flex items-center space-x-3 mb-5">
-              <div className="w-9 h-9 rounded-2xl bg-[#1C0F0A] border border-[#5A3521] p-1.5 flex items-center justify-center">
-                <Sliders className="h-4 w-4 text-[#C49767]" />
+              <div className="w-9 h-9 rounded-2xl bg-slate-50 border border-slate-200 p-1.5 flex items-center justify-center">
+                <Sliders className="h-4 w-4 text-emerald-600" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-[#FAF5EC]">Konfigurasi Memori Redis</h3>
-                <p className="text-xs text-[#DFCDB5]/70">Atur batas kapasitas memori dan kebijakan saat memori penuh.</p>
+                <h3 className="text-base font-bold text-slate-900">Konfigurasi Memori Redis</h3>
+                <p className="text-xs text-slate-500">Atur batas kapasitas memori dan kebijakan saat memori penuh.</p>
               </div>
             </div>
 
             <form onSubmit={handleSaveConfig} className="space-y-4">
               {/* Preset Memori */}
               <div>
-                <label className="text-xs font-semibold text-[#DFCDB5] block mb-2">
+                <label className="text-xs font-semibold text-slate-600 block mb-2">
                   Pilih Alokasi Kapasitas Memori (MB):
                 </label>
                 <div className="grid grid-cols-4 gap-2">
@@ -1175,10 +1175,10 @@ redis-cli -s ${status?.socket_path || `/home/${currentUser?.username}/.redis/red
                         onClick={() => setConfigMem(size)}
                         className={`py-2 rounded-xl text-xs font-mono font-bold transition border cursor-pointer ${
                           configMem === size
-                            ? 'bg-[#C49767] text-[#1C0F0A] border-[#D4A777]'
+                            ? 'bg-emerald-600 text-slate-900 border-emerald-500'
                             : disabled
-                            ? 'opacity-30 bg-[#1C0F0A] border-[#3E2316] cursor-not-allowed'
-                            : 'bg-[#1C0F0A] text-[#DFCDB5] border-[#3E2316] hover:bg-[#3E2216]'
+                            ? 'opacity-30 bg-slate-50 border-slate-200 cursor-not-allowed'
+                            : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-200'
                         }`}
                       >
                         {size} MB
@@ -1186,20 +1186,20 @@ redis-cli -s ${status?.socket_path || `/home/${currentUser?.username}/.redis/red
                     )
                   })}
                 </div>
-                <p className="text-[11px] text-[#A47E65] mt-1.5">
+                <p className="text-[11px] text-slate-500 mt-1.5">
                   Batas memori maksimal akun praktikum Anda: <b>{maxAvailableMem} MB</b>.
                 </p>
               </div>
 
               {/* Eviction Policy */}
               <div>
-                <label className="text-xs font-semibold text-[#DFCDB5] block mb-1.5">
+                <label className="text-xs font-semibold text-slate-600 block mb-1.5">
                   Kebijakan Saat Memori Penuh (Eviction Policy):
                 </label>
                 <select
                   value={configPolicy}
                   onChange={(e) => setConfigPolicy(e.target.value)}
-                  className="w-full bg-[#1C0F0A] border border-[#4D2D1E] focus:border-[#C49767] rounded-xl px-3 py-2 text-xs text-[#FAF5EC] font-mono outline-none"
+                  className="w-full bg-slate-50 border border-slate-200 focus:border-emerald-500 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono outline-none"
                 >
                   <option value="allkeys-lru">allkeys-lru (Otomatis hapus key usang - Sangat Direkomendasikan)</option>
                   <option value="volatile-lru">volatile-lru (Hanya hapus key yang memiliki masa TTL)</option>
@@ -1208,18 +1208,18 @@ redis-cli -s ${status?.socket_path || `/home/${currentUser?.username}/.redis/red
                 </select>
               </div>
 
-              <div className="pt-3 border-t border-[#3E2316] flex items-center justify-end space-x-2">
+              <div className="pt-3 border-t border-slate-200 flex items-center justify-end space-x-2">
                 <button
                   type="button"
                   onClick={() => setShowConfigModal(false)}
-                  className="px-4 py-2 rounded-xl bg-[#1C0F0A] hover:bg-[#3E2216] border border-[#3E2316] text-xs font-semibold text-[#DFCDB5] transition cursor-pointer"
+                  className="px-4 py-2 rounded-xl bg-slate-50 hover:bg-slate-200 border border-slate-200 text-xs font-semibold text-slate-600 transition cursor-pointer"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
                   disabled={actionLoading}
-                  className="px-4 py-2 rounded-xl bg-[#C49767] hover:bg-[#D4A777] text-xs font-bold text-[#1C0F0A] transition shadow-md cursor-pointer"
+                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-xs font-bold text-white transition shadow-md cursor-pointer"
                 >
                   {actionLoading ? 'Menyimpan...' : 'Terapkan Konfigurasi'}
                 </button>
@@ -1237,53 +1237,53 @@ redis-cli -s ${status?.socket_path || `/home/${currentUser?.username}/.redis/red
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-[#2B1810] border border-[#5A3521] rounded-3xl p-6 w-full max-w-md shadow-2xl text-[#FAF5EC] relative animate-in zoom-in-95 duration-150"
+            className="bg-white border border-slate-200 rounded-3xl p-6 w-full max-w-md shadow-2xl text-slate-900 relative animate-in zoom-in-95 duration-150"
           >
             <button
               type="button"
               onClick={() => setShowKeyModal(false)}
-              className="absolute right-5 top-5 p-1 rounded-xl text-[#A47E65] hover:text-[#FAF5EC] hover:bg-[#3E2216] transition cursor-pointer"
+              className="absolute right-5 top-5 p-1 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-200 transition cursor-pointer"
             >
               <X className="h-4 w-4" />
             </button>
 
             <div className="flex items-center space-x-3 mb-5">
-              <div className="w-9 h-9 rounded-2xl bg-[#1C0F0A] border border-[#5A3521] p-1.5 flex items-center justify-center">
-                <Key className="h-4 w-4 text-[#C49767]" />
+              <div className="w-9 h-9 rounded-2xl bg-slate-50 border border-slate-200 p-1.5 flex items-center justify-center">
+                <Key className="h-4 w-4 text-emerald-600" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-[#FAF5EC]">Simpan Key Baru ke Redis</h3>
-                <p className="text-xs text-[#DFCDB5]/70">Simpan string data ke dalam in-memory cache instance Anda.</p>
+                <h3 className="text-base font-bold text-slate-900">Simpan Key Baru ke Redis</h3>
+                <p className="text-xs text-slate-500">Simpan string data ke dalam in-memory cache instance Anda.</p>
               </div>
             </div>
 
             <form onSubmit={handleSetKey} className="space-y-4">
               <div>
-                <label className="text-xs font-semibold text-[#DFCDB5] block mb-1">Nama Key:</label>
+                <label className="text-xs font-semibold text-slate-600 block mb-1">Nama Key:</label>
                 <input
                   type="text"
                   required
                   placeholder="Contoh: user_session:1001"
                   value={testKeyName}
                   onChange={(e) => setTestKeyName(e.target.value)}
-                  className="w-full bg-[#1C0F0A] border border-[#4D2D1E] focus:border-[#C49767] rounded-xl px-3 py-2 text-xs text-[#FAF5EC] font-mono outline-none"
+                  className="w-full bg-slate-50 border border-slate-200 focus:border-emerald-500 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono outline-none"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-[#DFCDB5] block mb-1">Nilai / Value:</label>
+                <label className="text-xs font-semibold text-slate-600 block mb-1">Nilai / Value:</label>
                 <textarea
                   rows={3}
                   required
                   placeholder="Contoh: Halo dari Praktikum Sistem Lab TI UMPO"
                   value={testKeyValue}
                   onChange={(e) => setTestKeyValue(e.target.value)}
-                  className="w-full bg-[#1C0F0A] border border-[#4D2D1E] focus:border-[#C49767] rounded-xl px-3 py-2 text-xs text-[#FAF5EC] font-mono outline-none"
+                  className="w-full bg-slate-50 border border-slate-200 focus:border-emerald-500 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono outline-none"
                 ></textarea>
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-[#DFCDB5] block mb-1">
+                <label className="text-xs font-semibold text-slate-600 block mb-1">
                   Masa Berlaku / TTL dalam Detik (0 = Persisten):
                 </label>
                 <input
@@ -1291,22 +1291,22 @@ redis-cli -s ${status?.socket_path || `/home/${currentUser?.username}/.redis/red
                   min="0"
                   value={testKeyTTL}
                   onChange={(e) => setTestKeyTTL(e.target.value)}
-                  className="w-full bg-[#1C0F0A] border border-[#4D2D1E] focus:border-[#C49767] rounded-xl px-3 py-2 text-xs text-[#FAF5EC] font-mono outline-none"
+                  className="w-full bg-slate-50 border border-slate-200 focus:border-emerald-500 rounded-xl px-3 py-2 text-xs text-slate-900 font-mono outline-none"
                 />
               </div>
 
-              <div className="pt-3 border-t border-[#3E2316] flex items-center justify-end space-x-2">
+              <div className="pt-3 border-t border-slate-200 flex items-center justify-end space-x-2">
                 <button
                   type="button"
                   onClick={() => setShowKeyModal(false)}
-                  className="px-4 py-2 rounded-xl bg-[#1C0F0A] hover:bg-[#3E2216] border border-[#3E2316] text-xs font-semibold text-[#DFCDB5] transition cursor-pointer"
+                  className="px-4 py-2 rounded-xl bg-slate-50 hover:bg-slate-200 border border-slate-200 text-xs font-semibold text-slate-600 transition cursor-pointer"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
                   disabled={actionLoading}
-                  className="px-4 py-2 rounded-xl bg-[#C49767] hover:bg-[#D4A777] text-xs font-bold text-[#1C0F0A] transition shadow-md cursor-pointer"
+                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-xs font-bold text-white transition shadow-md cursor-pointer"
                 >
                   {actionLoading ? 'Menyimpan...' : 'Simpan Key'}
                 </button>

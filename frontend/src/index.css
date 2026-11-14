@@ -4,302 +4,44 @@
 
 @layer base {
   html {
-    background-color: #E6D7BE;
+    background-color: #F8FAFC;
   }
   body {
-    background-color: #E6D7BE; /* Warna Krim Sejati (Warm Rich Cream / Latte) */
-    color: #26160F; /* Coklat Gelap */
+    background-color: #F8FAFC;
+    color: #0F172A;
     font-family: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
   }
   #root {
-    background-color: #E6D7BE;
+    background-color: #F8FAFC;
     min-height: 100vh;
   }
 }
 
-/* Miraigrid V2 Theme (MiG-Cloud) Overrides */
-html.theme-v2,
-body.theme-v2,
-html.theme-v2 #root,
-html.theme-mig-cloud,
-body.theme-mig-cloud,
-html.theme-mig-cloud #root,
-.theme-v2 .mig-shell-canvas,
-.theme-mig-cloud .mig-shell-canvas {
+.mig-shell-canvas {
   background-color: #F8FAFC !important;
   color: #0F172A !important;
 }
 
-.theme-v2 .mig-main-card,
-.theme-mig-cloud .mig-main-card {
+.mig-main-card {
   background-color: #FFFFFF !important;
-  border-radius: 1rem !important; /* rounded-2xl (16px) */
-  overflow-x: hidden;
+  border-radius: 1rem !important;
+  overflow: hidden !important;
 }
 
-.theme-v2 ::-webkit-scrollbar-track,
-.theme-mig-cloud ::-webkit-scrollbar-track {
-  background: #F1F5F9;
-}
-
-.theme-v2 ::-webkit-scrollbar-thumb,
-.theme-mig-cloud ::-webkit-scrollbar-thumb {
-  background: #CBD5E1;
-  border-radius: 9999px;
-}
-
-.theme-v2 ::-webkit-scrollbar-thumb:hover,
-.theme-mig-cloud ::-webkit-scrollbar-thumb:hover {
-  background: #94A3B8;
-}
-
-/* =========================================================================
-   MIRAIGRID V2 PURE CLEAN WHITE & SOFT SLATE REFACTORING ENGINE
-   Strictly scoped to .theme-v2 & .theme-mig-cloud (Zero V1 regression)
-   ========================================================================= */
-
-/* 1. Global Background Clean Elimination for V2 */
-.theme-v2 [class*="bg-[#2b1810]" i],
-.theme-mig-cloud [class*="bg-[#2b1810]" i],
-.theme-v2 [class*="bg-[#2b1d14]" i],
-.theme-mig-cloud [class*="bg-[#2b1d14]" i],
-.theme-v2 [class*="bg-[#1f1610]" i],
-.theme-mig-cloud [class*="bg-[#1f1610]" i],
-.theme-v2 [class*="bg-[#3a281c]" i],
-.theme-mig-cloud [class*="bg-[#3a281c]" i],
-.theme-v2 [class*="bg-[#3a2115]" i],
-.theme-mig-cloud [class*="bg-[#3a2115]" i],
-.theme-v2 [class*="bg-[#3e2316]" i],
-.theme-mig-cloud [class*="bg-[#3e2316]" i],
-.theme-v2 [class*="bg-[#4d2d1e]" i],
-.theme-mig-cloud [class*="bg-[#4d2d1e]" i],
-.theme-v2 [class*="bg-[#5a3521]" i],
-.theme-mig-cloud [class*="bg-[#5a3521]" i],
-.theme-v2 [class*="bg-[#24140c]" i],
-.theme-mig-cloud [class*="bg-[#24140c]" i],
-.theme-v2 [class*="bg-[#201109]" i],
-.theme-mig-cloud [class*="bg-[#201109]" i],
-.theme-v2 [class*="bg-[#23130c]" i],
-.theme-mig-cloud [class*="bg-[#23130c]" i],
-.theme-v2 [class*="bg-[#1e110a]" i],
-.theme-mig-cloud [class*="bg-[#1e110a]" i],
-.theme-v2 [class*="bg-[#180e08]" i],
-.theme-mig-cloud [class*="bg-[#180e08]" i],
-.theme-v2 [class*="bg-[#e6d7be]" i],
-.theme-mig-cloud [class*="bg-[#e6d7be]" i],
-.theme-v2 [class*="bg-[#eaddcf]" i],
-.theme-mig-cloud [class*="bg-[#eaddcf]" i],
-.theme-v2 [class*="bg-[#f5efe6]" i],
-.theme-mig-cloud [class*="bg-[#f5efe6]" i],
-.theme-v2 [class*="bg-[#26160f]" i],
-.theme-mig-cloud [class*="bg-[#26160f]" i] {
-  background-color: #FFFFFF !important;
-}
-
-/* Secondary Sub-containers in V2 */
-.theme-v2 [class*="bg-[#1c0f0a]" i],
-.theme-mig-cloud [class*="bg-[#1c0f0a]" i],
-.theme-v2 [class*="bg-[#140a07]" i],
-.theme-mig-cloud [class*="bg-[#140a07]" i],
-.theme-v2 [class*="bg-[#120a07]" i],
-.theme-mig-cloud [class*="bg-[#120a07]" i],
-.theme-v2 [class*="bg-[#2e1a11]" i],
-.theme-mig-cloud [class*="bg-[#2e1a11]" i],
-.theme-v2 [class*="bg-[#341f14]" i],
-.theme-mig-cloud [class*="bg-[#341f14]" i],
-.theme-v2 [class*="hover:bg-[#361e13]" i]:hover,
-.theme-mig-cloud [class*="hover:bg-[#361e13]" i]:hover,
-.theme-v2 [class*="hover:bg-[#1f110b]" i]:hover,
-.theme-mig-cloud [class*="hover:bg-[#1f110b]" i]:hover {
-  background-color: #F8FAFC !important; /* slate-50 */
-  color: #0F172A !important;
-}
-
-/* Buttons in V2 */
-.theme-v2 button[class*="bg-[#2b1810]" i],
-.theme-mig-cloud button[class*="bg-[#2b1810]" i],
-.theme-v2 button[class*="bg-[#3a2115]" i],
-.theme-mig-cloud button[class*="bg-[#3a2115]" i],
-.theme-v2 button[class*="bg-[#4a2d1b]" i],
-.theme-mig-cloud button[class*="bg-[#4a2d1b]" i],
-.theme-v2 button[class*="bg-[#5a3521]" i],
-.theme-mig-cloud button[class*="bg-[#5a3521]" i] {
-  background-color: #0F172A !important; /* slate-900 */
-  color: #FFFFFF !important;
-  border-color: transparent !important;
-  box-shadow: none !important;
-}
-.theme-v2 button[class*="bg-[#2b1810]" i]:hover,
-.theme-mig-cloud button[class*="bg-[#2b1810]" i]:hover,
-.theme-v2 button[class*="bg-[#3a2115]" i]:hover,
-.theme-mig-cloud button[class*="bg-[#3a2115]" i]:hover {
-  background-color: #1E293B !important; /* slate-800 */
-}
-
-.theme-v2 button[class*="bg-[#1c0f0a]" i],
-.theme-mig-cloud button[class*="bg-[#1c0f0a]" i],
-.theme-v2 button[class*="bg-[#140a07]" i],
-.theme-mig-cloud button[class*="bg-[#140a07]" i],
-.theme-v2 button[class*="bg-[#120a07]" i],
-.theme-mig-cloud button[class*="bg-[#120a07]" i],
-.theme-v2 button[class*="bg-[#decdbd]" i],
-.theme-mig-cloud button[class*="bg-[#decdbd]" i],
-.theme-v2 button[class*="bg-[#d1bdab]" i],
-.theme-mig-cloud button[class*="bg-[#d1bdab]" i] {
-  background-color: #FFFFFF !important;
-  color: #334155 !important; /* slate-700 */
-  border: 1px solid #E2E8F0 !important; /* slate-200 */
-  box-shadow: none !important;
-}
-.theme-v2 button[class*="bg-[#1c0f0a]" i]:hover,
-.theme-mig-cloud button[class*="bg-[#1c0f0a]" i]:hover,
-.theme-v2 button[class*="bg-[#decdbd]" i]:hover,
-.theme-mig-cloud button[class*="bg-[#decdbd]" i]:hover {
-  background-color: #F8FAFC !important;
-  color: #0F172A !important;
-}
-
-/* Inputs, Textareas, Selects in V2 */
-.theme-v2 input[class*="bg-[#" i],
-.theme-mig-cloud input[class*="bg-[#" i],
-.theme-v2 textarea[class*="bg-[#" i],
-.theme-mig-cloud textarea[class*="bg-[#" i],
-.theme-v2 select[class*="bg-[#" i],
-.theme-mig-cloud select[class*="bg-[#" i] {
-  background-color: #FFFFFF !important;
-  color: #0F172A !important;
-  border-color: #CBD5E1 !important; /* slate-300 */
-}
-.theme-v2 input::placeholder,
-.theme-mig-cloud input::placeholder,
-.theme-v2 textarea::placeholder,
-.theme-mig-cloud textarea::placeholder {
-  color: #94A3B8 !important; /* slate-400 */
-}
-
-/* 2. Global Border Elimination in V2 */
-.theme-v2 [class*="border-[#4d2d1e]" i],
-.theme-mig-cloud [class*="border-[#4d2d1e]" i],
-.theme-v2 [class*="border-[#3e2316]" i],
-.theme-mig-cloud [class*="border-[#3e2316]" i],
-.theme-v2 [class*="border-[#5a3521]" i],
-.theme-mig-cloud [class*="border-[#5a3521]" i],
-.theme-v2 [class*="border-[#543221]" i],
-.theme-mig-cloud [class*="border-[#543221]" i],
-.theme-v2 [class*="border-[#bfab96]" i],
-.theme-mig-cloud [class*="border-[#bfab96]" i],
-.theme-v2 [class*="border-[#d8c7b2]" i],
-.theme-mig-cloud [class*="border-[#d8c7b2]" i],
-.theme-v2 [class*="border-[#7d492f]" i],
-.theme-mig-cloud [class*="border-[#7d492f]" i],
-.theme-v2 [class*="border-[#6d4229]" i],
-.theme-mig-cloud [class*="border-[#6d4229]" i],
-.theme-v2 [class*="border-[#2e1a11]" i],
-.theme-mig-cloud [class*="border-[#2e1a11]" i] {
-  border-color: #E2E8F0 !important; /* slate-200 */
-}
-
-/* 3. Global Text Colors Adaptation in V2 */
-.theme-v2 [class*="text-[#faf5ec]" i],
-.theme-mig-cloud [class*="text-[#faf5ec]" i],
-.theme-v2 [class*="text-[#dfcdb5]" i],
-.theme-mig-cloud [class*="text-[#dfcdb5]" i],
-.theme-v2 [class*="text-[#e8dcb8]" i],
-.theme-mig-cloud [class*="text-[#e8dcb8]" i],
-.theme-v2 [class*="text-[#26160f]" i],
-.theme-mig-cloud [class*="text-[#26160f]" i] {
-  color: #0F172A !important; /* slate-900 */
-}
-
-.theme-v2 [class*="text-[#a47e65]" i],
-.theme-mig-cloud [class*="text-[#a47e65]" i],
-.theme-v2 [class*="text-[#5c3b29]" i],
-.theme-mig-cloud [class*="text-[#5c3b29]" i],
-.theme-v2 [class*="text-[#704d36]" i],
-.theme-mig-cloud [class*="text-[#704d36]" i],
-.theme-v2 [class*="text-[#8c6d58]" i],
-.theme-mig-cloud [class*="text-[#8c6d58]" i] {
-  color: #64748B !important; /* slate-500 */
-}
-
-.theme-v2 [class*="text-[#c49767]" i],
-.theme-mig-cloud [class*="text-[#c49767]" i],
-.theme-v2 [class*="text-[#e8c58d]" i],
-.theme-mig-cloud [class*="text-[#e8c58d]" i] {
-  color: #059669 !important; /* emerald-600 */
-}
-
-/* 4. Radius Harmonization (Modern Clean SaaS) */
-.theme-v2 .rounded-3xl,
-.theme-mig-cloud .rounded-3xl {
-  border-radius: 0.75rem !important; /* rounded-xl */
-}
-.theme-v2 .rounded-2xl:not(button):not(input):not(select):not(.rounded-full):not(.mig-main-card),
-.theme-mig-cloud .rounded-2xl:not(button):not(input):not(select):not(.rounded-full):not(.mig-main-card) {
-  border-radius: 0.75rem !important; /* rounded-xl */
-}
-.theme-v2 button.rounded-2xl,
-.theme-mig-cloud button.rounded-2xl,
-.theme-v2 input.rounded-2xl,
-.theme-mig-cloud input.rounded-2xl,
-.theme-v2 select.rounded-2xl,
-.theme-mig-cloud select.rounded-2xl {
-  border-radius: 0.5rem !important; /* rounded-lg */
-}
-
-
-/* Custom scrollbars dengan tema coklat dan krim */
+/* Custom scrollbars (MiraiGrid V2 Slate) */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #DFCEA9;
+  background: #F1F5F9;
 }
 ::-webkit-scrollbar-thumb {
-  background: #5A3521;
+  background: #CBD5E1;
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #3B2215;
-}
-
-/* Shimmer Skeleton effect tema coklat */
-@keyframes shimmer {
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
-  }
-}
-
-.skeleton-shimmer {
-  background: linear-gradient(90deg, #362015 25%, #4C2D1E 50%, #362015 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
-}
-
-/* Shimmer Skeleton effect tema terang / krim cerah */
-.skeleton-shimmer-light {
-  background: linear-gradient(90deg, #E6D7C3 25%, #F5EDE0 50%, #E6D7C3 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
-}
-
-/* Shimmer Skeleton & Warmdark Card Elimination for V2 (Soft Slate Pulse) */
-.theme-v2 .skeleton-shimmer,
-.theme-mig-cloud .skeleton-shimmer,
-.theme-v2 .skeleton-shimmer-light,
-.theme-mig-cloud .skeleton-shimmer-light {
-  background: #F1F5F9 !important;
-  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite !important;
-}
-
-.theme-v2 [class*="bg-warmdark-"],
-.theme-mig-cloud [class*="bg-warmdark-"] {
-  background-color: #FFFFFF !important;
-  border-color: #E2E8F0 !important;
+  background: #94A3B8;
 }
 
 /* Alpine.js Transition & Keyframes Animation */
@@ -351,10 +93,7 @@ html.theme-mig-cloud #root,
 }
 
 .alpine-hover-card {
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.alpine-hover-card:hover {
-  transform: translateY(-2px) scale(1.015);
+  transition: all 0.2s ease;
 }
 
 @keyframes spin-reverse {
@@ -370,7 +109,7 @@ html.theme-mig-cloud #root,
 }
 
 /* ========================================================================== */
-/* V2 (MiG-Cloud) ZERO SHADOW POLICY & FLAT CLEAN MINIMALIST GUARDRAILS        */
+/* V2 (MiraiGrid Cloud) ZERO SHADOW POLICY & FLAT CLEAN MINIMALIST GUARDRAILS */
 /* ========================================================================== */
 .theme-v2 [class*="shadow"],
 .theme-mig-cloud [class*="shadow"] {
@@ -380,31 +119,12 @@ html.theme-mig-cloud #root,
 }
 
 .theme-v2 .alpine-hover-card:hover,
-.theme-mig-cloud .alpine-hover-card:hover,
 .theme-v2 [class*="hover:-translate-y"]:hover,
-.theme-mig-cloud [class*="hover:-translate-y"]:hover,
 .theme-v2 [class*="hover:scale-"]:hover,
-.theme-mig-cloud [class*="hover:scale-"]:hover,
-.theme-v2 .group:hover [class*="group-hover:scale-"],
-.theme-mig-cloud .group:hover [class*="group-hover:scale-"] {
+.theme-v2 .group:hover [class*="group-hover:scale-"] {
   transform: none !important;
 }
 
-.theme-v2 tbody tr:hover,
-.theme-mig-cloud tbody tr:hover {
+tbody tr:hover {
   background-color: rgba(248, 250, 252, 0.8) !important;
 }
-
-/* Enforce clean #F8FAFC shell outside the rounded main content container */
-.theme-v2 .mig-shell-canvas,
-.theme-mig-cloud .mig-shell-canvas {
-  background-color: #F8FAFC !important;
-}
-
-.theme-v2 .mig-main-card,
-.theme-mig-cloud .mig-main-card {
-  background-color: #FFFFFF !important;
-  border-radius: 1rem !important;
-  overflow: hidden !important;
-}
-

@@ -348,21 +348,21 @@ export default function GitVersionControlView({ user, onNavigate }) {
   return (
     <div className="space-y-6 w-full font-sans pb-12">
       {/* 1. TOP HEADER ALA CPANEL */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-[#4D2D1E] pb-5">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200 pb-5">
         <div className="flex items-center space-x-3.5">
-          <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-[#4A2617] to-[#2D160E] border border-[#5A3521] flex items-center justify-center p-2.5 shadow-md shrink-0">
+          <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-slate-50 to-white border border-slate-200 flex items-center justify-center p-2.5 shadow-md shrink-0">
             <img src="/logos/git.svg" alt="Git Logo" className="h-full w-full object-contain" />
           </div>
           <div>
             <div className="flex items-center space-x-2">
-              <h2 className="text-2xl font-serif font-bold text-[#26160F] tracking-wide">
+              <h2 className="text-2xl font-sans font-bold text-slate-900 tracking-wide">
                 Git™ Version Control
               </h2>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#3D2115] text-[#FAF5EC] border border-[#5A3521]">
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-100 text-slate-900 border border-slate-200">
                 v2.47
               </span>
             </div>
-            <p className="text-xs text-[#5C3B29] mt-0.5">
+            <p className="text-xs text-slate-500 mt-0.5">
               Kelola repositori Git mandiri: kloning repository remote, pull update, checkout branch, dan riwayat commit.
             </p>
           </div>
@@ -371,7 +371,7 @@ export default function GitVersionControlView({ user, onNavigate }) {
         {viewMode !== 'list' ? (
           <button
             onClick={() => setViewMode('list')}
-            className="inline-flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs font-semibold bg-[#2B1810] hover:bg-[#3A2216] text-[#FAF5EC] border border-[#4D2D1E] shadow-sm transition"
+            className="inline-flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs font-semibold bg-white hover:bg-slate-200 text-slate-900 border border-slate-200 shadow-sm transition"
           >
             <ArrowLeft className="h-4 w-4" />
             <span>Kembali ke Daftar</span>
@@ -400,7 +400,7 @@ export default function GitVersionControlView({ user, onNavigate }) {
               <AlertTriangle className="h-5 w-5 text-red-400" />
             </div>
             <div className="space-y-1">
-              <h4 className="text-sm font-bold text-red-200 font-serif">
+              <h4 className="text-sm font-bold text-red-200 font-sans">
                 {gitError.title || 'Terjadi Kesalahan pada Git'}
               </h4>
               <p className="text-xs text-red-300/90 font-mono leading-relaxed whitespace-pre-wrap break-all">
@@ -426,7 +426,7 @@ export default function GitVersionControlView({ user, onNavigate }) {
               <CheckCircle2 className="h-5 w-5 text-emerald-400" />
             </div>
             <div className="space-y-1">
-              <h4 className="text-sm font-bold text-emerald-200 font-serif">
+              <h4 className="text-sm font-bold text-emerald-200 font-sans">
                 {gitSuccessBanner.title}
               </h4>
               <p className="text-xs text-emerald-300/90 leading-relaxed">
@@ -464,26 +464,26 @@ export default function GitVersionControlView({ user, onNavigate }) {
       {viewMode === 'list' && (
         <div className="space-y-4">
           {/* Subheader Toolbar */}
-          <div className="bg-[#2B1810] border border-[#4D2D1E] rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-md">
+          <div className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-md">
             <div className="relative w-full sm:w-80">
-              <Search className="h-4 w-4 text-[#A47E65] absolute left-3 top-1/2 -translate-y-1/2" />
+              <Search className="h-4 w-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 placeholder="Cari repositori atau path..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl pl-9 pr-3 py-2 text-xs text-[#FAF5EC] placeholder-[#A47E65] focus:outline-none focus:border-[#C49767] transition font-sans"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition font-sans"
               />
             </div>
 
-            <div className="flex items-center space-x-3 text-xs text-[#DFCDB5] w-full sm:w-auto justify-between sm:justify-end">
-              <span className="font-mono text-[11px] text-[#A47E65]">
+            <div className="flex items-center space-x-3 text-xs text-slate-600 w-full sm:w-auto justify-between sm:justify-end">
+              <span className="font-mono text-[11px] text-slate-500">
                 Menampilkan {filteredRepos.length} dari {repositories.length} repositori
               </span>
               <button
                 onClick={fetchRepositories}
                 title="Muat Ulang"
-                className="p-2 rounded-xl bg-[#1C0F0A] hover:bg-[#3A2216] text-[#DFCDB5] border border-[#3E2316] transition"
+                className="p-2 rounded-xl bg-slate-50 hover:bg-slate-200 text-slate-600 border border-slate-200 transition"
               >
                 <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
               </button>
@@ -491,21 +491,21 @@ export default function GitVersionControlView({ user, onNavigate }) {
           </div>
 
           {/* Repositories Table */}
-          <div className="bg-[#2B1810] border border-[#4D2D1E] rounded-3xl overflow-hidden shadow-xl">
+          <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-xl">
             {loading ? (
-              <div className="p-12 text-center text-[#DFCDB5] space-y-3">
-                <Spinner className="h-8 w-8 text-[#C49767] mx-auto" />
+              <div className="p-12 text-center text-slate-600 space-y-3">
+                <Spinner className="h-8 w-8 text-emerald-600 mx-auto" />
                 <p className="text-xs">Memuat daftar Git™ Version Control...</p>
               </div>
             ) : filteredRepos.length === 0 ? (
-              <div className="p-12 text-center text-[#DFCDB5] space-y-3">
-                <div className="h-16 w-16 rounded-2xl bg-[#1C0F0A] border border-[#3E2316] flex items-center justify-center mx-auto text-[#A47E65]">
+              <div className="p-12 text-center text-slate-600 space-y-3">
+                <div className="h-16 w-16 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-center mx-auto text-slate-500">
                   <GitBranch className="h-8 w-8 opacity-60" />
                 </div>
-                <h4 className="text-base font-serif font-bold text-[#FAF5EC]">
+                <h4 className="text-base font-sans font-bold text-slate-900">
                   Belum Ada Repositori Git™
                 </h4>
-                <p className="text-xs text-[#A47E65] max-w-md mx-auto">
+                <p className="text-xs text-slate-500 max-w-md mx-auto">
                   Anda belum memiliki repositori Git™. Anda dapat mengkloning project dari GitHub/GitLab atau membuat repositori kosong baru untuk mulai melacak riwayat kode praktikum.
                 </p>
                 <div className="pt-2">
@@ -525,7 +525,7 @@ export default function GitVersionControlView({ user, onNavigate }) {
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
-                    <tr className="border-b border-[#4D2D1E] bg-[#22120C] text-[#A47E65] font-semibold text-[11px] uppercase tracking-wider">
+                    <tr className="border-b border-slate-200 bg-white text-slate-500 font-semibold text-[11px] uppercase tracking-wider">
                       <th className="py-3.5 px-5">Repository</th>
                       <th className="py-3.5 px-4">Repository Path</th>
                       <th className="py-3.5 px-4">Branch</th>
@@ -533,47 +533,47 @@ export default function GitVersionControlView({ user, onNavigate }) {
                       <th className="py-3.5 px-5 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#3E2316]">
+                  <tbody className="divide-y divide-slate-200">
                     {filteredRepos.map((repo) => (
-                      <tr key={repo.id} className="hover:bg-[#341F14]/70 transition-colors group">
-                        <td className="py-3.5 px-5 font-medium text-[#FAF5EC]">
+                      <tr key={repo.id} className="hover:bg-slate-100 transition-colors group">
+                        <td className="py-3.5 px-5 font-medium text-slate-900">
                           <div className="flex items-center space-x-2.5">
                             <GitBranch className="h-4 w-4 text-terracotta-400 shrink-0" />
                             <div>
-                              <div className="font-semibold text-sm text-[#FAF5EC] group-hover:text-amber-200 transition">
+                              <div className="font-semibold text-sm text-slate-900 group-hover:text-amber-200 transition">
                                 {repo.name}
                               </div>
                               {repo.remote_url && (
-                                <p className="text-[10px] text-[#A47E65] truncate max-w-xs font-mono">
+                                <p className="text-[10px] text-slate-500 truncate max-w-xs font-mono">
                                   {repo.remote_url}
                                 </p>
                               )}
                             </div>
                           </div>
                         </td>
-                        <td className="py-3.5 px-4 font-mono text-[11px] text-[#DFCDB5]">
-                          <span className="bg-[#1C0F0A] px-2.5 py-1 rounded-lg border border-[#3E2316] select-all">
+                        <td className="py-3.5 px-4 font-mono text-[11px] text-slate-600">
+                          <span className="bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200 select-all">
                             {repo.path}
                           </span>
                         </td>
                         <td className="py-3.5 px-4">
-                          <span className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-[#1C0F0A] text-emerald-400 border border-emerald-900/60 font-mono text-[11px]">
+                          <span className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-slate-50 text-emerald-400 border border-emerald-900/60 font-mono text-[11px]">
                             <span className="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
                             <span>{repo.current_branch || 'main'}</span>
                           </span>
                         </td>
-                        <td className="py-3.5 px-4 text-[#DFCDB5]">
+                        <td className="py-3.5 px-4 text-slate-600">
                           {repo.last_commit_short ? (
                             <div>
                               <span className="font-mono text-terracotta-400 font-bold mr-1.5">
                                 {repo.last_commit_short}
                               </span>
-                              <span className="truncate inline-block max-w-[180px] align-bottom text-[#FAF5EC]/90">
+                              <span className="truncate inline-block max-w-[180px] align-bottom text-slate-800">
                                 {repo.last_commit_message}
                               </span>
                             </div>
                           ) : (
-                            <span className="text-[#A47E65] italic">Belum ada commit</span>
+                            <span className="text-slate-500 italic">Belum ada commit</span>
                           )}
                         </td>
                         <td className="py-3.5 px-5 text-right">
@@ -581,21 +581,21 @@ export default function GitVersionControlView({ user, onNavigate }) {
                             <button
                               onClick={() => onNavigate && onNavigate(`/files?repo=${repo.id}`)}
                               title="Buka File Repositori di File Manager"
-                              className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-[#1C0F0A] hover:bg-[#3A2216] text-[#DFCDB5] hover:text-[#FAF5EC] border border-[#3E2316] hover:border-[#C49767] transition text-[11px] font-semibold"
+                              className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-slate-200 text-slate-600 hover:text-slate-900 border border-slate-200 hover:border-emerald-500 transition text-[11px] font-semibold"
                             >
-                              <Folder className="h-3.5 w-3.5 text-[#C49767]" />
+                              <Folder className="h-3.5 w-3.5 text-emerald-600" />
                               <span>Files</span>
                             </button>
                             <button
                               onClick={() => handleOpenManage(repo)}
-                              className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-[#3A2216] hover:bg-[#4D2E1F] text-[#FAF5EC] border border-[#5A3521] transition text-[11px] font-semibold"
+                              className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-900 border border-slate-200 transition text-[11px] font-semibold"
                             >
-                              <Sliders className="h-3.5 w-3.5 text-[#E8C58D]" />
+                              <Sliders className="h-3.5 w-3.5 text-emerald-600" />
                               <span>Manage</span>
                             </button>
                             <button
                               onClick={() => handleOpenHistory(repo)}
-                              className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-[#1C0F0A] hover:bg-[#3A2216] text-[#DFCDB5] border border-[#3E2316] transition text-[11px] font-semibold"
+                              className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-slate-200 text-slate-600 border border-slate-200 transition text-[11px] font-semibold"
                             >
                               <History className="h-3.5 w-3.5 text-amber-400" />
                               <span>History</span>
@@ -603,7 +603,7 @@ export default function GitVersionControlView({ user, onNavigate }) {
                             <button
                               onClick={() => setRemoveModal({ open: true, repo, deleteFiles: false })}
                               title="Hapus Repositori"
-                              className="p-1.5 rounded-xl bg-[#1C0F0A] hover:bg-rose-950/60 text-rose-400 border border-rose-900/40 hover:border-rose-600 transition"
+                              className="p-1.5 rounded-xl bg-slate-50 hover:bg-rose-950/60 text-rose-400 border border-rose-900/40 hover:border-rose-600 transition"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
                             </button>
@@ -623,31 +623,31 @@ export default function GitVersionControlView({ user, onNavigate }) {
       {/* VIEW B: CREATE / CLONE REPOSITORY ALA CPANEL                 */}
       {/* ============================================================ */}
       {viewMode === 'create' && (
-        <div className="bg-[#2B1810] border border-[#4D2D1E] rounded-3xl p-6 sm:p-8 shadow-xl w-full">
-          <div className="mb-6 pb-4 border-b border-[#3E2316]">
-            <div className="flex items-center space-x-2 text-xs font-semibold text-[#A47E65] mb-1">
+        <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-xl w-full">
+          <div className="mb-6 pb-4 border-b border-slate-200">
+            <div className="flex items-center space-x-2 text-xs font-semibold text-slate-500 mb-1">
               <span className="cursor-pointer hover:underline" onClick={() => setViewMode('list')}>
                 List Repositories
               </span>
               <span>/</span>
-              <span className="text-[#FAF5EC]">Create Repository</span>
+              <span className="text-slate-900">Create Repository</span>
             </div>
-            <h3 className="text-xl font-serif font-bold text-[#FAF5EC]">
+            <h3 className="text-xl font-sans font-bold text-slate-900">
               {isClone ? 'Clone an Existing Remote Repository' : 'Create a New Blank Repository'}
             </h3>
-            <p className="text-xs text-[#DFCDB5]/80 mt-1">
+            <p className="text-xs text-slate-500 mt-1">
               Gunakan antarmuka ini untuk mengkloning repositori remote (GitHub/GitLab) atau membuat repositori Git™ baru di direktori terisolasi akun Anda.
             </p>
           </div>
 
           <form onSubmit={handleCreateRepo} className="space-y-6">
             {/* Toggle Clone vs Initialize */}
-            <div className="p-4 rounded-2xl bg-[#1C0F0A] border border-[#3E2316] flex items-center justify-between">
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between">
               <div>
-                <span className="block text-xs font-bold text-[#FAF5EC]">
+                <span className="block text-xs font-bold text-slate-900">
                   Clone a Repository
                 </span>
-                <span className="block text-[11px] text-[#A47E65] mt-0.5">
+                <span className="block text-[11px] text-slate-500 mt-0.5">
                   Aktifkan toggle ini untuk mengkloning repositori remote, atau matikan untuk membuat repositori kosong baru.
                 </span>
               </div>
@@ -655,7 +655,7 @@ export default function GitVersionControlView({ user, onNavigate }) {
                 type="button"
                 onClick={() => setIsClone(!isClone)}
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  isClone ? 'bg-terracotta-500' : 'bg-[#3A2216]'
+                  isClone ? 'bg-terracotta-500' : 'bg-slate-100'
                 }`}
               >
                 <span
@@ -669,7 +669,7 @@ export default function GitVersionControlView({ user, onNavigate }) {
             {/* Field: Clone URL (if Clone is ON) */}
             {isClone && (
               <div>
-                <label className="block text-xs font-semibold text-[#FAF5EC] mb-1.5">
+                <label className="block text-xs font-semibold text-slate-900 mb-1.5">
                   Clone URL <span className="text-rose-400">*</span>
                 </label>
                 <input
@@ -678,9 +678,9 @@ export default function GitVersionControlView({ user, onNavigate }) {
                   value={cloneUrl}
                   onChange={handleCloneUrlChange}
                   placeholder="https://github.com/username/repository.git"
-                  className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3.5 py-2.5 text-xs text-[#FAF5EC] placeholder-[#A47E65] focus:outline-none focus:border-[#C49767] transition font-sans"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition font-sans"
                 />
-                <p className="text-[11px] text-[#A47E65] mt-1.5 leading-relaxed">
+                <p className="text-[11px] text-slate-500 mt-1.5 leading-relaxed">
                   Masukkan URL remote repositori publik atau dengan kredensial token HTTPS (didukung format http://, https://, git://).
                 </p>
               </div>
@@ -688,7 +688,7 @@ export default function GitVersionControlView({ user, onNavigate }) {
 
             {/* Field: Repository Name */}
             <div>
-              <label className="block text-xs font-semibold text-[#FAF5EC] mb-1.5">
+              <label className="block text-xs font-semibold text-slate-900 mb-1.5">
                 Repository Name <span className="text-rose-400">*</span>
               </label>
               <input
@@ -697,30 +697,30 @@ export default function GitVersionControlView({ user, onNavigate }) {
                 value={repoName}
                 onChange={(e) => setRepoName(e.target.value)}
                 placeholder="contoh: praktikum-web-lanjut"
-                className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3.5 py-2.5 text-xs text-[#FAF5EC] placeholder-[#A47E65] focus:outline-none focus:border-[#C49767] transition font-sans"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-500 transition font-sans"
               />
-              <p className="text-[11px] text-[#A47E65] mt-1.5">
+              <p className="text-[11px] text-slate-500 mt-1.5">
                 Hanya gunakan huruf, angka, minus (-), dan garis bawah (_).
               </p>
             </div>
 
             {/* Field: Repository Path (Read-only preview) */}
             <div>
-              <label className="block text-xs font-semibold text-[#FAF5EC] mb-1.5">
+              <label className="block text-xs font-semibold text-slate-900 mb-1.5">
                 Repository Path (Otomatis Terisolasi)
               </label>
-              <div className="bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3.5 py-2.5 text-xs font-mono text-terracotta-400 flex items-center space-x-2">
-                <Folder className="h-4 w-4 shrink-0 text-[#A47E65]" />
+              <div className="bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-mono text-terracotta-400 flex items-center space-x-2">
+                <Folder className="h-4 w-4 shrink-0 text-slate-500" />
                 <span className="truncate">
                   /home/{user?.username || 'user'}/repositories/{repoName || '<nama-repo>'}
                 </span>
               </div>
-              <p className="text-[11px] text-[#A47E65] mt-1.5">
+              <p className="text-[11px] text-slate-500 mt-1.5">
                 Sistem akan otomatis mengisolasi repositori ke dalam folder khusus akun Anda.
               </p>
             </div>
 
-            <div className="flex items-center space-x-3 pt-4 border-t border-[#3E2316]">
+            <div className="flex items-center space-x-3 pt-4 border-t border-slate-200">
               <button
                 type="submit"
                 disabled={actionLoading}
@@ -742,7 +742,7 @@ export default function GitVersionControlView({ user, onNavigate }) {
               <button
                 type="button"
                 onClick={() => setViewMode('list')}
-                className="px-5 py-2.5 rounded-xl text-xs font-semibold bg-[#1C0F0A] hover:bg-[#341F14] text-[#DFCDB5] border border-[#3E2316] transition"
+                className="px-5 py-2.5 rounded-xl text-xs font-semibold bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 transition"
               >
                 Batal
               </button>
@@ -755,23 +755,23 @@ export default function GitVersionControlView({ user, onNavigate }) {
       {/* VIEW C: MANAGE REPOSITORY (BASIC INFO + PULL OR DEPLOY)      */}
       {/* ============================================================ */}
       {viewMode === 'manage' && selectedRepo && (
-        <div className="bg-[#2B1810] border border-[#4D2D1E] rounded-3xl p-6 sm:p-8 shadow-xl w-full space-y-6">
+        <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-xl w-full space-y-6">
           {/* Header & Breadcrumb */}
-          <div className="border-b border-[#3E2316] pb-5">
-            <div className="flex items-center space-x-2 text-xs font-semibold text-[#A47E65] mb-1">
+          <div className="border-b border-slate-200 pb-5">
+            <div className="flex items-center space-x-2 text-xs font-semibold text-slate-500 mb-1">
               <span className="cursor-pointer hover:underline" onClick={() => setViewMode('list')}>
                 List Repositories
               </span>
               <span>/</span>
-              <span className="text-[#FAF5EC]">Manage Repository</span>
+              <span className="text-slate-900">Manage Repository</span>
             </div>
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-2xl font-serif font-bold text-[#FAF5EC] flex items-center space-x-2.5">
+                <h3 className="text-2xl font-sans font-bold text-slate-900 flex items-center space-x-2.5">
                   <GitBranch className="h-6 w-6 text-terracotta-400" />
                   <span>{selectedRepo.name}</span>
                 </h3>
-                <p className="text-xs font-mono text-[#A47E65] mt-1 select-all">
+                <p className="text-xs font-mono text-slate-500 mt-1 select-all">
                   {selectedRepo.path}
                 </p>
               </div>
@@ -779,14 +779,14 @@ export default function GitVersionControlView({ user, onNavigate }) {
               <div className="flex items-center space-x-2">
                 <button
                   onClick={() => onNavigate && onNavigate(`/files?repo=${selectedRepo.id}`)}
-                  className="inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-[#1C0F0A] hover:bg-[#3A2216] text-[#DFCDB5] hover:text-[#FAF5EC] border border-[#3E2316] hover:border-[#C49767] transition"
+                  className="inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-50 hover:bg-slate-200 text-slate-600 hover:text-slate-900 border border-slate-200 hover:border-emerald-500 transition"
                 >
-                  <Folder className="h-4 w-4 text-[#C49767]" />
+                  <Folder className="h-4 w-4 text-emerald-600" />
                   <span>Buka di File Manager</span>
                 </button>
                 <button
                   onClick={() => handleOpenHistory(selectedRepo)}
-                  className="inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-[#1C0F0A] hover:bg-[#3A2216] text-[#DFCDB5] border border-[#3E2316] transition"
+                  className="inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-50 hover:bg-slate-200 text-slate-600 border border-slate-200 transition"
                 >
                   <History className="h-4 w-4 text-amber-400" />
                   <span>Lihat History Commit</span>
@@ -796,13 +796,13 @@ export default function GitVersionControlView({ user, onNavigate }) {
           </div>
 
           {/* Manage Tabs ala cPanel: Basic Information | Pull or Deploy */}
-          <div className="flex border-b border-[#3E2316] space-x-4">
+          <div className="flex border-b border-slate-200 space-x-4">
             <button
               onClick={() => setManageTab('basic')}
               className={`pb-3 text-xs font-semibold transition-all relative ${
                 manageTab === 'basic'
                   ? 'text-terracotta-400 border-b-2 border-terracotta-400 font-bold'
-                  : 'text-[#DFCDB5]/70 hover:text-[#FAF5EC]'
+                  : 'text-slate-500 hover:text-slate-900'
               }`}
             >
               Basic Information
@@ -812,7 +812,7 @@ export default function GitVersionControlView({ user, onNavigate }) {
               className={`pb-3 text-xs font-semibold transition-all relative ${
                 manageTab === 'pull_deploy'
                   ? 'text-terracotta-400 border-b-2 border-terracotta-400 font-bold'
-                  : 'text-[#DFCDB5]/70 hover:text-[#FAF5EC]'
+                  : 'text-slate-500 hover:text-slate-900'
               }`}
             >
               Pull or Deploy
@@ -825,35 +825,35 @@ export default function GitVersionControlView({ user, onNavigate }) {
               {/* Left Column: Repository & Branch Details */}
               <div className="space-y-5">
                 {/* Repository Path */}
-                <div className="p-5 rounded-2xl bg-[#1C0F0A] border border-[#3E2316] space-y-2">
+                <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
                   <div className="flex items-center justify-between">
-                    <label className="block text-xs font-semibold text-[#A47E65]">
+                    <label className="block text-xs font-semibold text-slate-500">
                       Repository Path
                     </label>
                     <button
                       onClick={() => copyToClipboard(selectedRepo.path, 'Repository Path')}
-                      className="text-[11px] text-[#A47E65] hover:text-[#FAF5EC] flex items-center space-x-1 transition"
+                      className="text-[11px] text-slate-500 hover:text-slate-900 flex items-center space-x-1 transition"
                     >
                       <Copy className="h-3 w-3" />
                       <span>Salin</span>
                     </button>
                   </div>
-                  <div className="bg-[#140A07] border border-[#2D180F] rounded-xl px-3.5 py-2.5 text-xs font-mono text-terracotta-400 flex items-center space-x-2">
-                    <Folder className="h-4 w-4 text-[#A47E65] shrink-0" />
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-mono text-terracotta-400 flex items-center space-x-2">
+                    <Folder className="h-4 w-4 text-slate-500 shrink-0" />
                     <span className="truncate">{selectedRepo.path}</span>
                   </div>
                 </div>
 
                 {/* Currently Checked-Out Branch */}
-                <div className="p-5 rounded-2xl bg-[#1C0F0A] border border-[#3E2316] space-y-3">
-                  <label className="block text-xs font-semibold text-[#A47E65]">
+                <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                  <label className="block text-xs font-semibold text-slate-500">
                     Currently Checked-Out Branch
                   </label>
                   <div className="flex items-center space-x-2">
                     <select
                       value={selectedBranch}
                       onChange={(e) => setSelectedBranch(e.target.value)}
-                      className="flex-1 bg-[#140A07] border border-[#3E2316] rounded-xl px-3.5 py-2.5 text-xs font-mono text-[#FAF5EC] focus:outline-none focus:border-[#C49767]"
+                      className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-mono text-slate-900 focus:outline-none focus:border-emerald-500"
                     >
                       {(selectedRepo.branches || [selectedRepo.default_branch || 'main']).map((b) => (
                         <option key={b} value={b}>
@@ -865,13 +865,13 @@ export default function GitVersionControlView({ user, onNavigate }) {
                       <button
                         onClick={handleCheckoutBranch}
                         disabled={actionLoading}
-                        className="px-4 py-2.5 rounded-xl text-xs font-semibold bg-[#5A3521] hover:bg-[#6D4029] text-[#FAF5EC] border border-[#7D4629] transition shadow-md"
+                        className="px-4 py-2.5 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white border border-slate-200 transition shadow-md"
                       >
                         Checkout
                       </button>
                     )}
                   </div>
-                  <div className="flex items-center space-x-2 text-[11px] text-[#A47E65]">
+                  <div className="flex items-center space-x-2 text-[11px] text-slate-500">
                     <span className="h-2 w-2 rounded-full bg-emerald-400"></span>
                     <span>Branch aktif: <span className="font-mono text-emerald-300 font-semibold">{selectedRepo.current_branch}</span></span>
                   </div>
@@ -879,8 +879,8 @@ export default function GitVersionControlView({ user, onNavigate }) {
 
                 {/* Remote URL Info */}
                 {selectedRepo.remote_url && (
-                  <div className="p-5 rounded-2xl bg-[#1C0F0A] border border-[#3E2316] space-y-2">
-                    <label className="block text-xs font-semibold text-[#A47E65]">
+                  <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+                    <label className="block text-xs font-semibold text-slate-500">
                       Remote URL
                     </label>
                     <div className="flex items-center space-x-2">
@@ -888,11 +888,11 @@ export default function GitVersionControlView({ user, onNavigate }) {
                         type="text"
                         readOnly
                         value={selectedRepo.remote_url}
-                        className="flex-1 bg-[#140A07] border border-[#2D180F] rounded-xl px-3.5 py-2.5 text-xs font-mono text-[#FAF5EC] select-all outline-none"
+                        className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-mono text-slate-900 select-all outline-none"
                       />
                       <button
                         onClick={() => copyToClipboard(selectedRepo.remote_url, 'Remote URL')}
-                        className="p-2.5 rounded-xl bg-[#140A07] hover:bg-[#341F14] text-[#DFCDB5] border border-[#3E2316] transition"
+                        className="p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 transition"
                         title="Salin Remote URL"
                       >
                         <Copy className="h-4 w-4" />
@@ -903,9 +903,9 @@ export default function GitVersionControlView({ user, onNavigate }) {
               </div>
 
               {/* Right Column: HEAD Commit Card ala cPanel */}
-              <div className="p-6 rounded-2xl bg-[#1C0F0A] border border-[#3E2316] space-y-4">
-                <div className="flex items-center justify-between pb-3 border-b border-[#301B11]">
-                  <span className="text-xs font-bold text-[#E8C58D] uppercase tracking-wider flex items-center space-x-2">
+              <div className="p-6 rounded-2xl bg-slate-50 border border-slate-200 space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+                  <span className="text-xs font-bold text-emerald-600 uppercase tracking-wider flex items-center space-x-2">
                     <Clock className="h-4 w-4 text-terracotta-400" />
                     <span>HEAD Commit Information</span>
                   </span>
@@ -914,10 +914,10 @@ export default function GitVersionControlView({ user, onNavigate }) {
                       onClick={() =>
                         copyToClipboard(selectedRepo.head_commit.hash, 'Commit Hash')
                       }
-                      className="px-2.5 py-1 rounded-lg bg-[#2A1810] border border-[#4A2818] text-[11px] font-mono text-[#DFCDB5] hover:text-[#FAF5EC] flex items-center space-x-1.5 transition"
+                      className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-[11px] font-mono text-slate-600 hover:text-slate-900 flex items-center space-x-1.5 transition"
                     >
                       <span className="text-amber-400">{selectedRepo.head_commit.short_hash}</span>
-                      <Copy className="h-3 w-3 text-[#A47E65]" />
+                      <Copy className="h-3 w-3 text-slate-500" />
                     </button>
                   )}
                 </div>
@@ -925,43 +925,43 @@ export default function GitVersionControlView({ user, onNavigate }) {
                 {selectedRepo.head_commit ? (
                   <div className="space-y-4 text-xs">
                     <div>
-                      <span className="text-[11px] text-[#A47E65] block mb-1">Commit Message:</span>
-                      <p className="font-semibold text-sm text-[#FAF5EC] leading-relaxed p-3.5 rounded-xl bg-[#140A07] border border-[#2D180F]">
+                      <span className="text-[11px] text-slate-500 block mb-1">Commit Message:</span>
+                      <p className="font-semibold text-sm text-slate-900 leading-relaxed p-3.5 rounded-xl bg-slate-50 border border-slate-200">
                         "{selectedRepo.head_commit.message}"
                       </p>
                     </div>
 
                     <div className="space-y-2.5 pt-1 text-xs">
-                      <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#140A07]/50 border border-[#24130B]">
-                        <span className="text-[#A47E65] flex items-center space-x-1.5">
+                      <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                        <span className="text-slate-500 flex items-center space-x-1.5">
                           <User className="h-3.5 w-3.5" />
                           <span>Author:</span>
                         </span>
-                        <span className="text-[#FAF5EC] font-medium">
+                        <span className="text-slate-900 font-medium">
                           {selectedRepo.head_commit.author_name} ({selectedRepo.head_commit.author_email})
                         </span>
                       </div>
 
-                      <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#140A07]/50 border border-[#24130B]">
-                        <span className="text-[#A47E65] flex items-center space-x-1.5">
+                      <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                        <span className="text-slate-500 flex items-center space-x-1.5">
                           <Clock className="h-3.5 w-3.5" />
                           <span>Tanggal:</span>
                         </span>
-                        <span className="text-[#FAF5EC] font-medium">
+                        <span className="text-slate-900 font-medium">
                           {selectedRepo.head_commit.date}
                         </span>
                       </div>
 
-                      <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#140A07]/50 border border-[#24130B]">
-                        <span className="text-[#A47E65]">SHA-1 Full Hash:</span>
-                        <span className="text-[#DFCDB5] font-mono text-[10px] truncate max-w-[200px]" title={selectedRepo.head_commit.hash}>
+                      <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                        <span className="text-slate-500">SHA-1 Full Hash:</span>
+                        <span className="text-slate-600 font-mono text-[10px] truncate max-w-[200px]" title={selectedRepo.head_commit.hash}>
                           {selectedRepo.head_commit.hash}
                         </span>
                       </div>
                     </div>
                   </div>
                 ) : (
-                  <p className="text-xs text-[#A47E65] italic py-6 text-center">Belum ada commit di branch ini.</p>
+                  <p className="text-xs text-slate-500 italic py-6 text-center">Belum ada commit di branch ini.</p>
                 )}
               </div>
             </div>
@@ -972,33 +972,33 @@ export default function GitVersionControlView({ user, onNavigate }) {
             <div className="space-y-6">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
                 {/* Column 1: Remote Pull Card */}
-                <div className="p-6 rounded-2xl bg-[#1C0F0A] border border-[#3E2316] flex flex-col justify-between space-y-5">
+                <div className="p-6 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col justify-between space-y-5">
                   <div className="space-y-3">
                     <div className="flex items-center space-x-2.5">
-                      <div className="p-2 rounded-xl bg-[#2D180F] border border-[#4A2818]">
+                      <div className="p-2 rounded-xl bg-white border border-slate-200">
                         <GitPullRequest className="h-5 w-5 text-terracotta-400" />
                       </div>
                       <div>
-                        <h4 className="text-sm font-serif font-bold text-[#FAF5EC]">
+                        <h4 className="text-sm font-sans font-bold text-slate-900">
                           Update from Remote (Git Pull)
                         </h4>
-                        <span className="text-[11px] text-[#A47E65]">
+                        <span className="text-[11px] text-slate-500">
                           Sinkronisasi repositori lokal dengan remote branch
                         </span>
                       </div>
                     </div>
                     
-                    <p className="text-xs text-[#DFCDB5]/80 leading-relaxed pt-1">
+                    <p className="text-xs text-slate-500 leading-relaxed pt-1">
                       Tarik dan gabungkan komit terbaru dari branch remote ke direktori repositori lokal.
                     </p>
 
                     {/* Auto-Deploy Toggle Checkbox */}
-                    <div className="p-3.5 rounded-xl bg-[#140A07] border border-[#2D180F] flex items-center justify-between">
+                    <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
                       <div className="pr-3">
-                        <span className="block text-xs font-semibold text-[#FAF5EC]">
+                        <span className="block text-xs font-semibold text-slate-900">
                           Auto Deploy ke Web Project
                         </span>
-                        <span className="block text-[10px] text-[#A47E65] mt-0.5">
+                        <span className="block text-[10px] text-slate-500 mt-0.5">
                           Otomatis salin file ke workspace hosting setelah pull selesai
                         </span>
                       </div>
@@ -1011,11 +1011,11 @@ export default function GitVersionControlView({ user, onNavigate }) {
                     </div>
                   </div>
 
-                  <div className="pt-4 border-t border-[#301B11] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div className="pt-4 border-t border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                     <button
                       onClick={handlePullRemote}
                       disabled={actionLoading || !selectedRepo.remote_url}
-                      className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 px-5 py-2.5 rounded-xl text-xs font-semibold bg-[#5A3521] hover:bg-[#6D4029] text-[#FAF5EC] border border-[#7D4629] shadow-md transition disabled:opacity-50"
+                      className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 px-5 py-2.5 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white border border-slate-200 shadow-md transition disabled:opacity-50"
                     >
                       {actionLoading ? (
                         <Spinner size="xs" />
@@ -1035,35 +1035,35 @@ export default function GitVersionControlView({ user, onNavigate }) {
                 </div>
 
                 {/* Column 2: Deploy HEAD Commit Card */}
-                <div className="p-6 rounded-2xl bg-[#1C0F0A] border border-[#3E2316] flex flex-col justify-between space-y-5">
+                <div className="p-6 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col justify-between space-y-5">
                   <div className="space-y-3">
                     <div className="flex items-center space-x-2.5">
                       <div className="p-2 rounded-xl bg-emerald-950/60 border border-emerald-800/60">
                         <Rocket className="h-5 w-5 text-emerald-400" />
                       </div>
                       <div>
-                        <h4 className="text-sm font-serif font-bold text-[#FAF5EC]">
+                        <h4 className="text-sm font-sans font-bold text-slate-900">
                           Deploy HEAD Commit to Project
                         </h4>
-                        <span className="text-[11px] text-[#A47E65]">
+                        <span className="text-[11px] text-slate-500">
                           Terapkan kode ke direktori runtime hosting web
                         </span>
                       </div>
                     </div>
 
-                    <p className="text-xs text-[#DFCDB5]/80 leading-relaxed pt-1">
+                    <p className="text-xs text-slate-500 leading-relaxed pt-1">
                       Terapkan berkas kode dari HEAD commit repositori ini langsung ke workspace hosting web project mahasiswa yang aktif.
                     </p>
 
                     {userProjects.length > 0 && (
-                      <div className="p-3.5 rounded-xl bg-[#140A07] border border-[#2D180F] space-y-1.5">
-                        <label className="block text-[11px] font-semibold text-[#A47E65]">
+                      <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
+                        <label className="block text-[11px] font-semibold text-slate-500">
                           Pilih Target Project Hosting:
                         </label>
                         <select
                           value={targetProjectId}
                           onChange={(e) => setTargetProjectId(e.target.value)}
-                          className="w-full bg-[#1C0F0A] border border-[#3E2316] rounded-xl px-3 py-2 text-xs text-[#FAF5EC] focus:outline-none focus:border-[#C49767]"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-emerald-500"
                         >
                           <option value="">Otomatis (Project Pertama Aktif)</option>
                           {userProjects.map((p) => (
@@ -1076,7 +1076,7 @@ export default function GitVersionControlView({ user, onNavigate }) {
                     )}
                   </div>
 
-                  <div className="pt-4 border-t border-[#301B11] space-y-3">
+                  <div className="pt-4 border-t border-slate-200 space-y-3">
                     <button
                       onClick={handleDeployHead}
                       disabled={actionLoading}
@@ -1094,13 +1094,13 @@ export default function GitVersionControlView({ user, onNavigate }) {
 
                     {/* Last Deployment Information */}
                     {selectedRepo.last_deployed_at && (
-                      <div className="text-[11px] text-[#DFCDB5] flex items-center space-x-2 pt-1">
-                        <span className="text-[#A47E65]">Terakhir Di-deploy:</span>
+                      <div className="text-[11px] text-slate-600 flex items-center space-x-2 pt-1">
+                        <span className="text-slate-500">Terakhir Di-deploy:</span>
                         <span className="font-semibold text-emerald-300">
                           {new Date(selectedRepo.last_deployed_at).toLocaleString('id-ID')}
                         </span>
                         {selectedRepo.last_deployed_commit && (
-                          <span className="font-mono text-[#E8C58D]">
+                          <span className="font-mono text-emerald-600">
                             ({selectedRepo.last_deployed_commit.substring(0, 7)})
                           </span>
                         )}
@@ -1111,21 +1111,21 @@ export default function GitVersionControlView({ user, onNavigate }) {
               </div>
 
               {/* Bottom Helper Bar: File Manager Direct Access */}
-              <div className="p-4 rounded-2xl bg-[#1C0F0A]/90 border border-[#3E2316] flex flex-col sm:flex-row items-center justify-between gap-3">
-                <div className="flex items-center space-x-3 text-xs text-[#DFCDB5]">
-                  <Folder className="h-5 w-5 text-[#C49767] shrink-0" />
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div className="flex items-center space-x-3 text-xs text-slate-600">
+                  <Folder className="h-5 w-5 text-emerald-600 shrink-0" />
                   <div>
-                    <span className="font-semibold text-[#FAF5EC]">Ingin melihat atau mengedit berkas langsung di browser?</span>
-                    <p className="text-[11px] text-[#A47E65]">
+                    <span className="font-semibold text-slate-900">Ingin melihat atau mengedit berkas langsung di browser?</span>
+                    <p className="text-[11px] text-slate-500">
                       Berkas yang di-deploy tersimpan di workspace project dan dapat dikelola lengkap lewat File Manager.
                     </p>
                   </div>
                 </div>
                 <button
                   onClick={() => onNavigate && onNavigate(`/files?repo=${selectedRepo.id}`)}
-                  className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 px-4 py-2 rounded-xl text-xs font-semibold bg-[#3A2216] hover:bg-[#5A3521] text-[#FAF5EC] border border-[#5E3622] transition shrink-0"
+                  className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 px-4 py-2 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-emerald-700 text-slate-900 border border-slate-200 transition shrink-0"
                 >
-                  <Folder className="h-3.5 w-3.5 text-[#C49767]" />
+                  <Folder className="h-3.5 w-3.5 text-emerald-600" />
                   <span>Buka File Manager</span>
                   <ArrowRight className="h-3.5 w-3.5" />
                 </button>
@@ -1139,17 +1139,17 @@ export default function GitVersionControlView({ user, onNavigate }) {
       {/* VIEW D: COMMIT HISTORY ALA CPANEL (media_1794293461562)      */}
       {/* ============================================================ */}
       {viewMode === 'history' && selectedRepo && (
-        <div className="bg-[#2B1810] border border-[#4D2D1E] rounded-3xl p-6 sm:p-8 shadow-xl w-full space-y-6">
-          <div className="flex items-center justify-between border-b border-[#3E2316] pb-5">
+        <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-xl w-full space-y-6">
+          <div className="flex items-center justify-between border-b border-slate-200 pb-5">
             <div>
-              <div className="flex items-center space-x-2 text-xs font-semibold text-[#A47E65] mb-1">
+              <div className="flex items-center space-x-2 text-xs font-semibold text-slate-500 mb-1">
                 <span className="cursor-pointer hover:underline" onClick={() => setViewMode('list')}>
                   List Repositories
                 </span>
                 <span>/</span>
-                <span className="text-[#FAF5EC]">Commit History</span>
+                <span className="text-slate-900">Commit History</span>
               </div>
-              <h3 className="text-xl font-serif font-bold text-[#FAF5EC] flex items-center space-x-2.5">
+              <h3 className="text-xl font-sans font-bold text-slate-900 flex items-center space-x-2.5">
                 <History className="h-5 w-5 text-amber-400" />
                 <span>Riwayat Commit: {selectedRepo.name}</span>
               </h3>
@@ -1157,7 +1157,7 @@ export default function GitVersionControlView({ user, onNavigate }) {
 
             <button
               onClick={() => fetchCommitHistory(selectedRepo.id)}
-              className="p-2 rounded-xl bg-[#1C0F0A] hover:bg-[#3A2216] text-[#DFCDB5] border border-[#3E2316] transition"
+              className="p-2 rounded-xl bg-slate-50 hover:bg-slate-200 text-slate-600 border border-slate-200 transition"
               title="Refresh History"
             >
               <RefreshCw className={`h-4 w-4 ${historyLoading ? 'animate-spin' : ''}`} />
@@ -1165,12 +1165,12 @@ export default function GitVersionControlView({ user, onNavigate }) {
           </div>
 
           {historyLoading ? (
-            <div className="p-12 text-center text-[#DFCDB5]">
-              <Spinner className="h-8 w-8 text-[#C49767] mx-auto mb-2" />
+            <div className="p-12 text-center text-slate-600">
+              <Spinner className="h-8 w-8 text-emerald-600 mx-auto mb-2" />
               <p className="text-xs">Memuat log commit Git™...</p>
             </div>
           ) : commits.length === 0 ? (
-            <div className="p-12 text-center text-[#A47E65]">
+            <div className="p-12 text-center text-slate-500">
               <p className="text-xs">Belum ada riwayat commit di repositori ini.</p>
             </div>
           ) : (
@@ -1178,29 +1178,29 @@ export default function GitVersionControlView({ user, onNavigate }) {
               {commits.map((c) => (
                 <div
                   key={c.hash}
-                  className="p-4 rounded-2xl bg-[#1C0F0A] border border-[#3E2316] hover:border-[#5A3521] transition flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+                  className="p-4 rounded-2xl bg-slate-50 border border-slate-200 hover:border-slate-300 transition flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
                 >
                   <div className="space-y-1">
-                    <p className="text-xs font-semibold text-[#FAF5EC]">{c.message}</p>
-                    <div className="flex flex-wrap items-center gap-3 text-[11px] text-[#A47E65]">
+                    <p className="text-xs font-semibold text-slate-900">{c.message}</p>
+                    <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-500">
                       <span className="flex items-center space-x-1">
-                        <User className="h-3.5 w-3.5 text-[#DFCDB5]" />
+                        <User className="h-3.5 w-3.5 text-slate-600" />
                         <span>{c.author_name}</span>
                       </span>
                       <span className="flex items-center space-x-1">
-                        <Clock className="h-3.5 w-3.5 text-[#DFCDB5]" />
+                        <Clock className="h-3.5 w-3.5 text-slate-600" />
                         <span>{c.date}</span>
                       </span>
                     </div>
                   </div>
 
                   <div className="flex items-center space-x-2 shrink-0">
-                    <span className="px-2.5 py-1 rounded-lg bg-[#2B1810] text-[#E8C58D] font-mono text-[11px] border border-[#4D2D1E]">
+                    <span className="px-2.5 py-1 rounded-lg bg-white text-emerald-600 font-mono text-[11px] border border-slate-200">
                       {c.short_hash}
                     </span>
                     <button
                       onClick={() => copyToClipboard(c.hash, 'Full Commit SHA')}
-                      className="p-1.5 rounded-lg bg-[#24130B] hover:bg-[#341F14] text-[#A47E65] hover:text-[#FAF5EC] border border-[#3E2316] transition"
+                      className="p-1.5 rounded-lg bg-white hover:bg-slate-100 text-slate-500 hover:text-slate-900 border border-slate-200 transition"
                       title="Copy Full SHA"
                     >
                       <Copy className="h-3.5 w-3.5" />
@@ -1223,28 +1223,28 @@ export default function GitVersionControlView({ user, onNavigate }) {
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-[#2B1810] border border-[#5A3521] rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-2xl space-y-5 animate-in zoom-in-95 duration-150 text-[#FAF5EC]"
+            className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-2xl space-y-5 animate-in zoom-in-95 duration-150 text-slate-900"
           >
             <div className="flex items-center space-x-3 text-rose-400">
               <div className="h-10 w-10 rounded-2xl bg-rose-950/60 border border-rose-800/50 flex items-center justify-center shrink-0">
                 <Trash2 className="h-5 w-5" />
               </div>
               <div>
-                <h4 className="text-base font-serif font-bold text-[#FAF5EC]">
+                <h4 className="text-base font-sans font-bold text-slate-900">
                   Hapus Repositori Git™
                 </h4>
-                <p className="text-xs text-[#DFCDB5]/70">
+                <p className="text-xs text-slate-500">
                   {removeModal.repo?.name}
                 </p>
               </div>
             </div>
 
-            <p className="text-xs text-[#DFCDB5] leading-relaxed">
+            <p className="text-xs text-slate-600 leading-relaxed">
               Apakah Anda yakin ingin menghapus repositori <span className="font-semibold text-white font-mono">'{removeModal.repo?.name}'</span> dari daftar pelacakan Git™ Version Control?
             </p>
 
             {/* Checkbox: Delete Files or Keep in File Manager */}
-            <div className="p-3.5 rounded-xl bg-[#1C0F0A] border border-[#3E2316]">
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
               <label className="flex items-start space-x-3 cursor-pointer">
                 <input
                   type="checkbox"
@@ -1252,11 +1252,11 @@ export default function GitVersionControlView({ user, onNavigate }) {
                   onChange={(e) =>
                     setRemoveModal({ ...removeModal, deleteFiles: e.target.checked })
                   }
-                  className="mt-0.5 rounded border-[#5A3521] text-terracotta-500 focus:ring-terracotta-500 bg-[#2B1810]"
+                  className="mt-0.5 rounded border-slate-200 text-terracotta-500 focus:ring-terracotta-500 bg-white"
                 />
-                <div className="text-xs text-[#FAF5EC]">
+                <div className="text-xs text-slate-900">
                   <span className="font-semibold">Hapus juga direktori dan file fisik di disk</span>
-                  <p className="text-[11px] text-[#A47E65] mt-0.5">
+                  <p className="text-[11px] text-slate-500 mt-0.5">
                     {removeModal.deleteFiles ? (
                       <span className="text-rose-400 font-medium">
                         PERINGATAN: Seluruh file di {removeModal.repo?.path} akan dihapus permanen.
@@ -1275,7 +1275,7 @@ export default function GitVersionControlView({ user, onNavigate }) {
               <button
                 type="button"
                 onClick={() => setRemoveModal({ open: false, repo: null, deleteFiles: false })}
-                className="px-4 py-2 rounded-xl text-xs font-semibold bg-[#1C0F0A] hover:bg-[#341F14] text-[#DFCDB5] border border-[#3E2316] transition"
+                className="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 transition"
               >
                 Batal
               </button>

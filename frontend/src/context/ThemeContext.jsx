@@ -1,15 +1,15 @@
-import React, { createContext, useContext, useState, useEffect } from 'react'
+import React, { createContext, useContext } from 'react'
 
 export const ThemeContext = createContext({
-  theme: 'v1',
-  isV2: false,
+  theme: 'v2',
+  isV2: true,
   toggleTheme: () => {},
   setTheme: () => {},
 })
 
 export function ThemeProvider({ children, value }) {
   return (
-    <ThemeContext.Provider value={value}>
+    <ThemeContext.Provider value={value || { theme: 'v2', isV2: true, toggleTheme: () => {}, setTheme: () => {} }}>
       {children}
     </ThemeContext.Provider>
   )
@@ -17,16 +17,10 @@ export function ThemeProvider({ children, value }) {
 
 export function useTheme() {
   const context = useContext(ThemeContext)
-  if (!context || !context.theme) {
-    const isV2 =
-      typeof document !== 'undefined' &&
-      (document.documentElement.classList.contains('theme-v2') ||
-        document.body.classList.contains('theme-v2') ||
-        localStorage.getItem('miraigrid_theme_mode') === 'v2')
-
+  if (!context) {
     return {
-      theme: isV2 ? 'v2' : 'v1',
-      isV2,
+      theme: 'v2',
+      isV2: true,
       toggleTheme: () => {},
       setTheme: () => {},
     }

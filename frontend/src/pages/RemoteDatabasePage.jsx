@@ -413,7 +413,7 @@ export default function RemoteDatabasePage({ user, onNavigate }) {
           <button
             type="button"
             onClick={() => onNavigate('/dashboard')}
-            className="p-2.5 rounded-2xl bg-[#2B1810] hover:bg-[#3E2316] border border-[#4D2D1E] text-[#E8DCB8] hover:text-white transition shadow-md group"
+            className="p-2.5 rounded-2xl bg-white hover:bg-slate-200 border border-slate-200 text-slate-700 hover:text-white transition shadow-md group"
             title="Kembali ke Tools Dashboard"
           >
             <ArrowLeft className="h-4 w-4 group-hover:-translate-x-0.5 transition-transform" />
@@ -423,9 +423,9 @@ export default function RemoteDatabasePage({ user, onNavigate }) {
               <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded-md border border-emerald-700/60">
                 Network Security
               </span>
-              <span className="text-xs text-[#A47E65]">/ Tools</span>
+              <span className="text-xs text-slate-500">/ Tools</span>
             </div>
-            <h1 className="text-2xl font-serif font-bold text-[#26160F] flex items-center space-x-2.5 mt-0.5">
+            <h1 className="text-2xl font-sans font-bold text-slate-900 flex items-center space-x-2.5 mt-0.5">
               <Globe className="h-6 w-6 text-emerald-700" />
               <span>Remote Database Access (Perizinan IP Host)</span>
             </h1>
@@ -435,22 +435,22 @@ export default function RemoteDatabasePage({ user, onNavigate }) {
         <button
           type="button"
           onClick={() => onNavigate('/databases')}
-          className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-[#2B1810] hover:bg-[#3E2316] border border-[#4D2D1E] text-xs font-semibold text-[#E8DCB8] hover:text-white transition shadow-md"
+          className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-white hover:bg-slate-200 border border-slate-200 text-xs font-semibold text-slate-700 hover:text-white transition shadow-md"
         >
-          <Database className="h-3.5 w-3.5 text-[#E8C58D]" />
+          <Database className="h-3.5 w-3.5 text-emerald-600" />
           <span>Lihat Kredensial Database Saya</span>
         </button>
       </div>
 
       {/* Server Endpoint Information Card */}
-      <div className="bg-[#2B1810] border border-[#4D2D1E] rounded-3xl p-6 text-[#FAF5EC] shadow-xl space-y-4">
-        <div className="flex items-center justify-between border-b border-[#3E2316] pb-3">
+      <div className="bg-white border border-slate-200 rounded-3xl p-6 text-slate-900 shadow-xl space-y-4">
+        <div className="flex items-center justify-between border-b border-slate-200 pb-3">
           <div>
-            <h3 className="text-sm font-serif font-bold text-[#FAF5EC] flex items-center space-x-2">
-              <Server className="h-4 w-4 text-[#C49767]" />
+            <h3 className="text-sm font-sans font-bold text-slate-900 flex items-center space-x-2">
+              <Server className="h-4 w-4 text-emerald-600" />
               <span>Informasi Endpoint & Port Koneksi Remote Server</span>
             </h3>
-            <p className="text-xs text-[#DFCDB5]/80 mt-0.5">
+            <p className="text-xs text-slate-500 mt-0.5">
               Parameter koneksi resmi untuk menghubungkan aplikasi eksternal ke database engine Lab TI.
             </p>
           </div>
@@ -461,41 +461,41 @@ export default function RemoteDatabasePage({ user, onNavigate }) {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs font-mono">
-          <div className="p-4 rounded-2xl bg-[#1C0F0A] border border-[#3E2316] space-y-1">
-            <span className="text-[10px] text-[#A47E65] block uppercase tracking-wider">HOST SERVER / IP</span>
-            <strong className="text-base text-[#FAF5EC] truncate block font-bold">{hostServer}</strong>
-            <span className="text-[10px] text-[#C49767] block">DNS / Public Gateway</span>
+          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
+            <span className="text-[10px] text-slate-500 block uppercase tracking-wider">HOST SERVER / IP</span>
+            <strong className="text-base text-slate-900 truncate block font-bold">{hostServer}</strong>
+            <span className="text-[10px] text-emerald-600 block">DNS / Public Gateway</span>
           </div>
 
-          <div className="p-4 rounded-2xl bg-[#1C0F0A] border border-[#3E2316] space-y-1">
-            <span className="text-[10px] text-[#A47E65] block uppercase tracking-wider">PORT POSTGRESQL</span>
+          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
+            <span className="text-[10px] text-slate-500 block uppercase tracking-wider">PORT POSTGRESQL</span>
             <strong className="text-base text-cyan-400 block font-bold">5432</strong>
-            <span className="text-[10px] text-[#DFCDB5]/70 block">PostgreSQL 16 Enterprise</span>
+            <span className="text-[10px] text-slate-500 block">PostgreSQL 16 Enterprise</span>
           </div>
 
-          <div className="p-4 rounded-2xl bg-[#1C0F0A] border border-[#3E2316] space-y-1">
-            <span className="text-[10px] text-[#A47E65] block uppercase tracking-wider">PORT MYSQL / MARIADB</span>
-            <strong className="text-base text-[#E8C58D] block font-bold">3306</strong>
-            <span className="text-[10px] text-[#DFCDB5]/70 block">MySQL / MariaDB 11 Jammy</span>
+          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
+            <span className="text-[10px] text-slate-500 block uppercase tracking-wider">PORT MYSQL / MARIADB</span>
+            <strong className="text-base text-emerald-600 block font-bold">3306</strong>
+            <span className="text-[10px] text-slate-500 block">MySQL / MariaDB 11 Jammy</span>
           </div>
         </div>
       </div>
 
       {/* Add Access Host Form */}
-      <form onSubmit={handleAddHost} className="bg-[#2B1810] border border-[#4D2D1E] rounded-3xl p-6 text-[#FAF5EC] shadow-xl space-y-4">
+      <form onSubmit={handleAddHost} className="bg-white border border-slate-200 rounded-3xl p-6 text-slate-900 shadow-xl space-y-4">
         <div>
-          <h3 className="text-sm font-serif font-bold text-[#FAF5EC] flex items-center space-x-2">
-            <Plus className="h-4 w-4 text-[#C49767]" />
+          <h3 className="text-sm font-sans font-bold text-slate-900 flex items-center space-x-2">
+            <Plus className="h-4 w-4 text-emerald-600" />
             <span>Tambah Access Host (Alamat IP atau Wildcard %)</span>
           </h3>
-          <p className="text-xs text-[#DFCDB5]/80 mt-1">
-            Daftarkan alamat IP laptop/komputer Anda untuk mengizinkan sambungan langsung. Gunakan tanda persen (<code className="text-[#E8DCB8] font-mono">%</code>) untuk mengizinkan semua IP yang memegang kredensial sah.
+          <p className="text-xs text-slate-500 mt-1">
+            Daftarkan alamat IP laptop/komputer Anda untuk mengizinkan sambungan langsung. Gunakan tanda persen (<code className="text-slate-700 font-mono">%</code>) untuk mengizinkan semua IP yang memegang kredensial sah.
           </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs text-[#DFCDB5] font-semibold mb-1.5 font-mono">
+            <label className="block text-xs text-slate-600 font-semibold mb-1.5 font-mono">
               HOST / IP ADDRESS (%)
             </label>
             <input
@@ -503,21 +503,21 @@ export default function RemoteDatabasePage({ user, onNavigate }) {
               value={newHostIp}
               onChange={(e) => setNewHostIp(e.target.value)}
               placeholder="Contoh: % atau 192.168.1.%"
-              className="w-full bg-[#1C0F0A] border border-[#3E2316] focus:border-[#C49767] rounded-xl px-3.5 py-2.5 text-xs text-[#FAF5EC] font-mono outline-none shadow-inner"
+              className="w-full bg-slate-50 border border-slate-200 focus:border-emerald-500 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 font-mono outline-none shadow-inner"
             />
             <div className="flex items-center space-x-2 mt-2">
-              <span className="text-[10px] text-[#A47E65]">Preset cepat:</span>
+              <span className="text-[10px] text-slate-500">Preset cepat:</span>
               <button
                 type="button"
                 onClick={() => setNewHostIp('%')}
-                className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-[#1C0F0A] hover:bg-[#3E2316] text-[#E8DCB8] border border-[#3E2316]"
+                className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-slate-50 hover:bg-slate-200 text-slate-700 border border-slate-200"
               >
                 % (Semua Host)
               </button>
               <button
                 type="button"
                 onClick={() => setNewHostIp('127.0.0.1')}
-                className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-[#1C0F0A] hover:bg-[#3E2316] text-[#E8DCB8] border border-[#3E2316]"
+                className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-slate-50 hover:bg-slate-200 text-slate-700 border border-slate-200"
               >
                 127.0.0.1 (Localhost)
               </button>
@@ -525,7 +525,7 @@ export default function RemoteDatabasePage({ user, onNavigate }) {
           </div>
 
           <div>
-            <label className="block text-xs text-[#DFCDB5] font-semibold mb-1.5 font-mono">
+            <label className="block text-xs text-slate-600 font-semibold mb-1.5 font-mono">
               KETERANGAN / LABEL PENGGUNA
             </label>
             <input
@@ -533,9 +533,9 @@ export default function RemoteDatabasePage({ user, onNavigate }) {
               value={newHostComment}
               onChange={(e) => setNewHostComment(e.target.value)}
               placeholder="Misal: Laptop Pribadi / DBeaver Kos"
-              className="w-full bg-[#1C0F0A] border border-[#3E2316] focus:border-[#C49767] rounded-xl px-3.5 py-2.5 text-xs text-[#FAF5EC] outline-none shadow-inner"
+              className="w-full bg-slate-50 border border-slate-200 focus:border-emerald-500 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 outline-none shadow-inner"
             />
-            <p className="text-[10px] text-[#A47E65] mt-2">
+            <p className="text-[10px] text-slate-500 mt-2">
               Catatan untuk mengingat perangkat apa yang diberikan akses host ini.
             </p>
           </div>
@@ -544,7 +544,7 @@ export default function RemoteDatabasePage({ user, onNavigate }) {
         <div className="flex justify-end pt-2">
           <button
             type="submit"
-            className="inline-flex items-center space-x-1.5 px-5 py-2.5 bg-gradient-to-r from-chocolate-700 to-chocolate-600 hover:from-chocolate-600 hover:to-terracotta-600 text-xs font-semibold text-[#FAF5EC] rounded-xl transition shadow-md border border-chocolate-500/40 active:scale-95"
+            className="inline-flex items-center space-x-1.5 px-5 py-2.5 bg-gradient-to-r from-chocolate-700 to-chocolate-600 hover:from-chocolate-600 hover:to-terracotta-600 text-xs font-semibold text-slate-900 rounded-xl transition shadow-md border border-chocolate-500/40 active:scale-95"
           >
             <Plus className="h-4 w-4" />
             <span>Tambah Host Diizinkan</span>
@@ -553,23 +553,23 @@ export default function RemoteDatabasePage({ user, onNavigate }) {
       </form>
 
       {/* Host List Table */}
-      <div className="bg-[#2B1810] border border-[#4D2D1E] rounded-3xl p-6 text-[#FAF5EC] shadow-xl space-y-4">
-        <div className="flex items-center justify-between border-b border-[#3E2316] pb-3">
+      <div className="bg-white border border-slate-200 rounded-3xl p-6 text-slate-900 shadow-xl space-y-4">
+        <div className="flex items-center justify-between border-b border-slate-200 pb-3">
           <div>
-            <h3 className="text-sm font-serif font-bold text-[#FAF5EC] flex items-center space-x-2">
+            <h3 className="text-sm font-sans font-bold text-slate-900 flex items-center space-x-2">
               <ShieldCheck className="h-4 w-4 text-emerald-400" />
               <span>Daftar Host Yang Diizinkan Mengakses Database</span>
             </h3>
-            <p className="text-xs text-[#DFCDB5]/80 mt-0.5">
+            <p className="text-xs text-slate-500 mt-0.5">
               Hanya koneksi yang berasal dari alamat host berikut yang dapat menembus firewall database praktikum.
             </p>
           </div>
-          <span className="text-xs font-mono text-[#A47E65]">{accessHosts.length} Host Aktif</span>
+          <span className="text-xs font-mono text-slate-500">{accessHosts.length} Host Aktif</span>
         </div>
 
-        <div className="border border-[#3E2316] rounded-2xl overflow-hidden bg-[#1C0F0A]">
+        <div className="border border-slate-200 rounded-2xl overflow-hidden bg-slate-50">
           <table className="w-full text-xs text-left">
-            <thead className="bg-[#180D08] border-b border-[#3E2316] text-[#A47E65] font-mono text-[11px]">
+            <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-mono text-[11px]">
               <tr>
                 <th className="p-3.5">Host / IP Address</th>
                 <th className="p-3.5">Keterangan Label</th>
@@ -577,16 +577,16 @@ export default function RemoteDatabasePage({ user, onNavigate }) {
                 <th className="p-3.5 text-right">Aksi</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#2F1A10]">
+            <tbody className="divide-y divide-slate-200">
               {accessHosts.map((h) => (
-                <tr key={h.id} className="hover:bg-[#25150E] transition">
+                <tr key={h.id} className="hover:bg-slate-50 transition">
                   <td className="p-3.5 font-mono font-bold text-emerald-400 text-sm">
                     {h.host}
                   </td>
-                  <td className="p-3.5 text-[#DFCDB5]">
+                  <td className="p-3.5 text-slate-600">
                     {h.comment}
                   </td>
-                  <td className="p-3.5 text-[#A47E65] font-mono text-[11px]">
+                  <td className="p-3.5 text-slate-500 font-mono text-[11px]">
                     {h.addedAt}
                   </td>
                   <td className="p-3.5 text-right">
@@ -600,7 +600,7 @@ export default function RemoteDatabasePage({ user, onNavigate }) {
                         <span>Hapus</span>
                       </button>
                     ) : (
-                      <span className="text-[10px] text-[#A47E65] font-mono">Host Permanen</span>
+                      <span className="text-[10px] text-slate-500 font-mono">Host Permanen</span>
                     )}
                   </td>
                 </tr>
@@ -611,20 +611,20 @@ export default function RemoteDatabasePage({ user, onNavigate }) {
       </div>
 
       {/* External Connection Guides */}
-      <div className="bg-[#2B1810] border border-[#4D2D1E] rounded-3xl p-6 text-[#FAF5EC] shadow-xl space-y-4">
+      <div className="bg-white border border-slate-200 rounded-3xl p-6 text-slate-900 shadow-xl space-y-4">
         <div>
-          <h3 className="text-sm font-serif font-bold text-[#FAF5EC] flex items-center space-x-2">
-            <Terminal className="h-4 w-4 text-[#C49767]" />
+          <h3 className="text-sm font-sans font-bold text-slate-900 flex items-center space-x-2">
+            <Terminal className="h-4 w-4 text-emerald-600" />
             <span>Panduan Sambungan Klien Eksternal (DBeaver / TablePlus / Python / Node.js)</span>
           </h3>
-          <p className="text-xs text-[#DFCDB5]/80 mt-1">
+          <p className="text-xs text-slate-500 mt-1">
             Gunakan format URI koneksi di bawah ini dengan menyertakan username dan password database Anda:
           </p>
         </div>
 
         <div className="space-y-3 font-mono text-xs">
           {/* Postgres URI */}
-          <div className="p-3.5 rounded-2xl bg-[#1C0F0A] border border-[#3E2316] space-y-1.5">
+          <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-1.5">
             <div className="flex items-center justify-between text-[11px]">
               <span className="text-cyan-400 font-bold">URI POSTGRESQL (DBeaver / Prisma / SQLAlchemy)</span>
               <button
@@ -636,7 +636,7 @@ export default function RemoteDatabasePage({ user, onNavigate }) {
                     'URI PostgreSQL'
                   )
                 }
-                className="text-[#A47E65] hover:text-[#FAF5EC] flex items-center space-x-1 text-[10px]"
+                className="text-slate-500 hover:text-slate-900 flex items-center space-x-1 text-[10px]"
               >
                 {copiedSnippet === 'pg-uri' ? (
                   <>
@@ -651,15 +651,15 @@ export default function RemoteDatabasePage({ user, onNavigate }) {
                 )}
               </button>
             </div>
-            <div className="text-[#E8DCB8] break-all select-all bg-[#120A07] p-2 rounded-xl border border-[#2E1A11]">
+            <div className="text-slate-700 break-all select-all bg-slate-50 p-2 rounded-xl border border-slate-200">
               postgresql://&lt;db_user&gt;:&lt;db_password&gt;@{hostServer}:5432/&lt;db_name&gt;
             </div>
           </div>
 
           {/* MySQL / MariaDB URI */}
-          <div className="p-3.5 rounded-2xl bg-[#1C0F0A] border border-[#3E2316] space-y-1.5">
+          <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-1.5">
             <div className="flex items-center justify-between text-[11px]">
-              <span className="text-[#E8C58D] font-bold">URI MYSQL / MARIADB (TypeORM / Sequelize / mysql2)</span>
+              <span className="text-emerald-600 font-bold">URI MYSQL / MARIADB (TypeORM / Sequelize / mysql2)</span>
               <button
                 type="button"
                 onClick={() =>
@@ -669,7 +669,7 @@ export default function RemoteDatabasePage({ user, onNavigate }) {
                     'URI MySQL'
                   )
                 }
-                className="text-[#A47E65] hover:text-[#FAF5EC] flex items-center space-x-1 text-[10px]"
+                className="text-slate-500 hover:text-slate-900 flex items-center space-x-1 text-[10px]"
               >
                 {copiedSnippet === 'mysql-uri' ? (
                   <>
@@ -684,7 +684,7 @@ export default function RemoteDatabasePage({ user, onNavigate }) {
                 )}
               </button>
             </div>
-            <div className="text-[#E8DCB8] break-all select-all bg-[#120A07] p-2 rounded-xl border border-[#2E1A11]">
+            <div className="text-slate-700 break-all select-all bg-slate-50 p-2 rounded-xl border border-slate-200">
               mysql://&lt;db_user&gt;:&lt;db_password&gt;@{hostServer}:3306/&lt;db_name&gt;
             </div>
           </div>

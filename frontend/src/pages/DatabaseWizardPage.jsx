@@ -497,7 +497,7 @@ export default function DatabaseWizardPage({ user, onNavigate }) {
           <button
             type="button"
             onClick={() => onNavigate('/dashboard')}
-            className="p-2.5 rounded-2xl bg-[#2B1810] hover:bg-[#3E2316] border border-[#4D2D1E] text-[#E8DCB8] hover:text-white transition shadow-md group"
+            className="p-2.5 rounded-2xl bg-white hover:bg-slate-200 border border-slate-200 text-slate-700 hover:text-white transition shadow-md group"
             title="Kembali ke Tools Dashboard"
           >
             <ArrowLeft className="h-4 w-4 group-hover:-translate-x-0.5 transition-transform" />
@@ -507,9 +507,9 @@ export default function DatabaseWizardPage({ user, onNavigate }) {
               <span className="text-[10px] font-mono uppercase tracking-wider text-amber-400 bg-amber-950/80 px-2 py-0.5 rounded-md border border-amber-700/60">
                 Database Wizard
               </span>
-              <span className="text-xs text-[#A47E65]">/ Tools</span>
+              <span className="text-xs text-slate-500">/ Tools</span>
             </div>
-            <h1 className="text-2xl font-serif font-bold text-[#26160F] flex items-center space-x-2.5 mt-0.5">
+            <h1 className="text-2xl font-sans font-bold text-slate-900 flex items-center space-x-2.5 mt-0.5">
               <Wand2 className="h-6 w-6 text-amber-600" />
               <span>Database Wizard (Panduan Pembuatan Basis Data)</span>
             </h1>
@@ -519,28 +519,28 @@ export default function DatabaseWizardPage({ user, onNavigate }) {
         <button
           type="button"
           onClick={() => onNavigate('/databases')}
-          className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-[#2B1810] hover:bg-[#3E2316] border border-[#4D2D1E] text-xs font-semibold text-[#E8DCB8] hover:text-white transition shadow-md"
+          className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-white hover:bg-slate-200 border border-slate-200 text-xs font-semibold text-slate-700 hover:text-white transition shadow-md"
         >
-          <Database className="h-3.5 w-3.5 text-[#E8C58D]" />
+          <Database className="h-3.5 w-3.5 text-emerald-600" />
           <span>Lihat Semua Database Saya</span>
         </button>
       </div>
 
       {/* Storage Quota Info Banner */}
-      <div className="p-4 rounded-2xl bg-[#2B1810] border border-[#4D2D1E] text-[#FAF5EC] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-md">
+      <div className="p-4 rounded-2xl bg-white border border-slate-200 text-slate-900 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-md">
         <div className="flex items-center space-x-2.5">
-          <Database className="h-4 w-4 text-[#E8C58D] shrink-0" />
+          <Database className="h-4 w-4 text-emerald-600 shrink-0" />
           <span>
-            Storage Database: <strong className="font-mono text-[#FAF5EC]">{dbStorageUsedMb} MB</strong> / {dbStorageMaxMb} MB (Sisa Ruang: <span className="text-emerald-400 font-bold font-mono">{dbStorageRemainingMb} MB</span>)
+            Storage Database: <strong className="font-mono text-slate-900">{dbStorageUsedMb} MB</strong> / {dbStorageMaxMb} MB (Sisa Ruang: <span className="text-emerald-400 font-bold font-mono">{dbStorageRemainingMb} MB</span>)
           </span>
         </div>
-        <span className="text-[11px] text-[#DFCDB5]/80 font-sans">
+        <span className="text-[11px] text-slate-500 font-sans">
           Bebas membuat banyak database hingga kapasitas penyimpanan 5 GB penuh.
         </span>
       </div>
 
       {/* Stepper Progress */}
-      <div className="bg-[#2B1810] border border-[#4D2D1E] rounded-3xl p-5 shadow-xl text-[#FAF5EC]">
+      <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-xl text-slate-900">
         <div className="flex items-center justify-between max-w-2xl mx-auto">
           {/* Step 1 Indicator */}
           <div className="flex items-center space-x-2.5">
@@ -548,18 +548,18 @@ export default function DatabaseWizardPage({ user, onNavigate }) {
               className={`h-9 w-9 rounded-2xl flex items-center justify-center font-bold text-xs font-mono transition-all ${
                 step >= 1
                   ? 'bg-gradient-to-tr from-amber-600 to-terracotta-500 text-white shadow-md border border-amber-500/50'
-                  : 'bg-[#1C0F0A] text-[#A47E65] border border-[#3E2316]'
+                  : 'bg-slate-50 text-slate-500 border border-slate-200'
               }`}
             >
               1
             </div>
             <div className="hidden sm:block">
-              <div className="text-xs font-bold font-serif">Pilih Engine</div>
-              <div className="text-[10px] text-[#A47E65]">Postgres / MySQL</div>
+              <div className="text-xs font-bold font-sans">Pilih Engine</div>
+              <div className="text-[10px] text-slate-500">Postgres / MySQL</div>
             </div>
           </div>
 
-          <div className={`flex-1 h-0.5 mx-4 transition-colors ${step >= 2 ? 'bg-amber-600' : 'bg-[#3E2316]'}`}></div>
+          <div className={`flex-1 h-0.5 mx-4 transition-colors ${step >= 2 ? 'bg-amber-600' : 'bg-slate-100'}`}></div>
 
           {/* Step 2 Indicator */}
           <div className="flex items-center space-x-2.5">
@@ -567,18 +567,18 @@ export default function DatabaseWizardPage({ user, onNavigate }) {
               className={`h-9 w-9 rounded-2xl flex items-center justify-center font-bold text-xs font-mono transition-all ${
                 step >= 2
                   ? 'bg-gradient-to-tr from-amber-600 to-terracotta-500 text-white shadow-md border border-amber-500/50'
-                  : 'bg-[#1C0F0A] text-[#A47E65] border border-[#3E2316]'
+                  : 'bg-slate-50 text-slate-500 border border-slate-200'
               }`}
             >
               2
             </div>
             <div className="hidden sm:block">
-              <div className="text-xs font-bold font-serif">Nama Database</div>
-              <div className="text-[10px] text-[#A47E65]">Prefix & Skema</div>
+              <div className="text-xs font-bold font-sans">Nama Database</div>
+              <div className="text-[10px] text-slate-500">Prefix & Skema</div>
             </div>
           </div>
 
-          <div className={`flex-1 h-0.5 mx-4 transition-colors ${step >= 3 ? 'bg-amber-600' : 'bg-[#3E2316]'}`}></div>
+          <div className={`flex-1 h-0.5 mx-4 transition-colors ${step >= 3 ? 'bg-amber-600' : 'bg-slate-100'}`}></div>
 
           {/* Step 3 Indicator */}
           <div className="flex items-center space-x-2.5">
@@ -586,14 +586,14 @@ export default function DatabaseWizardPage({ user, onNavigate }) {
               className={`h-9 w-9 rounded-2xl flex items-center justify-center font-bold text-xs font-mono transition-all ${
                 step === 3
                   ? 'bg-emerald-600 text-white shadow-md border border-emerald-400/50'
-                  : 'bg-[#1C0F0A] text-[#A47E65] border border-[#3E2316]'
+                  : 'bg-slate-50 text-slate-500 border border-slate-200'
               }`}
             >
               ✓
             </div>
             <div className="hidden sm:block">
-              <div className="text-xs font-bold font-serif">Hasil & Web GUI</div>
-              <div className="text-[10px] text-[#A47E65]">Selesai & Akses</div>
+              <div className="text-xs font-bold font-sans">Hasil & Web GUI</div>
+              <div className="text-[10px] text-slate-500">Selesai & Akses</div>
             </div>
           </div>
         </div>
@@ -601,12 +601,12 @@ export default function DatabaseWizardPage({ user, onNavigate }) {
 
       {/* STEP 1: ENGINE SELECTION */}
       {step === 1 && (
-        <div className="bg-[#2B1810] border border-[#4D2D1E] rounded-3xl p-6 sm:p-8 text-[#FAF5EC] shadow-xl space-y-6">
-          <div className="border-b border-[#3E2316] pb-4">
-            <h3 className="text-lg font-serif font-bold text-[#FAF5EC]">
+        <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 text-slate-900 shadow-xl space-y-6">
+          <div className="border-b border-slate-200 pb-4">
+            <h3 className="text-lg font-sans font-bold text-slate-900">
               Langkah 1: Pilih Teknologi Database Engine
             </h3>
-            <p className="text-xs text-[#DFCDB5]/80 mt-1">
+            <p className="text-xs text-slate-500 mt-1">
               Pilih engine basis data sesuai modul atau kebutuhan mata kuliah praktikum Anda.
             </p>
           </div>
@@ -617,8 +617,8 @@ export default function DatabaseWizardPage({ user, onNavigate }) {
               onClick={() => setEngine('postgres')}
               className={`p-5 rounded-3xl border-2 transition-all cursor-pointer relative overflow-hidden ${
                 engine === 'postgres'
-                  ? 'bg-[#3A2216] border-cyan-500 shadow-xl shadow-cyan-950/30'
-                  : 'bg-[#1C0F0A] border-[#3E2316] hover:border-[#5C3825]'
+                  ? 'bg-slate-100 border-cyan-500 shadow-xl shadow-cyan-950/30'
+                  : 'bg-slate-50 border-slate-200 hover:border-slate-300'
               }`}
             >
               <div className="flex items-center justify-between mb-3">
@@ -627,7 +627,7 @@ export default function DatabaseWizardPage({ user, onNavigate }) {
                     <Database className="h-5 w-5" />
                   </div>
                   <div>
-                    <h4 className="font-bold text-base text-[#FAF5EC]">PostgreSQL 16</h4>
+                    <h4 className="font-bold text-base text-slate-900">PostgreSQL 16</h4>
                     <span className="text-[10px] text-cyan-400 font-mono">Port 5432 • Enterprise Edition</span>
                   </div>
                 </div>
@@ -636,12 +636,12 @@ export default function DatabaseWizardPage({ user, onNavigate }) {
                 )}
               </div>
 
-              <p className="text-xs text-[#DFCDB5]/80 leading-relaxed mb-4">
+              <p className="text-xs text-slate-500 leading-relaxed mb-4">
                 Sistem database relasional objek tangguh dengan dukungan JSONB, indexing tingkat lanjut, dan kepatuhan penuh ACID.
               </p>
 
-              <div className="p-3 rounded-2xl bg-[#120A07] border border-[#2E1A11] text-[11px] font-mono space-y-1">
-                <div className="text-[#A47E65]">Web GUI Terintegrasi:</div>
+              <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 text-[11px] font-mono space-y-1">
+                <div className="text-slate-500">Web GUI Terintegrasi:</div>
                 <div className="text-cyan-300 font-bold flex items-center space-x-1.5">
                   <span>phpPgAdmin (Auto-Login Sesi)</span>
                 </div>
@@ -653,18 +653,18 @@ export default function DatabaseWizardPage({ user, onNavigate }) {
               onClick={() => setEngine('mariadb')}
               className={`p-5 rounded-3xl border-2 transition-all cursor-pointer relative overflow-hidden ${
                 engine === 'mariadb'
-                  ? 'bg-[#3A2216] border-amber-500 shadow-xl shadow-amber-950/30'
-                  : 'bg-[#1C0F0A] border-[#3E2316] hover:border-[#5C3825]'
+                  ? 'bg-slate-100 border-amber-500 shadow-xl shadow-amber-950/30'
+                  : 'bg-slate-50 border-slate-200 hover:border-slate-300'
               }`}
             >
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center space-x-2.5">
-                  <div className="h-10 w-10 rounded-xl bg-amber-950/80 border border-amber-700/60 flex items-center justify-center text-[#E8C58D]">
+                  <div className="h-10 w-10 rounded-xl bg-amber-950/80 border border-amber-700/60 flex items-center justify-center text-emerald-600">
                     <Server className="h-5 w-5" />
                   </div>
                   <div>
-                    <h4 className="font-bold text-base text-[#FAF5EC]">MySQL / MariaDB 11</h4>
-                    <span className="text-[10px] text-[#E8C58D] font-mono">Port 3306 • MySQL 8 Compatible</span>
+                    <h4 className="font-bold text-base text-slate-900">MySQL / MariaDB 11</h4>
+                    <span className="text-[10px] text-emerald-600 font-mono">Port 3306 • MySQL 8 Compatible</span>
                   </div>
                 </div>
                 {engine === 'mariadb' && (
@@ -672,24 +672,24 @@ export default function DatabaseWizardPage({ user, onNavigate }) {
                 )}
               </div>
 
-              <p className="text-xs text-[#DFCDB5]/80 leading-relaxed mb-4">
+              <p className="text-xs text-slate-500 leading-relaxed mb-4">
                 Pilihan standar industri untuk aplikasi web PHP, Laravel, Node.js, dan WordPress dengan performa tinggi & replikasi cepat.
               </p>
 
-              <div className="p-3 rounded-2xl bg-[#120A07] border border-[#2E1A11] text-[11px] font-mono space-y-1">
-                <div className="text-[#A47E65]">Web GUI Terintegrasi:</div>
-                <div className="text-[#E8C58D] font-bold flex items-center space-x-1.5">
+              <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 text-[11px] font-mono space-y-1">
+                <div className="text-slate-500">Web GUI Terintegrasi:</div>
+                <div className="text-emerald-600 font-bold flex items-center space-x-1.5">
                   <span>phpMyAdmin (Auto-Login Sesi)</span>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="flex justify-end pt-2 border-t border-[#3E2316]">
+          <div className="flex justify-end pt-2 border-t border-slate-200">
             <button
               type="button"
               onClick={() => setStep(2)}
-              className="inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-chocolate-700 to-chocolate-600 hover:from-chocolate-600 hover:to-terracotta-600 text-xs font-bold text-[#FAF5EC] rounded-2xl shadow-lg border border-chocolate-500/40 transition active:scale-95"
+              className="inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-chocolate-700 to-chocolate-600 hover:from-chocolate-600 hover:to-terracotta-600 text-xs font-bold text-slate-900 rounded-2xl shadow-lg border border-chocolate-500/40 transition active:scale-95"
             >
               <span>Lanjut ke Penamaan Database</span>
               <ArrowRight className="h-4 w-4" />
@@ -700,24 +700,24 @@ export default function DatabaseWizardPage({ user, onNavigate }) {
 
       {/* STEP 2: DATABASE NAME INPUT & LIVE PREVIEW */}
       {step === 2 && (
-        <form onSubmit={handleCreateDatabase} className="bg-[#2B1810] border border-[#4D2D1E] rounded-3xl p-6 sm:p-8 text-[#FAF5EC] shadow-xl space-y-6">
-          <div className="border-b border-[#3E2316] pb-4">
-            <h3 className="text-lg font-serif font-bold text-[#FAF5EC]">
+        <form onSubmit={handleCreateDatabase} className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 text-slate-900 shadow-xl space-y-6">
+          <div className="border-b border-slate-200 pb-4">
+            <h3 className="text-lg font-sans font-bold text-slate-900">
               Langkah 2: Tentukan Nama Database Praktikum
             </h3>
-            <p className="text-xs text-[#DFCDB5]/80 mt-1">
+            <p className="text-xs text-slate-500 mt-1">
               Nama database akan otomatis diawali dengan prefix NIM/ID Anda untuk menjamin privasi dan isolasi antarmahasiswa.
             </p>
           </div>
 
           <div className="max-w-xl space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-[#DFCDB5] mb-2 font-mono">
+              <label className="block text-xs font-semibold text-slate-600 mb-2 font-mono">
                 NAMA DATABASE (HURUF KECIL, ANGKA, UNDERSCORE)
               </label>
 
-              <div className="flex items-center rounded-2xl bg-[#1C0F0A] border border-[#3E2316] focus-within:border-[#C49767] overflow-hidden shadow-inner">
-                <span className="px-4 py-3 bg-[#140A07] border-r border-[#3E2316] text-[#A47E65] font-mono text-sm font-bold select-none">
+              <div className="flex items-center rounded-2xl bg-slate-50 border border-slate-200 focus-within:border-emerald-500 overflow-hidden shadow-inner">
+                <span className="px-4 py-3 bg-slate-50 border-r border-slate-200 text-slate-500 font-mono text-sm font-bold select-none">
                   s{studentNim}_
                 </span>
                 <input
@@ -727,40 +727,40 @@ export default function DatabaseWizardPage({ user, onNavigate }) {
                   placeholder="tugas_web / final_project"
                   autoFocus
                   required
-                  className="w-full bg-transparent px-4 py-3 text-sm text-[#FAF5EC] font-mono outline-none"
+                  className="w-full bg-transparent px-4 py-3 text-sm text-slate-900 font-mono outline-none"
                 />
               </div>
 
-              <p className="text-[11px] text-[#A47E65] mt-2">
-                Hanya gunakan karakter alfanumerik huruf kecil dan underscore. Contoh: <code className="text-[#E8DCB8] font-mono">tugas1</code>, <code className="text-[#E8DCB8] font-mono">ecommerce_api</code>
+              <p className="text-[11px] text-slate-500 mt-2">
+                Hanya gunakan karakter alfanumerik huruf kecil dan underscore. Contoh: <code className="text-slate-700 font-mono">tugas1</code>, <code className="text-slate-700 font-mono">ecommerce_api</code>
               </p>
             </div>
 
             {/* Live Name Preview Box */}
-            <div className="p-4 rounded-2xl bg-[#1C0F0A] border border-[#3E2316] space-y-2">
-              <span className="text-[10px] text-[#A47E65] font-mono uppercase tracking-wider block">
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+              <span className="text-[10px] text-slate-500 font-mono uppercase tracking-wider block">
                 PRATINJAU IDENTITAS DATABASE LENGKAP
               </span>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-mono">
-                <div className="p-2.5 rounded-xl bg-[#120A07] border border-[#2E1A11]">
-                  <span className="text-[10px] text-[#A47E65] block">NAMA DATABASE SERVER:</span>
+                <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                  <span className="text-[10px] text-slate-500 block">NAMA DATABASE SERVER:</span>
                   <strong className="text-emerald-400 font-bold truncate block">{previewFullDbName}</strong>
                 </div>
-                <div className="p-2.5 rounded-xl bg-[#120A07] border border-[#2E1A11]">
-                  <span className="text-[10px] text-[#A47E65] block">USERNAME OTOMATIS:</span>
-                  <strong className="text-[#FAF5EC] font-bold block">s{studentNim}</strong>
+                <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                  <span className="text-[10px] text-slate-500 block">USERNAME OTOMATIS:</span>
+                  <strong className="text-slate-900 font-bold block">s{studentNim}</strong>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center justify-between pt-4 border-t border-[#3E2316]">
+          <div className="flex items-center justify-between pt-4 border-t border-slate-200">
             <button
               type="button"
               onClick={() => setStep(1)}
-              className="inline-flex items-center space-x-2 px-6 py-3 bg-[#1C0F0A] hover:bg-[#341F14] border border-[#4D2D1E] hover:border-[#6B3F2B] text-xs font-bold text-[#DFCDB5] hover:text-[#FAF5EC] rounded-2xl transition shadow-md active:scale-95 group"
+              className="inline-flex items-center space-x-2 px-6 py-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 hover:border-slate-300 text-xs font-bold text-slate-600 hover:text-slate-900 rounded-2xl transition shadow-md active:scale-95 group"
             >
-              <ArrowLeft className="h-4 w-4 text-[#A47E65] group-hover:text-[#FAF5EC] transition-transform group-hover:-translate-x-0.5" />
+              <ArrowLeft className="h-4 w-4 text-slate-500 group-hover:text-slate-900 transition-transform group-hover:-translate-x-0.5" />
               <span>Kembali ke Langkah 1</span>
             </button>
 
@@ -787,16 +787,16 @@ export default function DatabaseWizardPage({ user, onNavigate }) {
 
       {/* STEP 3: CREATION RESULT & DIRECT WEB GUI LAUNCH */}
       {step === 3 && createdResult && (
-        <div className="bg-[#2B1810] border border-[#4D2D1E] rounded-3xl p-6 sm:p-8 text-[#FAF5EC] shadow-xl space-y-6">
-          <div className="flex items-center space-x-3 border-b border-[#3E2316] pb-4">
+        <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 text-slate-900 shadow-xl space-y-6">
+          <div className="flex items-center space-x-3 border-b border-slate-200 pb-4">
             <div className="h-12 w-12 rounded-2xl bg-emerald-950/80 border border-emerald-500/60 flex items-center justify-center text-emerald-400 shrink-0">
               <CheckCircle2 className="h-7 w-7" />
             </div>
             <div>
-              <h3 className="text-xl font-serif font-bold text-[#FAF5EC]">
+              <h3 className="text-xl font-sans font-bold text-slate-900">
                 Database Berhasil Dibuat!
               </h3>
-              <p className="text-xs text-[#DFCDB5]/80 mt-0.5">
+              <p className="text-xs text-slate-500 mt-0.5">
                 Basis data mandiri Anda telah aktif di server dan siap digunakan untuk query atau aplikasi web.
               </p>
             </div>
@@ -804,35 +804,35 @@ export default function DatabaseWizardPage({ user, onNavigate }) {
 
           {/* Credentials Summary Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs font-mono">
-            <div className="p-3.5 rounded-2xl bg-[#1C0F0A] border border-[#3E2316] space-y-1">
-              <span className="text-[10px] text-[#A47E65] block uppercase">ENGINE</span>
-              <strong className="text-[#FAF5EC] block text-sm font-bold uppercase">{createdResult.engine}</strong>
+            <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
+              <span className="text-[10px] text-slate-500 block uppercase">ENGINE</span>
+              <strong className="text-slate-900 block text-sm font-bold uppercase">{createdResult.engine}</strong>
             </div>
 
-            <div className="p-3.5 rounded-2xl bg-[#1C0F0A] border border-[#3E2316] space-y-1">
-              <span className="text-[10px] text-[#A47E65] block uppercase">NAMA DATABASE</span>
+            <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
+              <span className="text-[10px] text-slate-500 block uppercase">NAMA DATABASE</span>
               <strong className="text-emerald-400 block text-sm font-bold truncate">{createdResult.fullName}</strong>
             </div>
 
-            <div className="p-3.5 rounded-2xl bg-[#1C0F0A] border border-[#3E2316] space-y-1">
-              <span className="text-[10px] text-[#A47E65] block uppercase">USERNAME</span>
-              <strong className="text-[#FAF5EC] block text-sm font-bold">{createdResult.username}</strong>
+            <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
+              <span className="text-[10px] text-slate-500 block uppercase">USERNAME</span>
+              <strong className="text-slate-900 block text-sm font-bold">{createdResult.username}</strong>
             </div>
 
-            <div className="p-3.5 rounded-2xl bg-[#1C0F0A] border border-[#3E2316] space-y-1">
-              <span className="text-[10px] text-[#A47E65] block uppercase">PORT</span>
+            <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
+              <span className="text-[10px] text-slate-500 block uppercase">PORT</span>
               <strong className="text-amber-400 block text-sm font-bold">{createdResult.port}</strong>
             </div>
           </div>
 
           {/* Direct Auto-Login Launcher CTA */}
-          <div className="p-5 rounded-2xl bg-gradient-to-r from-[#3A2216] to-[#2B1810] border border-[#5E3926] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="p-5 rounded-2xl bg-gradient-to-r from-slate-50 to-white border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="space-y-1">
-              <h4 className="text-sm font-bold font-serif text-[#FAF5EC] flex items-center space-x-2">
-                <Sparkles className="h-4 w-4 text-[#C49767]" />
+              <h4 className="text-sm font-bold font-sans text-slate-900 flex items-center space-x-2">
+                <Sparkles className="h-4 w-4 text-emerald-600" />
                 <span>Buka Web GUI Resmi ({createdResult.engine === 'postgres' ? 'phpPgAdmin' : 'phpMyAdmin'})</span>
               </h4>
-              <p className="text-xs text-[#DFCDB5]/80">
+              <p className="text-xs text-slate-500">
                 Sistem akan otomatis mengotentikasi sesi Anda (Auto-Login SSO) tanpa prompt password.
               </p>
             </div>
@@ -847,20 +847,20 @@ export default function DatabaseWizardPage({ user, onNavigate }) {
             </button>
           </div>
 
-          <div className="flex items-center justify-between pt-4 border-t border-[#3E2316]">
+          <div className="flex items-center justify-between pt-4 border-t border-slate-200">
             <button
               type="button"
               onClick={handleReset}
-              className="inline-flex items-center space-x-2 px-6 py-3 bg-[#1C0F0A] hover:bg-[#341F14] border border-[#4D2D1E] hover:border-[#6B3F2B] text-xs font-bold text-[#DFCDB5] hover:text-[#FAF5EC] rounded-2xl transition shadow-md active:scale-95 group"
+              className="inline-flex items-center space-x-2 px-6 py-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 hover:border-slate-300 text-xs font-bold text-slate-600 hover:text-slate-900 rounded-2xl transition shadow-md active:scale-95 group"
             >
-              <Plus className="h-4 w-4 text-[#A47E65] group-hover:text-[#FAF5EC]" />
+              <Plus className="h-4 w-4 text-slate-500 group-hover:text-slate-900" />
               <span>Buat Database Lain</span>
             </button>
 
             <button
               type="button"
               onClick={() => onNavigate('/databases')}
-              className="inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-chocolate-700 to-chocolate-600 hover:from-chocolate-600 hover:to-terracotta-600 text-xs font-bold text-[#FAF5EC] rounded-2xl shadow-lg border border-chocolate-500/40 transition active:scale-95"
+              className="inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-chocolate-700 to-chocolate-600 hover:from-chocolate-600 hover:to-terracotta-600 text-xs font-bold text-slate-900 rounded-2xl shadow-lg border border-chocolate-500/40 transition active:scale-95"
             >
               <span>Buka Daftar Database Saya</span>
               <ArrowRight className="h-4 w-4" />

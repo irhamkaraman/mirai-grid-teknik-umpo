@@ -12,9 +12,9 @@ Setiap AI Assistant / Agent (Gemini Antigravity) yang bekerja pada repositori in
    - Jangan pernah menghapus fitur yang sudah dibangun (Onboarding Wizard, CPanel File Manager, VS Code standalone jail, Database Web SSO, Wildcard subdomains, Tech Stack grid).
    - Selalu lakukan **surgical / incremental patch** (hanya edit baris atau fungsi yang ditargetkan).
 
-2. **DILARANG MENGHAPUS ELEMEN DESAIN UI / BRANDING CREAM-DARK VINTAGE**:
-   - Skema warna: Warm Cream background (`#f5efe6` / `#eaddcf` / `#2b1d14` palette), dark brown/bronze cards, clean rounded borders (`rounded-2xl` / `rounded-3xl`), font inter/sans-serif berkelas.
-   - Jangan pernah fallback ke template Tailwind generic putih-biru polos.
+2. **STANDAR DESAIN TUNGGAL V2 (MIRAIGRID CLOUD WORKSPACE)**:
+   - **Tema resmi tunggal adalah V2 (MiraiGrid Cloud Workspace: putih, slate, emerald). Tema V1 sudah dihapus permanen. Dilarang mengembalikan warna cokelat/krem (`#2b1d14`, `#f5efe6`, `#eaddcf`) ke mana pun.**
+   - Standar UI V2: Flat Clean Minimalist tanpa shadow (`border border-slate-200/80`), `rounded-xl`, tanpa emoji, ikon dari `lucide-react`, tanpa pulse dot/badge dekoratif.
 
 3. **VERIFIKASI FILE BACKUP SEBELUM DAN SESUDAH EDIT**:
    - Selalu buat snapshot/backup sebelum modifikasi (`.bak` atau commit git lokal).
@@ -25,15 +25,17 @@ Setiap AI Assistant / Agent (Gemini Antigravity) yang bekerja pada repositori in
 ## 🏛️ ARSITEKTUR SISTEM MIRAIGRID YANG SUDAH JALAN (EXISTING WORKING STATE)
 
 ### 1. Frontend (`MiraiGrid/frontend/`)
-- **Framework**: React / Vite / Next.js architecture dengan Tailwind CSS.
+- **Framework**: React / Vite architecture dengan Tailwind CSS (Tema Tunggal V2).
 - **Komponen Utama**:
-  - `About`: Menampilkan 12-16 kartu Arsitektur & Tech Stack Modern (Docker, LXC, MinIO, Redis, Portainer, Nginx/Cloudflare, PostgreSQL/MariaDB, MikroTik, Git, Ubuntu, Security Stack).
-  - `Onboarding Wizard` (Gated 4-Step Flow):
-    * Step 1: Profiling & Alokasi Kuota (Storage 500MB, RAM 256MB, CPU 0.5 Cores).
+  - `DashboardV2` & `NavigationV2`: Workspace Cloud File Manager V2 (putih-slate, dual-scroll layout, sidepanel info statis / bottom sheet mobile, fullscreen code/text editor, media preview, Google Drive style Floating Upload Manager).
+  - `LoginPage`: Halaman Login V2 (SSO SIMTIK + login lokal, card putih bersih `rounded-xl`).
+  - `Onboarding Wizard` (Gated 4-Step Flow V2):
+    * Step 1: Profiling & Alokasi Kuota (Storage 10 GB, DB 5 GB, RAM 512 MB, CPU 0.5 Cores dengan `formatMBSize`).
     * Step 2: Database Provisioning (Pilihan MySQL/MariaDB atau PostgreSQL).
     * Step 3: Runtime Deployment & File Upload (PHP, Node.js, Python, OpenLiteSpeed - Drag & Drop ZIP auto-extract).
-    * Step 4: Subdomain Assignment (`*.miraigrid.web.id`) & Celebration Dashboard Unlock.
-  - `File Manager (cPanel Style)`: Cream theme, tree explorer, live editor, upload zip with auto-extraction.
+    * Step 4: Subdomain Assignment (`*.miraigrid.web.id`) & Dashboard Unlock.
+  - `ProjectsView`, `CreateProjectPage`, `ProjectDetailPage`, `ConsolePage`: Manajemen deploy multi-runtime, `php.ini` editor, Composer build engine, dan console kontainer.
+  - `DatabasesView`, `StudentResourcesPage`, `ThingsBoardView`, `AdminView`, `AccountConfigPage`, `AboutPage`: Seluruh halaman terstandarisasi V2.
   - `Terminal & Web VS Code`: Jail sandbox per mahasiswa di port dinamis.
 
 ### 2. Backend (`MiraiGrid/backend/`)
