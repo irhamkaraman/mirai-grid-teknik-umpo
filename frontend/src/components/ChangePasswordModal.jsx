@@ -78,7 +78,7 @@ export default function ChangePasswordModal({ isOpen, onClose, isMandatory = fal
       <ModalPortal isOpen={isOpen}>
         <div
           onClick={() => !isMandatory && onClose()}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-150"
+          className="fixed inset-0 !mt-0 z-[9999] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-150"
         >
           <div
             onClick={(e) => e.stopPropagation()}
@@ -190,7 +190,7 @@ export default function ChangePasswordModal({ isOpen, onClose, isMandatory = fal
     <ModalPortal isOpen={isOpen}>
       <div
         onClick={() => !isMandatory && onClose()}
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-150"
+        className="fixed inset-0 !mt-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-150"
       >
         <div
           onClick={(e) => e.stopPropagation()}

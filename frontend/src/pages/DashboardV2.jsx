@@ -44,6 +44,7 @@ import {
 import { toast } from 'sonner'
 import { api } from '../api/client'
 import { Spinner, SkeletonCard } from '../components/Skeletons'
+import ModalPortal from '../components/ModalPortal'
 
 export default function DashboardV2({
   user,
@@ -84,6 +85,7 @@ export default function DashboardV2({
   const filterDropdownRef = useRef(null)
 
   // Drag and Drop
+  const dragCounter = useRef(0)
   const [isDragOverWindow, setIsDragOverWindow] = useState(false)
   const [draggingItem, setDraggingItem] = useState(null)
   const [dragOverFolder, setDragOverFolder] = useState(null)
@@ -218,17 +220,55 @@ export default function DashboardV2({
         }
       }
 
-      // Escape key: close FAB, active dropdowns, context menu
+      // Escape key: close FAB, active dropdowns, context menu, modals, drag overlay
       if (e.key === 'Escape') {
+        dragCounter.current = 0
+        setIsDragOverWindow(false)
         setFabOpen(false)
         setActiveDropdown(null)
         setContextMenu(null)
+        setActiveModal(null)
+        setBottomSheetItem(null)
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [selectedPaths, clipboard, currentPath])
+
+  // Global escape hatches for external drag-and-drop overlay
+  useEffect(() => {
+    const resetDragState = () => {
+      dragCounter.current = 0
+      setIsDragOverWindow(false)
+    }
+
+    const handleWindowDragLeave = (e) => {
+      if (!e.relatedTarget && !e.toElement) {
+        resetDragState()
+      }
+    }
+
+    const handleWindowKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        resetDragState()
+      }
+    }
+
+    window.addEventListener('dragleave', handleWindowDragLeave)
+    window.addEventListener('drop', resetDragState)
+    window.addEventListener('dragend', resetDragState)
+    window.addEventListener('blur', resetDragState)
+    window.addEventListener('keydown', handleWindowKeyDown)
+
+    return () => {
+      window.removeEventListener('dragleave', handleWindowDragLeave)
+      window.removeEventListener('drop', resetDragState)
+      window.removeEventListener('dragend', resetDragState)
+      window.removeEventListener('blur', resetDragState)
+      window.removeEventListener('keydown', handleWindowKeyDown)
+    }
+  }, [])
 
   // Breadcrumbs calculation
   const breadcrumbs = useMemo(() => {
@@ -657,24 +697,56 @@ export default function DashboardV2({
     }
   }
 
+  // Robust External File Drag & Drop Handlers (Drag Counter Logic)
+  const hasDraggedFiles = (dataTransfer) => {
+    if (!dataTransfer) return false
+    const hasFileType = dataTransfer.types && Array.from(dataTransfer.types).includes('Files')
+    const hasFileItem = dataTransfer.items && Array.from(dataTransfer.items).some((item) => item.kind === 'file')
+    return Boolean(hasFileType || hasFileItem)
+  }
+
+  const handleDragEnter = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (draggingItem || !hasDraggedFiles(e.dataTransfer)) return
+    dragCounter.current += 1
+    setIsDragOverWindow(true)
+  }
+
+  const handleDragOver = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+  }
+
+  const handleDragLeave = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (draggingItem) return
+    dragCounter.current -= 1
+    if (dragCounter.current <= 0) {
+      dragCounter.current = 0
+      setIsDragOverWindow(false)
+    }
+  }
+
+  const handleDrop = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    dragCounter.current = 0
+    setIsDragOverWindow(false)
+    if (draggingItem) return
+    if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
+      handleFilesUpload(e.dataTransfer.files)
+    }
+  }
+
   return (
     <div
       className="space-y-6 animate-in fade-in duration-300 w-full relative"
-      onDragEnter={(e) => {
-        e.preventDefault()
-        setIsDragOverWindow(true)
-      }}
-      onDragOver={(e) => e.preventDefault()}
-      onDragLeave={(e) => {
-        if (e.relatedTarget === null) setIsDragOverWindow(false)
-      }}
-      onDrop={(e) => {
-        e.preventDefault()
-        setIsDragOverWindow(false)
-        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-          handleFilesUpload(e.dataTransfer.files)
-        }
-      }}
+      onDragEnter={handleDragEnter}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
     >
       {/* Hidden File Inputs */}
       <input
@@ -695,22 +767,57 @@ export default function DashboardV2({
       />
 
       {/* External Drag and Drop Overlay */}
-      {isDragOverWindow && (
-        <div className="fixed inset-0 z-50 bg-emerald-600/20 backdrop-blur-sm border-4 border-dashed border-emerald-500 rounded-2xl flex flex-col items-center justify-center pointer-events-none animate-in fade-in duration-150">
-          <div className="bg-white p-8 rounded-xl shadow-2xl flex flex-col items-center space-y-3 border border-emerald-200">
-            <Upload className="h-12 w-12 text-emerald-600 animate-bounce" />
-            <h3 className="text-lg font-bold text-gray-900">
+      <ModalPortal isOpen={isDragOverWindow}>
+        <div
+          onDragEnter={handleDragEnter}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          onClick={() => {
+            dragCounter.current = 0
+            setIsDragOverWindow(false)
+          }}
+          className="fixed inset-0 !mt-0 z-[9999] bg-emerald-600/20 backdrop-blur-sm border-4 border-dashed border-emerald-500 flex flex-col items-center justify-center animate-in fade-in duration-150 p-4"
+        >
+          <div className="relative pointer-events-none bg-white p-6 sm:p-8 rounded-2xl shadow-2xl flex flex-col items-center gap-3 text-center max-w-sm border border-emerald-200">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                setIsDragOverWindow(false)
+                dragCounter.current = 0
+              }}
+              className="pointer-events-auto absolute top-3 right-3 p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition cursor-pointer"
+              title="Batalkan Drag & Drop"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+              <Upload className="h-6 w-6 animate-bounce" />
+            </div>
+            <h3 className="text-base sm:text-lg font-bold text-slate-900">
               Lepaskan berkas di sini untuk mengunggah
             </h3>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-slate-500">
               Berkas akan otomatis disimpan ke dalam folder:{' '}
               <span className="font-mono font-semibold text-emerald-700">
                 /{currentPath || 'Home'}
               </span>
             </p>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                dragCounter.current = 0
+                setIsDragOverWindow(false)
+              }}
+              className="pointer-events-auto mt-2 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 text-[11px] font-medium transition cursor-pointer"
+            >
+              Tekan ESC atau klik untuk batal
+            </button>
           </div>
         </div>
-      )}
+      </ModalPortal>
 
       {/* 1. BREADCRUMB PATH & SEARCH BAR */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border border-slate-200/90 rounded-xl px-4 py-2.5 shadow-xs">
@@ -1498,13 +1605,16 @@ export default function DashboardV2({
       )}
 
       {/* 7. MOBILE BOTTOM SHEET (Responsive Smartphone) */}
-      {bottomSheetItem && (
-        <div className="fixed inset-0 z-50 md:hidden flex flex-col justify-end">
+      <ModalPortal isOpen={Boolean(bottomSheetItem)}>
+        {bottomSheetItem && (
           <div
-            className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm animate-in fade-in"
             onClick={() => setBottomSheetItem(null)}
-          />
-          <div className="relative bg-white rounded-t-3xl p-5 shadow-2xl z-10 space-y-4 animate-in slide-in-from-bottom duration-200">
+            className="fixed inset-0 !mt-0 z-[9999] md:hidden flex flex-col justify-end bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200"
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="relative bg-white rounded-t-3xl p-5 shadow-2xl z-10 space-y-4 animate-in slide-in-from-bottom duration-200"
+            >
             <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto" />
 
             <div className="flex items-center space-x-3 pb-3 border-b border-gray-100">
@@ -1607,9 +1717,10 @@ export default function DashboardV2({
             >
               Tutup
             </button>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </ModalPortal>
 
       {/* 8. FLOATING ACTION BUTTON (FAB) EXPANDABLE (Google Drive Modern Minimalist Style) */}
       <div className="fixed bottom-8 right-8 z-50 select-none" ref={fabRef}>
@@ -1668,9 +1779,16 @@ export default function DashboardV2({
       </div>
 
       {/* 9. CODE VIEWER & EDITOR MODAL */}
-      {activeModal === 'editor' && editorFile && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-gray-900/40 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white border border-gray-200 rounded-xl shadow-2xl w-full max-w-4xl h-[85vh] flex flex-col overflow-hidden text-gray-900">
+      <ModalPortal isOpen={activeModal === 'editor' && Boolean(editorFile)}>
+        {activeModal === 'editor' && editorFile && (
+          <div
+            onClick={() => setActiveModal(null)}
+            className="fixed inset-0 !mt-0 z-[9999] flex items-center justify-center p-3 sm:p-6 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200"
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white border border-gray-200 rounded-xl shadow-2xl w-full max-w-4xl h-[85vh] flex flex-col overflow-hidden text-gray-900"
+            >
             {/* Editor Header */}
             <div className="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between bg-gray-50/80">
               <div className="flex items-center space-x-3 overflow-hidden">
@@ -1759,14 +1877,22 @@ export default function DashboardV2({
               <span>Encoding: UTF-8</span>
               <span>Baris: {editorContent.split('\n').length} baris</span>
             </div>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </ModalPortal>
 
       {/* 10. PROPERTIES / GET INFO MODAL */}
-      {activeModal === 'info' && selectedItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white border border-gray-200 rounded-xl shadow-2xl max-w-md w-full p-6 text-gray-900 space-y-4">
+      <ModalPortal isOpen={activeModal === 'info' && Boolean(selectedItem)}>
+        {activeModal === 'info' && selectedItem && (
+          <div
+            onClick={() => setActiveModal(null)}
+            className="fixed inset-0 !mt-0 z-[9999] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white border border-gray-200 rounded-xl shadow-2xl max-w-md w-full p-6 text-gray-900 space-y-4"
+            >
             <div className="flex items-center justify-between pb-3 border-b border-gray-100">
               <div className="flex items-center space-x-3">
                 <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
@@ -1825,149 +1951,173 @@ export default function DashboardV2({
                 Tutup
               </button>
             </div>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </ModalPortal>
 
       {/* 11. RENAME MODAL */}
-      {activeModal === 'rename' && selectedItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm animate-in fade-in duration-200">
-          <form
-            onSubmit={handleRenameItem}
-            className="bg-white border border-gray-200 rounded-xl shadow-2xl max-w-sm w-full p-6 text-gray-900 space-y-4"
+      <ModalPortal isOpen={activeModal === 'rename' && Boolean(selectedItem)}>
+        {activeModal === 'rename' && selectedItem && (
+          <div
+            onClick={() => setActiveModal(null)}
+            className="fixed inset-0 !mt-0 z-[9999] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-200"
           >
-            <h3 className="text-sm font-bold text-gray-900">Ganti Nama Berkas / Folder</h3>
-            <div className="space-y-1.5">
-              <label className="text-xs text-gray-500">Nama Baru</label>
-              <input
-                type="text"
-                value={newItemName}
-                onChange={(e) => setNewItemName(e.target.value)}
-                autoFocus
-                required
-                className="w-full bg-gray-50 border border-gray-200 focus:border-emerald-500 rounded-lg px-3.5 py-2 text-xs text-gray-900 outline-none"
-              />
-            </div>
-            <div className="flex justify-end space-x-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setActiveModal(null)}
-                className="px-4 py-2 text-xs text-gray-600 hover:bg-gray-100 rounded-lg transition"
-              >
-                Batal
-              </button>
-              <button
-                type="submit"
-                className="px-4 py-2 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition shadow-sm"
-              >
-                Simpan
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
+            <form
+              onSubmit={handleRenameItem}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white border border-gray-200 rounded-xl shadow-2xl max-w-sm w-full p-6 text-gray-900 space-y-4"
+            >
+              <h3 className="text-sm font-bold text-gray-900">Ganti Nama Berkas / Folder</h3>
+              <div className="space-y-1.5">
+                <label className="text-xs text-gray-500">Nama Baru</label>
+                <input
+                  type="text"
+                  value={newItemName}
+                  onChange={(e) => setNewItemName(e.target.value)}
+                  autoFocus
+                  required
+                  className="w-full bg-gray-50 border border-gray-200 focus:border-emerald-500 rounded-lg px-3.5 py-2 text-xs text-gray-900 outline-none"
+                />
+              </div>
+              <div className="flex justify-end space-x-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setActiveModal(null)}
+                  className="px-4 py-2 text-xs text-gray-600 hover:bg-gray-100 rounded-lg transition"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition shadow-sm"
+                >
+                  Simpan
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+      </ModalPortal>
 
       {/* 12. NEW ITEM MODAL (File or Folder) */}
-      {activeModal === 'new_item' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm animate-in fade-in duration-200">
-          <form
-            onSubmit={handleCreateNewItem}
-            className="bg-white border border-gray-200 rounded-xl shadow-2xl max-w-sm w-full p-6 text-gray-900 space-y-4"
+      <ModalPortal isOpen={activeModal === 'new_item'}>
+        {activeModal === 'new_item' && (
+          <div
+            onClick={() => setActiveModal(null)}
+            className="fixed inset-0 !mt-0 z-[9999] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-200"
           >
-            <div className="flex items-center space-x-2">
-              <button
-                type="button"
-                onClick={() => setNewItemIsDir(false)}
-                className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition ${
-                  !newItemIsDir
-                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                    : 'bg-gray-100 text-gray-600'
-                }`}
-              >
-                Berkas Baru
-              </button>
-              <button
-                type="button"
-                onClick={() => setNewItemIsDir(true)}
-                className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition ${
-                  newItemIsDir
-                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                    : 'bg-gray-100 text-gray-600'
-                }`}
-              >
-                Folder Baru
-              </button>
-            </div>
+            <form
+              onSubmit={handleCreateNewItem}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white border border-gray-200 rounded-xl shadow-2xl max-w-sm w-full p-6 text-gray-900 space-y-4"
+            >
+              <div className="flex items-center space-x-2">
+                <button
+                  type="button"
+                  onClick={() => setNewItemIsDir(false)}
+                  className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition ${
+                    !newItemIsDir
+                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                      : 'bg-gray-100 text-gray-600'
+                  }`}
+                >
+                  Berkas Baru
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setNewItemIsDir(true)}
+                  className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition ${
+                    newItemIsDir
+                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                      : 'bg-gray-100 text-gray-600'
+                  }`}
+                >
+                  Folder Baru
+                </button>
+              </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs text-gray-500">
-                Nama {newItemIsDir ? 'Folder' : 'Berkas (contoh: index.php, style.css)'}
-              </label>
-              <input
-                type="text"
-                value={newItemName}
-                onChange={(e) => setNewItemName(e.target.value)}
-                placeholder={newItemIsDir ? 'nama_folder' : 'script.php'}
-                autoFocus
-                required
-                className="w-full bg-gray-50 border border-gray-200 focus:border-emerald-500 rounded-lg px-3.5 py-2 text-xs text-gray-900 outline-none font-mono"
-              />
-            </div>
+              <div className="space-y-1.5">
+                <label className="text-xs text-gray-500">
+                  Nama {newItemIsDir ? 'Folder' : 'Berkas (contoh: index.php, style.css)'}
+                </label>
+                <input
+                  type="text"
+                  value={newItemName}
+                  onChange={(e) => setNewItemName(e.target.value)}
+                  placeholder={newItemIsDir ? 'nama_folder' : 'script.php'}
+                  autoFocus
+                  required
+                  className="w-full bg-gray-50 border border-gray-200 focus:border-emerald-500 rounded-lg px-3.5 py-2 text-xs text-gray-900 outline-none font-mono"
+                />
+              </div>
 
-            <div className="flex justify-end space-x-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setActiveModal(null)}
-                className="px-4 py-2 text-xs text-gray-600 hover:bg-gray-100 rounded-lg transition"
-              >
-                Batal
-              </button>
-              <button
-                type="submit"
-                className="px-4 py-2 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition shadow-sm"
-              >
-                Buat Sekarang
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
+              <div className="flex justify-end space-x-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setActiveModal(null)}
+                  className="px-4 py-2 text-xs text-gray-600 hover:bg-gray-100 rounded-lg transition"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition shadow-sm"
+                >
+                  Buat Sekarang
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+      </ModalPortal>
 
       {/* 13. DELETE CONFIRMATION MODAL */}
-      {activeModal === 'delete' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white border border-gray-200 rounded-xl shadow-2xl max-w-sm w-full p-6 text-gray-900 space-y-4">
-            <div className="h-12 w-12 rounded-lg bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center mx-auto">
-              <Trash2 className="h-6 w-6" />
-            </div>
-            <div className="text-center space-y-1">
-              <h3 className="text-sm font-bold text-gray-900">Konfirmasi Penghapusan</h3>
-              <p className="text-xs text-gray-500">
-                Apakah Anda yakin ingin menghapus {selectedItem ? `"${selectedItem.name}"` : `${selectedPaths.length} item terpilih`}? Tindakan ini tidak dapat dibatalkan.
-              </p>
-            </div>
-            <div className="flex justify-center space-x-2 pt-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveModal(null)
-                  setSelectedItem(null)
-                }}
-                className="px-4 py-2 text-xs text-gray-600 hover:bg-gray-100 rounded-lg transition"
-              >
-                Batal
-              </button>
-              <button
-                type="button"
-                onClick={handleDeleteConfirmed}
-                className="px-4 py-2 text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white rounded-lg transition shadow-sm"
-              >
-                Ya, Hapus
-              </button>
+      <ModalPortal isOpen={activeModal === 'delete'}>
+        {activeModal === 'delete' && (
+          <div
+            onClick={() => {
+              setActiveModal(null)
+              setSelectedItem(null)
+            }}
+            className="fixed inset-0 !mt-0 z-[9999] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white border border-gray-200 rounded-xl shadow-2xl max-w-sm w-full p-6 text-gray-900 space-y-4"
+            >
+              <div className="h-12 w-12 rounded-lg bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center mx-auto">
+                <Trash2 className="h-6 w-6" />
+              </div>
+              <div className="text-center space-y-1">
+                <h3 className="text-sm font-bold text-gray-900">Konfirmasi Penghapusan</h3>
+                <p className="text-xs text-gray-500">
+                  Apakah Anda yakin ingin menghapus {selectedItem ? `"${selectedItem.name}"` : `${selectedPaths.length} item terpilih`}? Tindakan ini tidak dapat dibatalkan.
+                </p>
+              </div>
+              <div className="flex justify-center space-x-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveModal(null)
+                    setSelectedItem(null)
+                  }}
+                  className="px-4 py-2 text-xs text-gray-600 hover:bg-gray-100 rounded-lg transition"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeleteConfirmed}
+                  className="px-4 py-2 text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white rounded-lg transition shadow-sm"
+                >
+                  Ya, Hapus
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </ModalPortal>
     </div>
   )
 }

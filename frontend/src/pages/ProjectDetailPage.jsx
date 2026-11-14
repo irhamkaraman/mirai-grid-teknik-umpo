@@ -9,6 +9,7 @@ import { toast } from 'sonner'
 import { api } from '../api/client'
 import { Spinner, SkeletonCard } from '../components/Skeletons'
 import ConfirmModal from '../components/ConfirmModal'
+import ModalPortal from '../components/ModalPortal'
 
 export default function ProjectDetailPage({ project: propProject, onBack, onUpdated, onOpenConsole, onOpenFile, user: propUser }) {
   const currentUser = propUser || JSON.parse(localStorage.getItem('miraigrid_user') || '{}')
@@ -1118,37 +1119,45 @@ export default function ProjectDetailPage({ project: propProject, onBack, onUpda
       />
 
       {/* Build / Compilation Log Modal */}
-      {showBuildModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in">
-          <div className="bg-[#1C0F0A] border border-[#4D2D1E] rounded-3xl max-w-3xl w-full shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
-            <div className="px-6 py-4 bg-[#2B1810] border-b border-[#3E2316] flex items-center justify-between">
-              <div className="flex items-center space-x-2.5">
-                <Boxes className="h-5 w-5 text-[#C49767]" />
-                <h3 className="text-sm font-serif font-bold text-[#FAF5EC]">{buildTitle || 'Execution Output'}</h3>
+      <ModalPortal isOpen={showBuildModal}>
+        {showBuildModal && (
+          <div
+            onClick={() => setShowBuildModal(false)}
+            className="fixed inset-0 !mt-0 z-[9999] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in"
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="bg-[#1C0F0A] border border-[#4D2D1E] rounded-3xl max-w-3xl w-full shadow-2xl overflow-hidden flex flex-col max-h-[85vh]"
+            >
+              <div className="px-6 py-4 bg-[#2B1810] border-b border-[#3E2316] flex items-center justify-between">
+                <div className="flex items-center space-x-2.5">
+                  <Boxes className="h-5 w-5 text-[#C49767]" />
+                  <h3 className="text-sm font-serif font-bold text-[#FAF5EC]">{buildTitle || 'Execution Output'}</h3>
+                </div>
+                <button
+                  onClick={() => setShowBuildModal(false)}
+                  className="p-1 rounded-xl text-[#DFCDB5]/70 hover:text-white hover:bg-[#3A2115] transition"
+                >
+                  <X className="h-5 w-5" />
+                </button>
               </div>
-              <button
-                onClick={() => setShowBuildModal(false)}
-                className="p-1 rounded-xl text-[#DFCDB5]/70 hover:text-white hover:bg-[#3A2115] transition"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <div className="p-5 flex-1 overflow-auto bg-[#140B07]">
-              <pre className="font-mono text-xs text-[#E8DCB8] whitespace-pre-wrap leading-relaxed select-text">
-                {buildOutput || 'Tidak ada log output.'}
-              </pre>
-            </div>
-            <div className="px-6 py-3.5 bg-[#2B1810] border-t border-[#3E2316] flex justify-end">
-              <button
-                onClick={() => setShowBuildModal(false)}
-                className="px-5 py-2 rounded-xl text-xs font-semibold bg-[#4A2D1B] hover:bg-[#5C3822] text-[#FAF5EC] transition"
-              >
-                Tutup Log
-              </button>
+              <div className="p-5 flex-1 overflow-auto bg-[#140B07]">
+                <pre className="font-mono text-xs text-[#E8DCB8] whitespace-pre-wrap leading-relaxed select-text">
+                  {buildOutput || 'Tidak ada log output.'}
+                </pre>
+              </div>
+              <div className="px-6 py-3.5 bg-[#2B1810] border-t border-[#3E2316] flex justify-end">
+                <button
+                  onClick={() => setShowBuildModal(false)}
+                  className="px-5 py-2 rounded-xl text-xs font-semibold bg-[#4A2D1B] hover:bg-[#5C3822] text-[#FAF5EC] transition"
+                >
+                  Tutup Log
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </ModalPortal>
     </div>
   )
 }

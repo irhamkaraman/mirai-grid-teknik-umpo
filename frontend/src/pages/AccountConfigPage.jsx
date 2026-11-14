@@ -37,8 +37,8 @@ export default function AccountConfigPage({ user: currentUser, onNavigate }) {
   const [account, setAccount] = useState(null)
 
   // Config Form States
-  const [maxDiskMb, setMaxDiskMb] = useState(1000)
-  const [maxDatabaseDiskMb, setMaxDatabaseDiskMb] = useState(100)
+  const [maxDiskMb, setMaxDiskMb] = useState(10240)
+  const [maxDatabaseDiskMb, setMaxDatabaseDiskMb] = useState(5120)
   const [maxMemoryMb, setMaxMemoryMb] = useState(512)
   const [maxCpuCores, setMaxCpuCores] = useState(1.0)
   const [maxProcesses, setMaxProcesses] = useState(50)
@@ -73,8 +73,8 @@ export default function AccountConfigPage({ user: currentUser, onNavigate }) {
       if (res.data?.success && res.data.user) {
         const u = res.data.user
         setAccount(u)
-        setMaxDiskMb(u.max_disk_mb ?? 1000)
-        setMaxDatabaseDiskMb(u.max_database_disk_mb ?? 100)
+        setMaxDiskMb(u.max_disk_mb ?? 10240)
+        setMaxDatabaseDiskMb(u.max_database_disk_mb ?? 5120)
         setMaxMemoryMb(u.max_memory_mb ?? 512)
         setMaxCpuCores(u.max_cpu_cores ?? 1.0)
         setMaxProcesses(u.max_processes ?? 50)
@@ -556,7 +556,7 @@ export default function AccountConfigPage({ user: currentUser, onNavigate }) {
                 required
               />
               <div className="flex flex-wrap gap-1.5">
-                {[50, 100, 200, 500, 1000].map((val) => (
+                {[100, 500, 1000, 2500, 5120].map((val) => (
                   <button
                     key={val}
                     type="button"
@@ -567,12 +567,12 @@ export default function AccountConfigPage({ user: currentUser, onNavigate }) {
                         : 'bg-[#1C0F0A] border-[#3E2316] text-[#DFCDB5] hover:border-[#5A3521]'
                     }`}
                   >
-                    {val >= 1000 ? `${val / 1000} GB` : `${val} MB`}
+                    {val >= 1000 ? `${(val / 1000).toFixed(val % 1000 === 0 ? 0 : 1)} GB` : `${val} MB`}
                   </button>
                 ))}
               </div>
               <p className="text-[10px] text-[#A47E65]">
-                Sistem membatasi database berdasarkan ukuran storage (default 100 MB). Mahasiswa bebas membuat banyak database hingga storage ini penuh.
+                Sistem membatasi database berdasarkan ukuran storage (default 5 GB / 5120 MB). Mahasiswa bebas membuat banyak database hingga storage ini penuh.
               </p>
             </div>
 
@@ -831,7 +831,7 @@ export default function AccountConfigPage({ user: currentUser, onNavigate }) {
       <ModalPortal isOpen={confirmDeleteModal.open}>
         <div
           onClick={() => setConfirmDeleteModal({ open: false, dbId: null, dbName: '' })}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-in fade-in duration-150"
+          className="fixed inset-0 !mt-0 z-[9999] flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-in fade-in duration-150"
         >
           <div
             onClick={(e) => e.stopPropagation()}

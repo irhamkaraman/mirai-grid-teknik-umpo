@@ -44,11 +44,11 @@ export default function StudentResourcesPage({ user, onNavigate }) {
         const qRes = await api.get('/quotas/my-quota')
         if (qRes.data) {
           const q = qRes.data
-          const ramMax = q.max_memory_mb ?? 256
+          const ramMax = q.max_memory_mb ?? 512
           const ramUsed = q.used_memory_mb ?? 0.0
-          const diskMax = q.max_disk_mb ?? 500
+          const diskMax = q.max_disk_mb ?? 10240
           const diskUsed = q.disk_used_mb ?? 0.0
-          const dbMax = q.max_database_disk_mb ?? 100
+          const dbMax = q.max_database_disk_mb ?? 5120
           const dbUsed = q.used_database_disk_mb ?? 0.0
           const procMax = q.max_processes ?? 50
           const procUsed = q.used_processes ?? 0
@@ -513,7 +513,7 @@ export default function StudentResourcesPage({ user, onNavigate }) {
                   {diskMetric.used_mb} <span className="text-xs font-normal text-slate-400">MB</span>
                 </span>
                 <span className={`text-xs font-mono ${isV2 ? 'text-slate-500' : 'text-[#D0B8A2]'}`}>
-                  / {diskMetric.max_mb} MB
+                  / {diskMetric.max_mb >= 1024 ? `${Math.round(diskMetric.max_mb / 1024)} GB` : `${diskMetric.max_mb} MB`}
                 </span>
               </div>
 
@@ -575,7 +575,7 @@ export default function StudentResourcesPage({ user, onNavigate }) {
                   {dbMetric.used_mb} <span className="text-xs font-normal text-slate-400">MB</span>
                 </span>
                 <span className={`text-xs font-mono ${isV2 ? 'text-slate-500' : 'text-[#D0B8A2]'}`}>
-                  / {dbMetric.max_mb} MB
+                  / {dbMetric.max_mb >= 1024 ? `${Math.round(dbMetric.max_mb / 1024)} GB` : `${dbMetric.max_mb} MB`}
                 </span>
               </div>
 

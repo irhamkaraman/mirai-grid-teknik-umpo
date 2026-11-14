@@ -275,7 +275,7 @@ export default function DatabasesView({ user: propUser }) {
     setVisiblePasswords((prev) => ({ ...prev, [id]: !prev[id] }))
   }
 
-  const dbStorageMaxMb = quota?.max_database_disk_mb || 100
+  const dbStorageMaxMb = quota?.max_database_disk_mb || 5120
   const dbStorageUsedMb =
     quota?.used_database_disk_mb ?? parseFloat((databases.length * 12.5).toFixed(1))
   const dbStoragePercent = Math.min(100, Math.round((dbStorageUsedMb / dbStorageMaxMb) * 100))
@@ -721,7 +721,7 @@ export default function DatabasesView({ user: propUser }) {
         <ModalPortal isOpen={showCreateModal}>
           <div
             onClick={() => setShowCreateModal(false)}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-150"
+            className="fixed inset-0 !mt-0 z-[9999] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-150"
           >
             <div
               onClick={(e) => e.stopPropagation()}
@@ -816,7 +816,7 @@ export default function DatabasesView({ user: propUser }) {
         <ModalPortal isOpen={showExternalModal}>
           <div
             onClick={() => setShowExternalModal(false)}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-150"
+            className="fixed inset-0 !mt-0 z-[9999] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-150"
           >
             <div
               onClick={(e) => e.stopPropagation()}
@@ -1364,7 +1364,7 @@ export default function DatabasesView({ user: propUser }) {
       <ModalPortal isOpen={showCreateModal}>
         <div
           onClick={() => setShowCreateModal(false)}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-in fade-in duration-150"
+          className="fixed inset-0 !mt-0 z-[9999] flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-in fade-in duration-150"
         >
           <div
             onClick={(e) => e.stopPropagation()}
@@ -1457,7 +1457,7 @@ export default function DatabasesView({ user: propUser }) {
       <ModalPortal isOpen={showExternalModal}>
         <div
           onClick={() => setShowExternalModal(false)}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-in fade-in duration-150"
+          className="fixed inset-0 !mt-0 z-[9999] flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-in fade-in duration-150"
         >
           <div
             onClick={(e) => e.stopPropagation()}

@@ -37,7 +37,7 @@ export default function DatabaseWizardPage({ user, onNavigate }) {
       .catch(() => {})
   }, [])
 
-  const dbStorageMaxMb = quota?.max_database_disk_mb || 100
+  const dbStorageMaxMb = quota?.max_database_disk_mb || 5120
   const dbStorageUsedMb = quota?.used_database_disk_mb || 0
   const dbStorageRemainingMb = Math.max(0, parseFloat((dbStorageMaxMb - dbStorageUsedMb).toFixed(1)))
 
@@ -156,7 +156,7 @@ export default function DatabaseWizardPage({ user, onNavigate }) {
             </span>
           </div>
           <span className="text-[11px] text-slate-500">
-            Bebas membuat banyak database hingga kapasitas penyimpanan 100 MB penuh.
+            Bebas membuat banyak database hingga kapasitas penyimpanan 5 GB penuh.
           </span>
         </Card>
 
@@ -538,7 +538,7 @@ export default function DatabaseWizardPage({ user, onNavigate }) {
           </span>
         </div>
         <span className="text-[11px] text-[#DFCDB5]/80 font-sans">
-          Bebas membuat banyak database hingga kapasitas penyimpanan 100 MB penuh.
+          Bebas membuat banyak database hingga kapasitas penyimpanan 5 GB penuh.
         </span>
       </div>
 

@@ -32,8 +32,8 @@ export default function OnboardingWizardPage({ user, onComplete }) {
   // Step 1 State: Profile & Resource (Always starts completely empty for new registration)
   const [displayName, setDisplayName] = useState('')
   const [quotas, setQuotas] = useState({
-    max_disk_mb: 500,
-    max_memory_mb: 256,
+    max_disk_mb: 10240,
+    max_memory_mb: 512,
     max_cpu_cores: 0.5,
     max_databases: 2
   })
@@ -378,7 +378,7 @@ export default function OnboardingWizardPage({ user, onComplete }) {
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <div className="bg-[#1E110A] border border-[#4D2D1E] hover:border-[#C49767] rounded-2xl p-4 text-center alpine-hover-card transition-all">
                     <HardDrive className="h-5 w-5 text-[#E8C58D] mx-auto mb-2" />
-                    <div className="text-lg font-bold font-mono text-[#FAF5EC]">{quotas.max_disk_mb >= 1000 ? `${quotas.max_disk_mb / 1000} GB` : `${quotas.max_disk_mb} MB`}</div>
+                    <div className="text-lg font-bold font-mono text-[#FAF5EC]">{quotas.max_disk_mb >= 1024 ? `${Math.round(quotas.max_disk_mb / 1024)} GB` : (quotas.max_disk_mb >= 1000 ? `${Math.round(quotas.max_disk_mb / 1000)} GB` : `${quotas.max_disk_mb} MB`)}</div>
                     <div className="text-[11px] text-[#A47E65]">Storage File Manager</div>
                   </div>
 
@@ -396,8 +396,8 @@ export default function OnboardingWizardPage({ user, onComplete }) {
 
                   <div className="bg-[#1E110A] border border-[#4D2D1E] hover:border-[#C49767] rounded-2xl p-4 text-center alpine-hover-card transition-all">
                     <Database className="h-5 w-5 text-[#E8C58D] mx-auto mb-2" />
-                    <div className="text-lg font-bold font-mono text-[#FAF5EC]">MySQL / PG</div>
-                    <div className="text-[11px] text-[#A47E65]">Multi-DB Enterprise</div>
+                    <div className="text-lg font-bold font-mono text-[#FAF5EC]">5 GB Multi-DB</div>
+                    <div className="text-[11px] text-[#A47E65]">MySQL / PG Enterprise</div>
                   </div>
                 </div>
               </div>

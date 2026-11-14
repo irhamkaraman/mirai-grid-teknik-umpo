@@ -36,7 +36,7 @@ export default function AdminView({ onNavigate }) {
     userId: null,
     username: '',
     name: '',
-    maxDiskMb: 1000,
+    maxDiskMb: 10240,
     maxMemoryMb: 512,
     maxCpuCores: 1.0,
   })
@@ -247,8 +247,8 @@ export default function AdminView({ onNavigate }) {
       userId: null,
       username: `${selectedUserIds.length} Akun Mahasiswa Terpilih`,
       name: 'Pengaturan Limit Massal',
-      maxDiskMb: 1000,
-      maxDatabaseDiskMb: 100,
+      maxDiskMb: 10240,
+      maxDatabaseDiskMb: 5120,
       maxMemoryMb: 512,
       maxCpuCores: 1.0,
     })
@@ -262,7 +262,7 @@ export default function AdminView({ onNavigate }) {
       const res = await api.post('/admin/users/bulk-quota', {
         user_ids: selectedUserIds,
         max_disk_mb: parseInt(limitModal.maxDiskMb),
-        max_database_disk_mb: parseInt(limitModal.maxDatabaseDiskMb || 100),
+        max_database_disk_mb: parseInt(limitModal.maxDatabaseDiskMb || 5120),
         max_memory_mb: parseInt(limitModal.maxMemoryMb),
         max_cpu_cores: parseFloat(limitModal.maxCpuCores),
       })
@@ -856,7 +856,7 @@ export default function AdminView({ onNavigate }) {
       <ModalPortal isOpen={limitModal.open}>
         <div
           onClick={() => setLimitModal((prev) => ({ ...prev, open: false }))}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-in fade-in duration-150"
+          className="fixed inset-0 !mt-0 z-[9999] flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-in fade-in duration-150"
         >
           <div
             onClick={(e) => e.stopPropagation()}

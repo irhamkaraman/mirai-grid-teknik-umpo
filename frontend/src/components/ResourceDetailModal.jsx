@@ -16,6 +16,7 @@ import {
   Network
 } from 'lucide-react'
 import { api } from '../api/client'
+import ModalPortal from './ModalPortal'
 
 export default function ResourceDetailModal({
   isOpen,
@@ -67,13 +68,13 @@ export default function ResourceDetailModal({
   const activeDatabases = liveDatabases.length > 0 ? liveDatabases : initialDatabases
   const activeProjects = liveProjects.length > 0 ? liveProjects : initialProjects
 
-  const diskTotalMb = activeQuota?.max_disk_mb || 500
+  const diskTotalMb = activeQuota?.max_disk_mb || 10240
   const diskUsedMb = activeQuota?.disk_used_mb !== undefined && activeQuota?.disk_used_mb !== null
     ? parseFloat(activeQuota.disk_used_mb.toFixed(1))
     : 157.9
   const diskPercent = Math.min(100, Math.round((diskUsedMb / diskTotalMb) * 100))
 
-  const ramMaxMb = activeQuota?.max_memory_mb || 256
+  const ramMaxMb = activeQuota?.max_memory_mb || 512
   // Live or estimated RAM
   const ramUsedMb = activeQuota?.used_memory_mb ?? 88.0
   const ramPercent = Math.min(100, Math.round((ramUsedMb / ramMaxMb) * 100))
@@ -82,7 +83,7 @@ export default function ResourceDetailModal({
   const currentProcesses = activeQuota?.used_processes ?? (activeProjects.length > 0 ? 11 : 4)
   const processPercent = Math.min(100, Math.round((currentProcesses / maxProcesses) * 100))
 
-  const dbStorageMaxMb = activeQuota?.max_database_disk_mb || 100
+  const dbStorageMaxMb = activeQuota?.max_database_disk_mb || 5120
   const dbStorageUsedMb = activeQuota?.used_database_disk_mb ?? parseFloat((activeDatabases.length > 0 ? activeDatabases.length * 12.5 : 12.5).toFixed(1))
   const dbStoragePercent = Math.min(100, Math.round((dbStorageUsedMb / dbStorageMaxMb) * 100))
 
@@ -90,12 +91,17 @@ export default function ResourceDetailModal({
   const primaryDomain = `${username}.miraigrid.web.id`
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+    <ModalPortal isOpen={isOpen}>
       <div
-        className="bg-white border border-gray-200 rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto custom-scrollbar text-gray-900 animate-in zoom-in-95 duration-200"
-        role="dialog"
-        aria-modal="true"
+        onClick={onClose}
+        className="fixed inset-0 !mt-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200"
       >
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="bg-white border border-gray-200 rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto custom-scrollbar text-gray-900 animate-in zoom-in-95 duration-200"
+          role="dialog"
+          aria-modal="true"
+        >
         {/* Header */}
         <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white/95 backdrop-blur-md z-10 rounded-t-xl">
           <div className="flex items-center space-x-3">
@@ -200,7 +206,7 @@ export default function ResourceDetailModal({
                 </span>
               </div>
               <div className="text-2xl font-black text-gray-900 font-sans">
-                {dbStorageUsedMb} <span className="text-xs text-gray-500 font-normal">/ {dbStorageMaxMb} MB</span>
+                {dbStorageUsedMb} <span className="text-xs text-gray-500 font-normal">/ {dbStorageMaxMb >= 1024 ? `${Math.round(dbStorageMaxMb / 1024)} GB` : `${dbStorageMaxMb} MB`}</span>
               </div>
               <div className="w-full bg-gray-200 h-2 rounded-full mt-3 overflow-hidden">
                 <div
@@ -225,7 +231,7 @@ export default function ResourceDetailModal({
                 </span>
               </div>
               <div className="text-2xl font-black text-gray-900 font-sans">
-                {diskUsedMb} <span className="text-xs text-gray-500 font-normal">/ {diskTotalMb} MB</span>
+                {diskUsedMb} <span className="text-xs text-gray-500 font-normal">/ {diskTotalMb >= 1024 ? `${Math.round(diskTotalMb / 1024)} GB` : `${diskTotalMb} MB`}</span>
               </div>
               <div className="w-full bg-gray-200 h-2 rounded-full mt-3 overflow-hidden">
                 <div
@@ -295,7 +301,8 @@ export default function ResourceDetailModal({
             Tutup
           </button>
         </div>
+        </div>
       </div>
-    </div>
+    </ModalPortal>
   )
 }

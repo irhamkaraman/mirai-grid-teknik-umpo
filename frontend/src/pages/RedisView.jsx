@@ -1134,7 +1134,7 @@ redis-cli -s ${status?.socket_path || `/home/${currentUser?.username}/.redis/red
       <ModalPortal isOpen={showConfigModal}>
         <div
           onClick={() => setShowConfigModal(false)}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-150"
+          className="fixed inset-0 !mt-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-150"
         >
           <div
             onClick={(e) => e.stopPropagation()}
@@ -1233,7 +1233,7 @@ redis-cli -s ${status?.socket_path || `/home/${currentUser?.username}/.redis/red
       <ModalPortal isOpen={showKeyModal}>
         <div
           onClick={() => setShowKeyModal(false)}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-150"
+          className="fixed inset-0 !mt-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-150"
         >
           <div
             onClick={(e) => e.stopPropagation()}

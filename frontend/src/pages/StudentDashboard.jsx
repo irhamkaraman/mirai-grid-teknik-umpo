@@ -466,7 +466,7 @@ export default function StudentDashboard({
   }, [sortedAndFilteredAccounts, accountPage, accountPageSize])
 
   // Calculation for Disk Usage Modal / Student meter
-  const diskTotalMb = quota?.max_disk_mb || 500
+  const diskTotalMb = quota?.max_disk_mb || 10240
   const diskUsedMb = useMemo(() => {
     if (quota?.disk_used_mb !== undefined && quota?.disk_used_mb !== null) {
       return Math.min(diskTotalMb, parseFloat(quota.disk_used_mb.toFixed(1)))
@@ -476,7 +476,7 @@ export default function StudentDashboard({
   const diskPercent = Math.min(100, Math.round((diskUsedMb / diskTotalMb) * 100))
 
   // Storage Database calculation (Berdasarkan kapasitas storage, bukan per instance database):
-  const dbStorageMaxMb = quota?.max_database_disk_mb || 100
+  const dbStorageMaxMb = quota?.max_database_disk_mb || 5120
   const dbStorageUsedMb = quota?.used_database_disk_mb ?? parseFloat((databases.length * 12.5).toFixed(1))
   const dbStoragePercent = Math.min(100, Math.round((dbStorageUsedMb / dbStorageMaxMb) * 100))
 
@@ -708,9 +708,9 @@ export default function StudentDashboard({
                       paginatedAccounts.map((acc) => {
                         const isProjFull = (acc.project_count || 0) >= (acc.max_projects || 2) && (acc.project_count || 0) > 0
                         const dbStorageMb = acc.estimated_db_storage_mb || ((acc.database_count || 0) * 12.5)
-                        const maxDbStorage = acc.max_database_disk_mb || (acc.role === 'admin' ? 1000 : 100)
+                        const maxDbStorage = acc.max_database_disk_mb || (acc.role === 'admin' ? 10000 : 5120)
                         const isDbFull = dbStorageMb >= (maxDbStorage * 0.85) && (acc.database_count || 0) > 0
-                        const maxDisk = acc.max_disk_mb || (acc.role === 'admin' ? 2000 : 5000)
+                        const maxDisk = acc.max_disk_mb || (acc.role === 'admin' ? 50000 : 10240)
                         const diskRatio = (acc.estimated_disk_mb || 0) / maxDisk
                         const isNearFull = (isProjFull && isDbFull) || diskRatio >= 0.7
 
@@ -764,7 +764,7 @@ export default function StudentDashboard({
                                 <span className="font-mono text-[#FAF5EC] font-semibold text-xs">
                                   {acc.estimated_disk_mb} MB{' '}
                                   <span className="text-[10px] text-[#A47E65] font-normal">
-                                    / {maxDisk >= 1000 ? `${(maxDisk / 1000).toFixed(maxDisk % 1000 === 0 ? 0 : 1)} GB` : `${maxDisk} MB`}
+                                    / {maxDisk >= 1024 ? `${Math.round(maxDisk / 1024)} GB` : (maxDisk >= 1000 ? `${(maxDisk / 1000).toFixed(maxDisk % 1000 === 0 ? 0 : 1)} GB` : `${maxDisk} MB`)}
                                   </span>
                                 </span>
                                 <div className="w-24 bg-[#160C08] h-1.5 rounded-full mt-1 overflow-hidden border border-[#3E2316]">
@@ -895,7 +895,7 @@ export default function StudentDashboard({
                 <Database className="h-4 w-4 text-[#E8DCB8] group-hover:scale-110 transition" />
               </div>
               <div className="text-2xl font-black text-[#FAF5EC] font-sans">
-                {dbStorageUsedMb} <span className="text-xs text-[#DFCDB5]/70 font-normal">/ {dbStorageMaxMb} MB</span>
+                {dbStorageUsedMb} <span className="text-xs text-[#DFCDB5]/70 font-normal">/ {dbStorageMaxMb >= 1024 ? `${Math.round(dbStorageMaxMb / 1024)} GB` : `${dbStorageMaxMb} MB`}</span>
               </div>
               <div className="w-full bg-[#1C0F0A] h-2 rounded-full mt-3 overflow-hidden border border-[#3D2316]">
                 <div
@@ -916,7 +916,7 @@ export default function StudentDashboard({
                 <Cpu className="h-4 w-4 text-[#E8DCB8]" />
               </div>
               <div className="text-2xl font-black text-[#FAF5EC] font-sans">
-                {quota?.max_memory_mb ?? 256} <span className="text-xs text-[#DFCDB5]/70 font-normal">MB / project</span>
+                {quota?.max_memory_mb ?? 512} <span className="text-xs text-[#DFCDB5]/70 font-normal">MB / project</span>
               </div>
               <p className="text-[11px] text-[#DFCDB5]/70 mt-2 font-mono">Isolasi OOM killer aktif.</p>
             </div>
@@ -931,7 +931,7 @@ export default function StudentDashboard({
                 <HardDrive className="h-4 w-4 text-[#E8DCB8] group-hover:scale-110 transition" />
               </div>
               <div className="text-2xl font-black text-[#FAF5EC] font-sans">
-                {diskUsedMb} <span className="text-xs text-[#DFCDB5]/70 font-normal">/ {diskTotalMb} MB</span>
+                {diskUsedMb} <span className="text-xs text-[#DFCDB5]/70 font-normal">/ {diskTotalMb >= 1024 ? `${Math.round(diskTotalMb / 1024)} GB` : `${diskTotalMb} MB`}</span>
               </div>
               <div className="w-full bg-[#1C0F0A] h-2 rounded-full mt-3 overflow-hidden border border-[#3D2316]">
                 <div

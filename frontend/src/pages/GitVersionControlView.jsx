@@ -1219,7 +1219,7 @@ export default function GitVersionControlView({ user, onNavigate }) {
       <ModalPortal isOpen={Boolean(removeModal.open && removeModal.repo)}>
         <div
           onClick={() => setRemoveModal({ open: false, repo: null, deleteFiles: false })}
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-150"
+          className="fixed inset-0 !mt-0 z-[9999] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-150"
         >
           <div
             onClick={(e) => e.stopPropagation()}

@@ -82,7 +82,7 @@ export default function DiskUsagePage({ user, onNavigate }) {
   }, [systemCapacity, searchAccount])
 
   // Calculate storage numbers
-  const diskTotalMb = quota?.max_disk_mb || 1024
+  const diskTotalMb = quota?.max_disk_mb || 10240
   const diskUsedMb = quota?.disk_used_mb !== undefined && quota?.disk_used_mb !== null ? parseFloat(quota.disk_used_mb.toFixed(1)) : 0.0
   const diskPercent = Math.min(100, Math.round((diskUsedMb / diskTotalMb) * 100))
   const remainingMb = parseFloat((diskTotalMb - diskUsedMb).toFixed(1))
@@ -294,7 +294,7 @@ export default function DiskUsagePage({ user, onNavigate }) {
                 </span>
                 <div className="text-3xl font-black font-mono text-[#FAF5EC] mt-1 flex items-baseline space-x-2">
                   <span>{diskUsedMb} MB</span>
-                  <span className="text-sm font-normal text-[#A47E65]">/ {diskTotalMb} MB Alokasi Kuota</span>
+                  <span className="text-sm font-normal text-[#A47E65]">/ {diskTotalMb >= 1024 ? `${Math.round(diskTotalMb / 1024)} GB (${diskTotalMb} MB)` : `${diskTotalMb} MB`} Alokasi Kuota</span>
                 </div>
               </div>
 
@@ -608,7 +608,7 @@ export default function DiskUsagePage({ user, onNavigate }) {
               </>
             ) : (
               <>
-                Setiap mahasiswa diberikan alokasi kuota standar <strong>1024 MB (1 GB)</strong> storage mandiri. Jika Anda membutuhkan kuota tambahan untuk riset atau tugas akhir, silakan hubungi asisten lab atau administrator.
+                Setiap mahasiswa diberikan alokasi kuota standar <strong>10 GB (10.240 MB)</strong> storage mandiri. Jika Anda membutuhkan kuota tambahan untuk riset atau tugas akhir, silakan hubungi asisten lab atau administrator.
               </>
             )}
           </p>

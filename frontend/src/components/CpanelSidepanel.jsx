@@ -272,7 +272,7 @@ export default function CpanelSidepanel({ user }) {
             <div className="flex items-center justify-between mb-1">
               <span className="text-[#A47E65] font-medium">Disk Usage</span>
               <span className="font-mono font-bold text-[#FAF5EC] text-[11px]">
-                {st?.disk_usage?.label || `${st?.disk_usage?.used_mb ?? 0} MB / ${st?.disk_usage?.limit_mb ?? 500} MB (${diskPct}%)`}
+                {st?.disk_usage?.label || `${st?.disk_usage?.used_mb ?? 0} MB / ${st?.disk_usage?.limit_mb ?? 10240} MB (${diskPct}%)`}
               </span>
             </div>
             <div className="h-2 w-full bg-[#1C0F0A] rounded-full overflow-hidden border border-[#3E2316]/70">
@@ -304,7 +304,7 @@ export default function CpanelSidepanel({ user }) {
             <div className="flex items-center justify-between mb-1">
               <span className="text-[#A47E65] font-medium">Physical Memory Usage</span>
               <span className="font-mono font-bold text-[#FAF5EC] text-[11px]">
-                {st?.memory?.label || `${st?.memory?.used_mb ?? 0} MB / ${st?.memory?.limit_mb ?? 256} MB (${memPct}%)`}
+                {st?.memory?.label || `${st?.memory?.used_mb ?? 0} MB / ${st?.memory?.limit_mb ?? 512} MB (${memPct}%)`}
               </span>
             </div>
             <div className="h-2 w-full bg-[#1C0F0A] rounded-full overflow-hidden border border-[#3E2316]/70">
@@ -336,7 +336,7 @@ export default function CpanelSidepanel({ user }) {
             <div className="flex items-center justify-between mb-1">
               <span className="text-[#A47E65] font-medium">Database Disk Usage</span>
               <span className="font-mono font-bold text-[#FAF5EC] text-[11px]">
-                {st?.database_disk_usage?.label || `${st?.database_disk_usage?.used_mb ?? 0} MB / ${st?.database_disk_usage?.limit_mb ?? 100} MB (${dbPct}%)`}
+                {st?.database_disk_usage?.label || `${st?.database_disk_usage?.used_mb ?? 0} MB / ${st?.database_disk_usage?.limit_mb ?? 5120} MB (${dbPct}%)`}
               </span>
             </div>
             <div className="h-2 w-full bg-[#1C0F0A] rounded-full overflow-hidden border border-[#3E2316]/70">
