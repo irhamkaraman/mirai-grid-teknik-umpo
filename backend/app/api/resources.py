@@ -63,8 +63,10 @@ async def query_docker_container_stats(container_name: str) -> Optional[Dict[str
                 return None
 
             mem_stats = js.get("memory_stats", {})
-            # cgroup v2 / v1 memory usage in MB
-            usage_bytes = mem_stats.get("usage", 0)
+            # cgroup v2 / v1 active memory usage in MB (matches docker stats CLI: usage - inactive_file)
+            stats_detail = mem_stats.get("stats", {}) or {}
+            inactive_file = stats_detail.get("inactive_file") or stats_detail.get("total_inactive_file") or 0
+            usage_bytes = max(0, mem_stats.get("usage", 0) - inactive_file)
             usage_mb = round(usage_bytes / (1024 * 1024), 2)
             pids = js.get("pids_stats", {}).get("current", 0)
             return {
@@ -92,11 +94,11 @@ async def fetch_student_metrics(user: dict, db: aiosqlite.Connection) -> dict:
     cursor = await db.execute("SELECT * FROM quotas WHERE user_id = ?", (user_id,))
     quota = await cursor.fetchone()
 
-    default_disk = 116000.0 if is_admin else 500.0
-    default_mem = 11264.0 if is_admin else 256.0
+    default_disk = 116000.0 if is_admin else 10240.0
+    default_mem = 11264.0 if is_admin else 512.0
     default_cpu = 4.0 if is_admin else 0.5
     default_proc = 1000 if is_admin else 50
-    default_db_disk = 100000.0 if is_admin else 100.0
+    default_db_disk = 100000.0 if is_admin else 5120.0
 
     max_disk_mb = float(quota["max_disk_mb"]) if (quota and quota["max_disk_mb"]) else default_disk
     max_mem_mb = float(quota["max_memory_mb"]) if (quota and quota["max_memory_mb"]) else default_mem
@@ -146,16 +148,25 @@ async def fetch_student_metrics(user: dict, db: aiosqlite.Connection) -> dict:
     tb_container = f"tb_{username}"
     vscode_container = f"vscode_{username}"
 
-    # Query Docker stats asynchronously for student-isolated containers
+    # Query Docker stats asynchronously for strictly tenant-isolated containers
     live_ram_mb = 0.0
     live_pids = 0
     containers_found = 0
+    containers_inspected: List[str] = []
+
+    def _is_owned_container(cname: str) -> bool:
+        if is_admin:
+            return True
+        return cname.startswith(f"app_{username}_") or cname in (vscode_container, tb_container)
 
     # Query web workspace containers first
-    for c_name in set(candidate_containers):
+    for c_name in sorted(set(candidate_containers)):
+        if not _is_owned_container(c_name):
+            continue
         stats = await query_docker_container_stats(c_name)
         if stats is not None:
             containers_found += 1
+            containers_inspected.append(c_name)
             live_ram_mb += stats["ram_used_mb"]
             live_pids += stats["pids"]
 
@@ -164,12 +175,14 @@ async def fetch_student_metrics(user: dict, db: aiosqlite.Connection) -> dict:
         vs_stats = await query_docker_container_stats(vscode_container)
         if vs_stats is not None:
             containers_found += 1
+            containers_inspected.append(vscode_container)
             live_ram_mb += vs_stats["ram_used_mb"]
             live_pids += vs_stats["pids"]
         else:
             tb_stats = await query_docker_container_stats(tb_container)
             if tb_stats is not None:
                 containers_found += 1
+                containers_inspected.append(tb_container)
                 live_ram_mb += tb_stats["ram_used_mb"]
                 live_pids += tb_stats["pids"]
 
@@ -203,6 +216,8 @@ async def fetch_student_metrics(user: dict, db: aiosqlite.Connection) -> dict:
         "role": user.get("role", "student"),
         "sandbox_status": "active",
         "sandbox_badge": "Terisolasi cgroup v2 Linux - OOM Protected",
+        "telemetry_source": "docker_cgroup_v2",
+        "containers_inspected": containers_inspected,
         "metrics": {
             "ram": {
                 "used_mb": live_ram_mb,

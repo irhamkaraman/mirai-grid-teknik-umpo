@@ -27,6 +27,7 @@ export default function ResourceDetailModal({
   user
 }) {
   const [liveQuota, setLiveQuota] = useState(initialQuota)
+  const [liveMetrics, setLiveMetrics] = useState(null)
   const [liveDatabases, setLiveDatabases] = useState(initialDatabases)
   const [liveProjects, setLiveProjects] = useState(initialProjects)
 
@@ -46,11 +47,15 @@ export default function ResourceDetailModal({
     if (isOpen) {
       Promise.allSettled([
         api.get('/quotas/my-quota'),
+        api.get('/resources/metrics'),
         api.get('/projects'),
         api.get('/databases'),
-      ]).then(([resQuota, resProjects, resDatabases]) => {
+      ]).then(([resQuota, resMetrics, resProjects, resDatabases]) => {
         if (resQuota.status === 'fulfilled' && resQuota.value.data) {
           setLiveQuota(resQuota.value.data)
+        }
+        if (resMetrics.status === 'fulfilled' && resMetrics.value.data) {
+          setLiveMetrics(resMetrics.value.data)
         }
         if (resProjects.status === 'fulfilled' && Array.isArray(resProjects.value.data)) {
           setLiveProjects(resProjects.value.data)
@@ -65,27 +70,26 @@ export default function ResourceDetailModal({
   if (!isOpen) return null
 
   const activeQuota = liveQuota || initialQuota
+  const activeMetrics = liveMetrics?.metrics
   const activeDatabases = liveDatabases.length > 0 ? liveDatabases : initialDatabases
   const activeProjects = liveProjects.length > 0 ? liveProjects : initialProjects
 
-  const diskTotalMb = activeQuota?.max_disk_mb || 10240
-  const diskUsedMb = activeQuota?.disk_used_mb !== undefined && activeQuota?.disk_used_mb !== null
-    ? parseFloat(activeQuota.disk_used_mb.toFixed(1))
-    : 157.9
-  const diskPercent = Math.min(100, Math.round((diskUsedMb / diskTotalMb) * 100))
+  const diskTotalMb = activeMetrics?.disk?.max_mb || activeQuota?.max_disk_mb || 10240
+  const rawDiskUsed = activeMetrics?.disk?.used_mb ?? activeQuota?.disk_used_mb ?? 0
+  const diskUsedMb = parseFloat(Number(rawDiskUsed).toFixed(1))
+  const diskPercent = activeMetrics?.disk?.percent ?? Math.min(100, Math.round((diskUsedMb / diskTotalMb) * 100))
 
-  const ramMaxMb = activeQuota?.max_memory_mb || 512
-  // Live or estimated RAM
-  const ramUsedMb = activeQuota?.used_memory_mb ?? 88.0
-  const ramPercent = Math.min(100, Math.round((ramUsedMb / ramMaxMb) * 100))
+  const ramMaxMb = activeMetrics?.ram?.max_mb || activeQuota?.max_memory_mb || 512
+  const ramUsedMb = activeMetrics?.ram?.used_mb ?? activeQuota?.used_memory_mb ?? 0.0
+  const ramPercent = activeMetrics?.ram?.percent ?? Math.min(100, Math.round((ramUsedMb / ramMaxMb) * 100))
 
-  const maxProcesses = activeQuota?.max_processes || 50
-  const currentProcesses = activeQuota?.used_processes ?? (activeProjects.length > 0 ? 11 : 4)
-  const processPercent = Math.min(100, Math.round((currentProcesses / maxProcesses) * 100))
+  const maxProcesses = activeMetrics?.cpu?.max_processes || activeQuota?.max_processes || 50
+  const currentProcesses = activeMetrics?.cpu?.process_count ?? activeQuota?.used_processes ?? 0
+  const processPercent = activeMetrics?.cpu?.percent ?? Math.min(100, Math.round((currentProcesses / maxProcesses) * 100))
 
-  const dbStorageMaxMb = activeQuota?.max_database_disk_mb || 5120
-  const dbStorageUsedMb = activeQuota?.used_database_disk_mb ?? parseFloat((activeDatabases.length > 0 ? activeDatabases.length * 12.5 : 12.5).toFixed(1))
-  const dbStoragePercent = Math.min(100, Math.round((dbStorageUsedMb / dbStorageMaxMb) * 100))
+  const dbStorageMaxMb = activeMetrics?.database?.max_mb || activeQuota?.max_database_disk_mb || 5120
+  const dbStorageUsedMb = activeMetrics?.database?.used_mb ?? activeQuota?.used_database_disk_mb ?? 0.0
+  const dbStoragePercent = activeMetrics?.database?.percent ?? Math.min(100, Math.round((dbStorageUsedMb / dbStorageMaxMb) * 100))
 
   const username = user?.username || 'mahasiswa'
   const primaryDomain = `${username}.miraigrid.web.id`

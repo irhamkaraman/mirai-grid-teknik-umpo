@@ -51,24 +51,24 @@ class BulkDeleteUsersRequest(BaseModel):
     user_ids: List[int]
 
 class UserQuotaUpdateRequest(BaseModel):
-    max_disk_mb: int = Field(default=1000, ge=50, le=100000, description="Storage limit in MB")
+    max_disk_mb: int = Field(default=10240, ge=50, le=100000, description="Storage limit in MB")
     max_memory_mb: int = Field(default=512, ge=64, le=64000, description="RAM limit in MB")
-    max_cpu_cores: float = Field(default=1.0, ge=0.1, le=32.0, description="CPU cores limit")
+    max_cpu_cores: float = Field(default=0.5, ge=0.1, le=32.0, description="CPU cores limit")
     max_processes: Optional[int] = Field(default=50, ge=10, le=2000, description="Number of processes (NPROC) limit")
     max_projects: Optional[int] = Field(default=None, ge=1, le=100)
     max_databases: Optional[int] = Field(default=None, ge=1, le=100)
-    max_database_disk_mb: Optional[int] = Field(default=100, ge=10, le=100000, description="Database storage limit in MB")
+    max_database_disk_mb: Optional[int] = Field(default=5120, ge=10, le=100000, description="Database storage limit in MB")
     allow_postgres: Optional[int] = Field(default=1, ge=0, le=1)
     allow_mariadb: Optional[int] = Field(default=1, ge=0, le=1)
     allow_remote_db: Optional[int] = Field(default=1, ge=0, le=1)
 
 class BulkQuotaUpdateRequest(BaseModel):
     user_ids: List[int]
-    max_disk_mb: int = Field(default=1000, ge=50, le=100000)
+    max_disk_mb: int = Field(default=10240, ge=50, le=100000)
     max_memory_mb: int = Field(default=512, ge=64, le=64000)
-    max_cpu_cores: float = Field(default=1.0, ge=0.1, le=32.0)
+    max_cpu_cores: float = Field(default=0.5, ge=0.1, le=32.0)
     max_processes: Optional[int] = Field(default=50, ge=10, le=2000)
-    max_database_disk_mb: Optional[int] = Field(default=100, ge=10, le=100000)
+    max_database_disk_mb: Optional[int] = Field(default=5120, ge=10, le=100000)
 
 class UserCreateManual(BaseModel):
     username: str = Field(min_length=3, max_length=50)
@@ -178,9 +178,11 @@ class QuotaResponse(BaseModel):
     max_processes: int = 50
     max_disk_mb: int
     disk_used_mb: float = 0.0
+    used_memory_mb: float = 0.0
+    used_processes: int = 0
     used_projects: int
     used_databases: int
-    max_database_disk_mb: int = 100
+    max_database_disk_mb: int = 5120
     used_database_disk_mb: float = 0.0
     is_unlimited: bool = False
 

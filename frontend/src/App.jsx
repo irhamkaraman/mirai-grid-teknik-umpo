@@ -371,10 +371,10 @@ export default function App() {
         />
       )}
 
-      {/* Top Header Bar for Theme V2 (Solid Cloud Theme Header) */}
+      {/* Top Header Bar for Theme V2 (Floating Transparent Cloud Header - Zero Border) */}
       {isV2 && (
         <header
-          className={`h-16 bg-white/95 backdrop-blur-md border-b border-slate-200/80 sticky top-0 z-20 px-4 sm:px-8 flex items-center justify-between transition-all duration-300 ease-in-out ${
+          className={`h-14 bg-[#F8FAFC]/95 backdrop-blur-md sticky top-0 z-20 px-4 sm:px-6 flex items-center justify-between transition-all duration-300 ease-in-out ${
             isCollapsed ? 'md:ml-20' : 'md:ml-64'
           }`}
         >
@@ -419,17 +419,23 @@ export default function App() {
 
       {/* Main Content Area */}
       <main
-        className={`flex-1 transition-all duration-300 ease-in-out p-4 sm:p-6 md:p-8 pb-24 md:pb-12 ${
+        className={`flex-1 transition-all duration-300 ease-in-out ${
           isV2
-            ? isCollapsed
-              ? 'md:ml-20'
-              : 'md:ml-64'
-            : isCollapsed
-            ? 'md:ml-[110px]'
-            : 'md:ml-[290px]'
+            ? `px-3 sm:px-4 md:pl-1 md:pr-4 pb-20 md:pb-4 pt-0 ${
+                isCollapsed ? 'md:ml-20' : 'md:ml-64'
+              }`
+            : `p-4 sm:p-6 md:p-8 pb-24 md:pb-12 ${
+                isCollapsed ? 'md:ml-[110px]' : 'md:ml-[290px]'
+              }`
         }`}
       >
-        <div className="w-full">
+        <div
+          className={
+            isV2
+              ? 'w-full min-h-[calc(100vh-4.5rem)] bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-6 md:p-7'
+              : 'w-full'
+          }
+        >
           {/* Header Navbar for V1 ONLY */}
           {!isV2 && (
             <header className="flex items-center justify-between gap-4 pb-5 pt-1">

@@ -3,7 +3,7 @@ import aiosqlite
 from app.core.database import get_db
 from app.models.schemas import QuotaResponse
 from app.api.deps import get_current_user, get_client_ip, require_onboarding_completed
-from app.services.disk_usage import calculate_account_disk_usage
+from app.api.resources import fetch_student_metrics
 
 router = APIRouter(prefix="/quotas", tags=["Quotas"])
 
@@ -28,10 +28,10 @@ async def get_my_quota(
         max_dbs = 999
         max_proc = 1000
     else:
-        default_disk = 500
+        default_disk = 10240
         default_mem = 512
         default_cpu = 0.5
-        default_db_disk = 100
+        default_db_disk = 5120
         max_disk = quota["max_disk_mb"] if (quota and quota["max_disk_mb"]) else default_disk
         max_mem = quota["max_memory_mb"] if (quota and quota["max_memory_mb"]) else default_mem
         max_cpu = quota["max_cpu_cores"] if (quota and quota["max_cpu_cores"]) else default_cpu
@@ -40,7 +40,8 @@ async def get_my_quota(
         max_dbs = quota["max_databases"] if (quota and quota["max_databases"]) else 2
         max_proc = quota["max_processes"] if (quota and "max_processes" in quota.keys() and quota["max_processes"]) else 50
 
-    disk_used_mb, used_db_disk = calculate_account_disk_usage(current_user.get("username", ""), c_dbs[0])
+    live_telemetry = await fetch_student_metrics(current_user, db)
+    live_m = live_telemetry["metrics"]
 
     return {
         "max_projects": max_proj,
@@ -49,11 +50,13 @@ async def get_my_quota(
         "max_cpu_cores": max_cpu,
         "max_disk_mb": max_disk,
         "max_processes": max_proc,
-        "disk_used_mb": disk_used_mb,
+        "disk_used_mb": live_m["disk"]["used_mb"],
+        "used_memory_mb": live_m["ram"]["used_mb"],
+        "used_processes": live_m["cpu"]["process_count"],
         "used_projects": c_proj[0],
         "used_databases": c_dbs[0],
         "max_database_disk_mb": max_db_disk,
-        "used_database_disk_mb": used_db_disk,
+        "used_database_disk_mb": live_m["database"]["used_mb"],
         "is_unlimited": isAdmin
     }
 
@@ -71,11 +74,11 @@ async def get_cpanel_stats(
     # 1. Quota limits (Single Source of Truth)
     cursor = await db.execute("SELECT * FROM quotas WHERE user_id = ?", (user_id,))
     quota = await cursor.fetchone()
-    default_disk = 2000.0 if is_admin else 5000.0
-    default_mem = 1024.0 if is_admin else 512.0
+    default_disk = 116000.0 if is_admin else 10240.0
+    default_mem = 11264.0 if is_admin else 512.0
     default_proj = 99 if is_admin else 2
     default_dbs = 99 if is_admin else 2
-    default_db_disk = 1000.0 if is_admin else 100.0
+    default_db_disk = 100000.0 if is_admin else 5120.0
     default_nproc = 200 if is_admin else 50
 
     max_disk_mb = float(quota["max_disk_mb"]) if (quota and quota["max_disk_mb"]) else default_disk
@@ -155,61 +158,62 @@ async def get_cpanel_stats(
         assigned_ports.append({"port": 9443, "service": "Portainer CE", "type": "Container Management"})
         assigned_ports.append({"port": 3000, "service": "MiraiGrid Portal", "type": "Web Control Panel"})
 
-    # 6. Disk Usage calculation (Physical directories + Database footprint)
-    disk_used_mb, db_used_mb = calculate_account_disk_usage(username, used_databases)
+    # 6. Single Source of Truth Live Telemetry (cgroup v2 / Docker Engine + Physical Disk + DB)
+    live_telemetry = await fetch_student_metrics(current_user, db)
+    live_ram = live_telemetry["metrics"]["ram"]
+    live_cpu = live_telemetry["metrics"]["cpu"]
+    live_disk = live_telemetry["metrics"]["disk"]
+    live_db = live_telemetry["metrics"]["database"]
+
+    disk_used_mb = live_disk["used_mb"]
     if is_admin:
         import shutil, os
         from app.core.config import settings
         disk_path = settings.DATA_DIR if os.path.exists(settings.DATA_DIR) else "/"
         try:
             total_b, used_b, free_b = shutil.disk_usage(disk_path)
-            host_disk_total_gb = round(total_b / (1024**3), 1)
-            host_disk_used_gb = round(used_b / (1024**3), 1)
             host_disk_percent = round((used_b / total_b) * 100, 1) if total_b > 0 else 7.4
         except Exception:
-            host_disk_total_gb, host_disk_used_gb, host_disk_percent = 116.0, 8.6, 7.4
+            host_disk_percent = 7.4
 
         disk_percent = host_disk_percent
         disk_limit_mb = None
         disk_label = f"{disk_used_mb} MB / ∞ (Tanpa Batas)"
     else:
-        disk_used_mb = min(max_disk_mb, disk_used_mb)
-        disk_percent = round((disk_used_mb / max_disk_mb) * 100, 1) if max_disk_mb > 0 else 0.0
+        disk_percent = live_disk["percent"]
         disk_limit_mb = max_disk_mb
         disk_label = f"{disk_used_mb} MB / {int(max_disk_mb)} MB ({disk_percent}%)" if max_disk_mb < 1024 else f"{disk_used_mb} MB / {round(max_disk_mb/1024, 1)} GB ({disk_percent}%)"
 
-    # 7. Number of Processes (NPROC)
-    proc_limit = 1000 if is_admin else max_processes
-    tb_procs = 8 if tb_running else 0
-    proc_used = min(proc_limit, max(4, (running_projects * 6) + (used_databases * 3) + tb_procs + 2))
-    proc_percent = round((proc_used / proc_limit) * 100, 1) if proc_limit > 0 else 0.0
+    # 7. Number of Processes (NPROC — Live cgroup v2 / Docker stats)
+    proc_limit = live_cpu["max_processes"]
+    proc_used = live_cpu["process_count"]
+    proc_percent = live_cpu["percent"]
 
-    # 8. Physical Memory Usage
-    tb_mem = 128.0 if tb_running else 0.0
-    mem_used_mb = round(max(32.0, (running_projects * 48.0) + (used_databases * 24.0) + tb_mem + 16.0), 1)
+    # 8. Physical Memory Usage (Live cgroup v2 / Docker stats)
+    mem_used_mb = live_ram["used_mb"]
     if is_admin:
-        mem_percent = 14.5
+        mem_percent = live_ram["percent"]
         mem_limit_mb = None
-        mem_label = f"{mem_used_mb} MB / 11.0 GB (Host)"
+        mem_label = f"{mem_used_mb} MB / {round(live_ram['max_mb']/1024, 1)} GB (Host)"
     else:
-        mem_percent = round((mem_used_mb / max_memory_mb) * 100, 1) if max_memory_mb > 0 else 0.0
-        mem_limit_mb = max_memory_mb
-        mem_label = f"{mem_used_mb} MB / {int(max_memory_mb)} MB ({mem_percent}%)" if max_memory_mb < 1024 else f"{mem_used_mb} MB / {round(max_memory_mb/1024, 1)} GB ({mem_percent}%)"
+        mem_limit_mb = live_ram["max_mb"]
+        mem_percent = live_ram["percent"]
+        mem_label = f"{mem_used_mb} MB / {int(mem_limit_mb)} MB ({mem_percent}%)" if mem_limit_mb < 1024 else f"{mem_used_mb} MB / {round(mem_limit_mb/1024, 1)} GB ({mem_percent}%)"
 
     # 9. Entry Processes
-    entry_used = max(1, running_projects + (1 if used_databases > 0 else 0) + (1 if tb_running else 0))
+    entry_used = min(proc_used, max(1 if (running_projects > 0 or proc_used > 0) else 0, running_projects + (1 if used_databases > 0 else 0) + (1 if tb_running else 0)))
     entry_limit = 150 if is_admin else 20
     entry_percent = round((entry_used / entry_limit) * 100, 1)
 
-    # 10. Database Disk Usage (Kapasitas penyimpanan database praktikum, default 100 MB)
-    db_used_mb = round(max(0.0, used_databases * 12.5), 1)
+    # 10. Database Disk Usage (Live measurement matching /resources/metrics)
+    db_used_mb = live_db["used_mb"]
     if is_admin:
         db_limit_mb = None
         db_percent = 0.0
         db_label = f"{db_used_mb} MB / ∞ (Tanpa Batas)"
     else:
-        db_limit_mb = max_database_disk_mb
-        db_percent = round((db_used_mb / db_limit_mb) * 100, 1) if db_limit_mb > 0 else 0.0
+        db_limit_mb = live_db["max_mb"]
+        db_percent = live_db["percent"]
         db_label = f"{db_used_mb} MB / {int(db_limit_mb)} MB ({db_percent}%)"
 
     # 11. Bandwidth
@@ -231,6 +235,8 @@ async def get_cpanel_stats(
             "theme": "MiG-DarkGold",
             "assigned_ports": assigned_ports
         },
+        "telemetry_source": live_telemetry.get("telemetry_source", "docker_cgroup_v2"),
+        "containers_inspected": live_telemetry.get("containers_inspected", []),
         "statistics": {
             "disk_usage": {
                 "used_mb": disk_used_mb,

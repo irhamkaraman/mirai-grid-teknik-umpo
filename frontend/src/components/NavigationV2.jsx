@@ -167,7 +167,7 @@ export default function NavigationV2({
         {/* Top Header */}
         <div className="flex flex-col shrink-0">
           {!effectiveCollapsed ? (
-            <div className="h-16 px-4 border-b border-gray-200/80 flex items-center justify-between">
+            <div className="h-14 px-4 pt-2 flex items-center justify-between">
               <div
                 onClick={() => {
                   navigate('/dashboard')
@@ -220,7 +220,7 @@ export default function NavigationV2({
               )}
             </div>
           ) : (
-            <div className="h-16 border-b border-gray-200/80 flex items-center justify-center px-2">
+            <div className="h-14 pt-2 flex items-center justify-center px-2">
               <button
                 type="button"
                 onClick={() => setIsCollapsed(false)}
@@ -318,9 +318,9 @@ export default function NavigationV2({
         </div>
 
         {/* Bottom Storage & Resource Widget */}
-        <div className="p-3 border-t border-gray-100 shrink-0 space-y-3">
+        <div className="p-3 shrink-0 space-y-3">
           {!effectiveCollapsed ? (
-            <div className="bg-gray-50 border border-gray-200/80 rounded-xl p-3.5 space-y-2.5">
+            <div className="bg-white border border-slate-200/80 rounded-xl p-3.5 space-y-2.5">
               <div className="flex items-center justify-between text-xs">
                 <span className="font-semibold text-gray-700 flex items-center space-x-1.5">
                   <HardDrive className="h-3.5 w-3.5 text-emerald-600" />
@@ -405,9 +405,9 @@ export default function NavigationV2({
 
   return (
     <>
-      {/* Desktop Flush Full-Height Sidebar */}
+      {/* Desktop Flush Full-Height Sidebar (Unified Seamless Canvas without border-r) */}
       <aside
-        className={`fixed top-0 bottom-0 left-0 h-screen bg-white border-r border-gray-200/90 z-30 hidden md:flex flex-col justify-between transition-all duration-300 ease-in-out ${
+        className={`fixed top-0 bottom-0 left-0 h-screen bg-[#F8FAFC] z-30 hidden md:flex flex-col justify-between transition-all duration-300 ease-in-out ${
           isCollapsed ? 'w-20' : 'w-64'
         }`}
       >
