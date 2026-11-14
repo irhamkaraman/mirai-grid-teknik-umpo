@@ -282,6 +282,21 @@ html.theme-mig-cloud #root,
   animation: shimmer 1.5s infinite;
 }
 
+/* Shimmer Skeleton & Warmdark Card Elimination for V2 (Soft Slate Pulse) */
+.theme-v2 .skeleton-shimmer,
+.theme-mig-cloud .skeleton-shimmer,
+.theme-v2 .skeleton-shimmer-light,
+.theme-mig-cloud .skeleton-shimmer-light {
+  background: #F1F5F9 !important;
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite !important;
+}
+
+.theme-v2 [class*="bg-warmdark-"],
+.theme-mig-cloud [class*="bg-warmdark-"] {
+  background-color: #FFFFFF !important;
+  border-color: #E2E8F0 !important;
+}
+
 /* Alpine.js Transition & Keyframes Animation */
 @keyframes alpine-enter {
   0% {

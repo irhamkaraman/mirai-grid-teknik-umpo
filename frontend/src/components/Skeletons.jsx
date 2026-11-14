@@ -1,11 +1,45 @@
 import React from 'react'
+import { useTheme } from '../context/ThemeContext'
+
+function useIsV2Theme() {
+  const ctx = useTheme()
+  if (ctx && typeof ctx.isV2 === 'boolean') {
+    return ctx.isV2
+  }
+  if (typeof document !== 'undefined') {
+    return (
+      document.documentElement.classList.contains('theme-v2') ||
+      document.documentElement.classList.contains('theme-mig-cloud')
+    )
+  }
+  return false
+}
 
 export function SkeletonBox({ className = '', light = false }) {
+  const isV2 = useIsV2Theme()
+  if (isV2) {
+    return <div className={`animate-pulse bg-slate-100 rounded-lg ${className}`}></div>
+  }
   const shimmerClass = light ? 'skeleton-shimmer-light' : 'skeleton-shimmer'
   return <div className={`${shimmerClass} rounded-xl ${className}`}></div>
 }
 
 export function SkeletonCard({ light = false }) {
+  const isV2 = useIsV2Theme()
+  if (isV2) {
+    return (
+      <div className="bg-white border border-slate-200 rounded-xl p-6">
+        <div className="animate-pulse space-y-4">
+          <div className="flex justify-between items-center">
+            <div className="h-4 bg-slate-200 rounded w-1/3"></div>
+            <div className="h-5 w-5 bg-slate-100 rounded-full"></div>
+          </div>
+          <div className="h-8 bg-slate-100 rounded-lg w-1/2"></div>
+          <div className="h-2 bg-slate-100 rounded-full w-full"></div>
+        </div>
+      </div>
+    )
+  }
   if (light) {
     return (
       <div className="bg-[#FDFBF7] border border-[#D4C1AC] p-5 rounded-2xl space-y-3 shadow-sm">
@@ -31,6 +65,21 @@ export function SkeletonCard({ light = false }) {
 }
 
 export function SkeletonTable({ rows = 5, light = false }) {
+  const isV2 = useIsV2Theme()
+  if (isV2) {
+    return (
+      <div className="bg-white border border-slate-200 rounded-xl p-6">
+        <div className="animate-pulse space-y-4">
+          <div className="h-4 bg-slate-200 rounded w-1/4"></div>
+          <div className="space-y-2">
+            {Array.from({ length: rows }).map((_, i) => (
+              <div key={i} className="h-10 bg-slate-100 rounded-lg"></div>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
   if (light) {
     return (
       <div className="bg-[#FDFBF7] border border-[#D4C1AC] rounded-2xl overflow-hidden p-4 space-y-3 shadow-sm">

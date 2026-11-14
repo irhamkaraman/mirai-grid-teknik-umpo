@@ -60,7 +60,7 @@ export default function NavigationV2({
   const menuItems = [
     {
       id: 'files',
-      label: 'All Files',
+      label: 'Workspace',
       path: '/dashboard',
       icon: Folder,
       activeCheck: (p) => p === '/' || p === '/dashboard' || p.startsWith('/files'),
@@ -85,13 +85,6 @@ export default function NavigationV2({
       icon: Globe,
       isDropdown: true,
       activeCheck: (p) => p.startsWith('/thingsboard') || p.startsWith('/vscode') || p.startsWith('/terminal') || p.startsWith('/redis'),
-    },
-    {
-      id: 'resources',
-      label: 'Resource & Kuota',
-      path: '/resources',
-      icon: Activity,
-      activeCheck: (p) => p.startsWith('/resources'),
     },
     {
       id: 'about',
@@ -189,16 +182,11 @@ export default function NavigationV2({
                   }}
                 />
                 <div className="overflow-hidden">
-                  <div className="flex items-center space-x-1.5">
-                    <h1 className="text-sm font-bold text-gray-900 font-sans tracking-tight truncate">
-                      MiG-Cloud
-                    </h1>
-                    <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.2 rounded-full border border-emerald-200">
-                      Active
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-gray-400 font-medium truncate">
-                    Lab TI Cloud Workspace
+                  <h1 className="text-sm font-bold text-slate-900 font-sans tracking-tight truncate">
+                    MiraiGrid
+                  </h1>
+                  <p className="text-xs text-slate-500 font-medium truncate">
+                    Cloud Workspace
                   </p>
                 </div>
               </div>
@@ -240,7 +228,6 @@ export default function NavigationV2({
                     e.currentTarget.src = '/logos/miraigrid-logo.png'
                   }}
                 />
-                <span className="absolute -right-0.5 -top-0.5 bg-emerald-500 rounded-full h-2 w-2 ring-2 ring-white" />
               </button>
             </div>
           )}

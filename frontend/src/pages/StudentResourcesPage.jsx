@@ -20,6 +20,7 @@ import {
 } from 'lucide-react'
 import { useTheme } from '../context/ThemeContext'
 import { api } from '../api/client'
+import { SkeletonCard, SkeletonTable } from '../components/Skeletons'
 
 export default function StudentResourcesPage({ user, onNavigate }) {
   const { isV2 } = useTheme()
@@ -267,6 +268,19 @@ export default function StudentResourcesPage({ user, onNavigate }) {
         </span>
       </nav>
 
+      {!data ? (
+        <div className="space-y-6">
+          <SkeletonTable rows={2} />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+          </div>
+          <SkeletonTable rows={4} />
+        </div>
+      ) : (
+        <>
       {/* 2. Header Halaman & Status Bar (Floating Clean Card) */}
       <div
         className={`rounded-2xl p-6 transition-colors duration-150 ${
@@ -713,6 +727,8 @@ export default function StudentResourcesPage({ user, onNavigate }) {
           </p>
         </div>
       </div>
+        </>
+      )}
     </div>
   )
 }

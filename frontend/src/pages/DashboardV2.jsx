@@ -43,7 +43,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { api } from '../api/client'
-import { Spinner, SkeletonCard } from '../components/Skeletons'
+import { Spinner, SkeletonCard, SkeletonTable } from '../components/Skeletons'
 import ModalPortal from '../components/ModalPortal'
 import { useUpload } from '../context/UploadContext'
 
@@ -1148,12 +1148,16 @@ export default function DashboardV2({
 
       {/* 4. INTERACTIVE FILE LIST / GRID */}
       {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          <SkeletonCard />
-          <SkeletonCard />
-          <SkeletonCard />
-          <SkeletonCard />
-        </div>
+        viewMode === 'list' ? (
+          <SkeletonTable rows={5} />
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+          </div>
+        )
       ) : filteredItems.length === 0 ? (
         /* Empty State */
         <div className="bg-white border border-slate-200 rounded-xl p-8 sm:p-12 text-center text-slate-600 flex flex-col items-center justify-center space-y-4 shadow-xs">
