@@ -107,24 +107,24 @@ export default function AdminDashboardPage({ user }) {
   const summary = hostMetrics?.containers_summary
 
   return (
-    <div className="flex-1 min-h-0 h-full overflow-y-auto p-6 space-y-6 pb-12 bg-[#F8FAFC]">
-      {/* Header */}
-      <div className="bg-white border border-slate-200/80 rounded-xl p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div className="flex-1 min-h-0 h-full overflow-y-auto p-6 sm:p-8 space-y-6 pb-12">
+      {/* A. Header langsung di atas kanvas putih (Zero Double-Box) */}
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 pb-4 border-b border-slate-100">
         <div>
-          <div className="flex items-center space-x-2 text-xs font-medium text-slate-500 mb-1">
+          <div className="flex items-center space-x-2 text-xs font-medium text-slate-400 mb-1">
             <span>Workspace</span>
             <ChevronRight className="h-3.5 w-3.5" />
-            <span className="text-emerald-700 font-semibold">Dashboard Infrastruktur</span>
+            <span className="text-slate-600 font-semibold">Dashboard Infrastruktur</span>
           </div>
-          <h1 className="text-lg font-bold text-slate-900 tracking-tight">
+          <h1 className="text-xl font-bold text-slate-900 tracking-tight">
             Admin Infrastructure & Docker Fleet Center
           </h1>
-          <p className="text-xs text-slate-500 mt-0.5">
+          <p className="text-xs text-slate-500 mt-1">
             Telemetri resource node host, pemantauan kontainer multi-tenant, dan rekonsiliasi kuota DB vs Docker.
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5 shrink-0">
+        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
           {alertCount > 0 && (
             <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-50 text-rose-800 border border-rose-200/80">
               <AlertTriangle className="h-3.5 w-3.5 text-rose-600" />
@@ -137,15 +137,15 @@ export default function AdminDashboardPage({ user }) {
               <span>{driftCount} Quota Drift</span>
             </span>
           )}
-          <Button
-            variant="secondary"
-            size="sm"
+          <button
+            type="button"
             onClick={() => fetchAll(false)}
             disabled={loadingHost || loadingFleet}
+            className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg transition disabled:opacity-50"
           >
-            <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${(loadingHost || loadingFleet) ? 'animate-spin' : ''}`} />
-            Muat Ulang
-          </Button>
+            <RefreshCw className={`h-3.5 w-3.5 ${(loadingHost || loadingFleet) ? 'animate-spin' : ''}`} />
+            <span>Muat Ulang</span>
+          </button>
         </div>
       </div>
 
@@ -163,10 +163,10 @@ export default function AdminDashboardPage({ user }) {
         </div>
       )}
 
-      {/* A. Host Metrics Grid */}
+      {/* B. Host Metrics Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         {/* RAM Card */}
-        <div className="bg-white border border-slate-200/80 rounded-xl p-5 space-y-3">
+        <div className="bg-slate-50/50 border border-slate-200/80 rounded-xl p-4 space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-xs font-semibold text-slate-700">
               <Server className="h-4 w-4 text-emerald-600" />
@@ -201,7 +201,7 @@ export default function AdminDashboardPage({ user }) {
         </div>
 
         {/* CPU Card */}
-        <div className="bg-white border border-slate-200/80 rounded-xl p-5 space-y-3">
+        <div className="bg-slate-50/50 border border-slate-200/80 rounded-xl p-4 space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-xs font-semibold text-slate-700">
               <Cpu className="h-4 w-4 text-emerald-600" />
@@ -236,7 +236,7 @@ export default function AdminDashboardPage({ user }) {
         </div>
 
         {/* Disk Partitions Card */}
-        <div className="bg-white border border-slate-200/80 rounded-xl p-5 space-y-3">
+        <div className="bg-slate-50/50 border border-slate-200/80 rounded-xl p-4 space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-xs font-semibold text-slate-700">
               <HardDrive className="h-4 w-4 text-emerald-600" />
@@ -273,7 +273,7 @@ export default function AdminDashboardPage({ user }) {
         </div>
 
         {/* GPU & Container Summary Card */}
-        <div className="bg-white border border-slate-200/80 rounded-xl p-5 space-y-3">
+        <div className="bg-slate-50/50 border border-slate-200/80 rounded-xl p-4 space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-xs font-semibold text-slate-700">
               <Monitor className="h-4 w-4 text-emerald-600" />
@@ -516,27 +516,27 @@ export default function AdminDashboardPage({ user }) {
           </div>
 
           <div className="flex items-center gap-2">
-            <Button
-              variant="secondary"
-              size="sm"
+            <button
+              type="button"
               disabled={safePage <= 1}
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg transition disabled:opacity-40"
             >
-              <ChevronLeft className="h-3.5 w-3.5 mr-1" />
-              Sebelumnya
-            </Button>
+              <ChevronLeft className="h-3.5 w-3.5" />
+              <span>Sebelumnya</span>
+            </button>
             <span className="font-mono text-xs px-2">
               Hal {safePage} / {totalPages}
             </span>
-            <Button
-              variant="secondary"
-              size="sm"
+            <button
+              type="button"
               disabled={safePage >= totalPages}
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg transition disabled:opacity-40"
             >
-              Berikutnya
-              <ChevronRight className="h-3.5 w-3.5 ml-1" />
-            </Button>
+              <span>Berikutnya</span>
+              <ChevronRight className="h-3.5 w-3.5" />
+            </button>
           </div>
         </div>
       </div>
