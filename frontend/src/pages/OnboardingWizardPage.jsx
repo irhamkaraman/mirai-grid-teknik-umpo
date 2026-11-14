@@ -25,6 +25,7 @@ import { toast } from 'sonner'
 import { api } from '../api/client'
 import Button from '../components/Button'
 import { formatMBSize } from '../utils/formatters'
+import { isDosenRole, getRoleLabel } from '../utils/roleHelper'
 
 export default function OnboardingWizardPage({ user, onComplete }) {
   const [currentStep, setCurrentStep] = useState(1)
@@ -371,7 +372,9 @@ export default function OnboardingWizardPage({ user, onComplete }) {
               {/* Infographics Alokasi Resource */}
               <div className="space-y-3 pt-2">
                 <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                  Alokasi Kuota Sandbox Praktikum Anda
+                  {isDosenRole(user?.role)
+                    ? 'Alokasi Kuota & Resource Komputasi Dosen'
+                    : 'Alokasi Kuota Sandbox Praktikum Anda'}
                 </h3>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-4 text-center">
@@ -614,7 +617,9 @@ export default function OnboardingWizardPage({ user, onComplete }) {
                   Step 3: Runtime Stack &amp; Kode Aplikasi
                 </h2>
                 <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-                  Tentukan bahasa pemrograman dan unggah project praktikum Anda.
+                  {isDosenRole(user?.role)
+                    ? 'Sandbox Dosen: Unggah berkas riset, modul ajar, atau aplikasi pengujian Anda.'
+                    : 'Tentukan bahasa pemrograman dan unggah project praktikum Anda.'}
                 </p>
               </div>
             </div>
@@ -740,7 +745,7 @@ export default function OnboardingWizardPage({ user, onComplete }) {
               <div className="space-y-6">
                 <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 space-y-3">
                   <div className="text-xs text-slate-600">
-                    Pola subdomain publik resmi mahasiswa:
+                    Pola subdomain publik resmi {getRoleLabel(user?.role).toLowerCase()}:
                   </div>
                   <div className="font-mono text-base text-emerald-700 font-bold">
                     web-xxxx-{username}.miraigrid.web.id
@@ -785,7 +790,9 @@ export default function OnboardingWizardPage({ user, onComplete }) {
                     Infrastruktur Siap Digunakan
                   </h3>
                   <p className="text-xs sm:text-sm text-slate-600 max-w-md mx-auto">
-                    Workspace mandiri Anda telah dikonfigurasi dan siap melayani aplikasi praktikum secara publik.
+                    {isDosenRole(user?.role)
+                      ? 'Selamat datang Bapak/Ibu Dosen di MiraiGrid Cloud Workspace!'
+                      : 'Workspace mandiri Anda telah dikonfigurasi dan siap melayani aplikasi praktikum secara publik.'}
                   </p>
                 </div>
 

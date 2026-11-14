@@ -12,6 +12,7 @@ import ConfirmModal from '../components/ConfirmModal'
 import ModalPortal from '../components/ModalPortal'
 import Button from '../components/Button'
 import Card from '../components/Card'
+import { getRoleLabel } from '../utils/roleHelper'
 
 export default function ProjectDetailPage({ project: propProject, onBack, onUpdated, onOpenConsole, onOpenFile, user: propUser }) {
   const currentUser = propUser || JSON.parse(localStorage.getItem('miraigrid_user') || '{}')
@@ -586,7 +587,7 @@ export default function ProjectDetailPage({ project: propProject, onBack, onUpda
                   </span>
                 ) : (
                   <span>
-                    <strong className="text-slate-700">Sandbox Mahasiswa:</strong> Anda dapat menyesuaikan DocumentRoot ke subfolder project Anda (misal <code className="font-mono text-slate-800">public</code> untuk Laravel / CodeIgniter 4, atau path lengkap <code className="font-mono text-slate-800">/home/{project.owner_username || 'nim'}/{project.name}/public</code>). Terisolasi aman di bawah akun Anda.
+                    <strong className="text-slate-700">Sandbox {getRoleLabel(currentUser?.role)}:</strong> Anda dapat menyesuaikan DocumentRoot ke subfolder project Anda (misal <code className="font-mono text-slate-800">public</code> untuk Laravel / CodeIgniter 4, atau path lengkap <code className="font-mono text-slate-800">/home/{project.owner_username || 'nim'}/{project.name}/public</code>). Terisolasi aman di bawah akun Anda.
                   </span>
                 )}
               </p>
@@ -886,7 +887,7 @@ export default function ProjectDetailPage({ project: propProject, onBack, onUpda
                     <p className="text-[11px] text-slate-500 mt-1">
                       {isAdmin
                         ? 'Admin: Dapat mengarahkan root direktori ke subfolder atau repositori git /home/admin/repositories/nama_repo.'
-                        : 'Sandbox Mahasiswa: Direktori aplikasi di dalam akun Anda. Terisolasi aman.'}
+                        : `Sandbox ${getRoleLabel(currentUser?.role)}: Direktori aplikasi di dalam akun Anda. Terisolasi aman.`}
                     </p>
                   </div>
                 </div>
@@ -1018,7 +1019,7 @@ export default function ProjectDetailPage({ project: propProject, onBack, onUpda
                     <p className="text-[11px] text-slate-500 mt-1">
                       {isAdmin
                         ? 'Admin: Dapat mengarahkan root direktori ke subfolder atau repositori git /home/admin/repositories/nama_repo.'
-                        : 'Sandbox Mahasiswa: Direktori aplikasi di dalam akun Anda. Terisolasi aman.'}
+                        : `Sandbox ${getRoleLabel(currentUser?.role)}: Direktori aplikasi di dalam akun Anda. Terisolasi aman.`}
                     </p>
                   </div>
 

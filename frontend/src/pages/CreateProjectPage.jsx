@@ -6,6 +6,7 @@ import { api } from '../api/client'
 import { Spinner } from '../components/Skeletons'
 import Button from '../components/Button'
 import Card from '../components/Card'
+import { getRoleLabel } from '../utils/roleHelper'
 
 export default function CreateProjectPage({ onBack, onCreated, user: propUser }) {
   const currentUser = propUser || JSON.parse(localStorage.getItem('miraigrid_user') || '{}')
@@ -322,7 +323,7 @@ export default function CreateProjectPage({ onBack, onCreated, user: propUser })
                   </span>
                 ) : (
                   <span>
-                    <strong className="text-slate-700">Sandbox Mahasiswa:</strong> Tentukan subdirektori di dalam folder project Anda (misal <code className="font-mono text-slate-800">public</code> atau <code className="font-mono text-slate-800">src</code>). Sistem mengunci akses secara aman agar tidak dapat berpindah di luar ruang akun Anda.
+                    <strong className="text-slate-700">Sandbox {getRoleLabel(currentUser?.role)}:</strong> Tentukan subdirektori di dalam folder project Anda (misal <code className="font-mono text-slate-800">public</code> atau <code className="font-mono text-slate-800">src</code>). Sistem mengunci akses secara aman agar tidak dapat berpindah di luar ruang akun Anda.
                   </span>
                 )}
               </p>

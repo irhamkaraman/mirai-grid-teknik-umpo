@@ -58,6 +58,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { api } from '../api/client'
+import { getRoleLabel } from '../utils/roleHelper'
 import { Spinner, SkeletonCard, SkeletonTable } from '../components/Skeletons'
 import ModalPortal from '../components/ModalPortal'
 import Button from '../components/Button'
@@ -2095,7 +2096,7 @@ export default function DashboardV2({
 
                     <div className="space-y-1">
                       <span className="text-[11px] font-semibold text-slate-900 block">Pemilik</span>
-                      <span className="text-xs text-slate-600 block">saya</span>
+                      <span className="text-xs text-slate-600 block">Saya ({getRoleLabel(user?.role)})</span>
                     </div>
 
                     <div className="space-y-1">
@@ -3023,7 +3024,7 @@ export default function DashboardV2({
                   </div>
                   <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200/60">
                     <span className="text-slate-500">Pemilik</span>
-                    <span className="font-semibold text-slate-900">saya ({username})</span>
+                    <span className="font-semibold text-slate-900">Saya ({getRoleLabel(user?.role)} · {username})</span>
                   </div>
                   <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200/60">
                     <span className="text-slate-500">Izin Linux (Octal)</span>

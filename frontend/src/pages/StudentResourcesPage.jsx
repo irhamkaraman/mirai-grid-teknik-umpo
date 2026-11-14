@@ -21,6 +21,7 @@ import {
 import { api } from '../api/client'
 import { SkeletonCard, SkeletonTable } from '../components/Skeletons'
 import { formatMBSize } from '../utils/formatters'
+import { getRoleLabel, getIdentifierLabel } from '../utils/roleHelper'
 
 export default function StudentResourcesPage({ user, onNavigate }) {
   const [data, setData] = useState(null)
@@ -302,11 +303,11 @@ export default function StudentResourcesPage({ user, onNavigate }) {
                   'text-slate-900'
                 }`}
               >
-                Spesifikasi &amp; Kuota Resource Mahasiswa
+                Spesifikasi &amp; Kuota Resource {getRoleLabel(user?.role)}
               </h1>
             </div>
             <p className={`text-xs sm:text-sm pl-0 sm:pl-11 ${'text-slate-500'}`}>
-              Alokasi lingkungan komputasi mandiri dan terisolasi untuk NIM:{' '}
+              Alokasi lingkungan komputasi mandiri dan terisolasi untuk {getIdentifierLabel(user?.role)}:{' '}
               <span className={`font-mono font-semibold ${'text-slate-800'}`}>
                 {nim}
               </span>
@@ -628,7 +629,7 @@ export default function StudentResourcesPage({ user, onNavigate }) {
           {/* Item 2: Port Internal Mahasiswa */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between py-2 border-b border-gray-50 dark:border-gray-800/40 gap-1">
             <span className={`font-medium ${'text-slate-500'}`}>
-              Port Internal Mahasiswa
+              Port Internal {getRoleLabel(user?.role)}
             </span>
             <span className={`font-mono text-xs px-2.5 py-1 rounded-md ${
               'bg-slate-100 text-slate-800 font-semibold'
