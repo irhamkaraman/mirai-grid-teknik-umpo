@@ -97,17 +97,22 @@ html.theme-mig-cloud #root,
 }
 
 /* Secondary Sub-containers in V2 */
-.theme-v2 div[class*="bg-[#1c0f0a]" i],
-.theme-mig-cloud div[class*="bg-[#1c0f0a]" i],
-.theme-v2 div[class*="bg-[#140a07]" i],
-.theme-mig-cloud div[class*="bg-[#140a07]" i],
-.theme-v2 div[class*="bg-[#120a07]" i],
-.theme-mig-cloud div[class*="bg-[#120a07]" i],
-.theme-v2 div[class*="bg-[#2e1a11]" i],
-.theme-mig-cloud div[class*="bg-[#2e1a11]" i],
-.theme-v2 section[class*="bg-[#1c0f0a]" i],
-.theme-mig-cloud section[class*="bg-[#1c0f0a]" i] {
+.theme-v2 [class*="bg-[#1c0f0a]" i],
+.theme-mig-cloud [class*="bg-[#1c0f0a]" i],
+.theme-v2 [class*="bg-[#140a07]" i],
+.theme-mig-cloud [class*="bg-[#140a07]" i],
+.theme-v2 [class*="bg-[#120a07]" i],
+.theme-mig-cloud [class*="bg-[#120a07]" i],
+.theme-v2 [class*="bg-[#2e1a11]" i],
+.theme-mig-cloud [class*="bg-[#2e1a11]" i],
+.theme-v2 [class*="bg-[#341f14]" i],
+.theme-mig-cloud [class*="bg-[#341f14]" i],
+.theme-v2 [class*="hover:bg-[#361e13]" i]:hover,
+.theme-mig-cloud [class*="hover:bg-[#361e13]" i]:hover,
+.theme-v2 [class*="hover:bg-[#1f110b]" i]:hover,
+.theme-mig-cloud [class*="hover:bg-[#1f110b]" i]:hover {
   background-color: #F8FAFC !important; /* slate-50 */
+  color: #0F172A !important;
 }
 
 /* Buttons in V2 */

@@ -9,8 +9,11 @@ import { api } from '../api/client'
 import { SkeletonCard, SkeletonTable, Spinner } from '../components/Skeletons'
 import ConfirmModal from '../components/ConfirmModal'
 import ModalPortal from '../components/ModalPortal'
+import { useTheme } from '../context/ThemeContext'
+import Button from '../components/Button'
 
 export default function AdminView({ onNavigate }) {
+  const { isV2 } = useTheme()
   const routerNavigate = useNavigate()
   const navigate = (p) => onNavigate ? onNavigate(p) : routerNavigate(p)
   const [stats, setStats] = useState(null)
@@ -280,6 +283,759 @@ export default function AdminView({ onNavigate }) {
   // Dynamic user counters
   const totalStudents = users.filter((u) => u.role === 'student').length
   const totalAdmins = users.filter((u) => u.role === 'admin').length
+
+  if (isV2) {
+    return (
+      <div className="space-y-6 font-sans w-full text-slate-900">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-sans font-bold text-slate-900 tracking-tight flex items-center space-x-2.5">
+              <Users className="h-6 w-6 text-slate-700" />
+              <span>Kelola Akun – MiraiGrid</span>
+            </h2>
+            <p className="text-xs text-slate-500 mt-1">
+              Kelola akun pengguna (Student &amp; Admin), alokasi kuota resource, dan audit log aktivitas.
+            </p>
+          </div>
+
+          <Button
+            variant="primary"
+            size="md"
+            icon={UserPlus}
+            onClick={() => setActiveTab('create')}
+          >
+            Tambah Akun Baru
+          </Button>
+        </div>
+
+        {/* Global Stat Cards */}
+        {loading ? (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="bg-white border border-slate-200/80 p-5 rounded-xl">
+              <p className="text-xs font-medium text-slate-500">Total Pengguna</p>
+              <p className="text-2xl font-bold text-slate-900 mt-1 font-sans">{users.length}</p>
+              <p className="text-[11px] text-slate-400 mt-1">Semua Akun Terdaftar</p>
+            </div>
+            <div className="bg-white border border-slate-200/80 p-5 rounded-xl">
+              <p className="text-xs font-medium text-slate-500">Mahasiswa (Student)</p>
+              <p className="text-2xl font-bold text-sky-600 mt-1 font-sans">{totalStudents}</p>
+              <p className="text-[11px] text-slate-400 mt-1">Akun Praktikan Sandbox</p>
+            </div>
+            <div className="bg-white border border-slate-200/80 p-5 rounded-xl">
+              <p className="text-xs font-medium text-slate-500">Administrator (Admin)</p>
+              <p className="text-2xl font-bold text-amber-600 mt-1 font-sans">{totalAdmins}</p>
+              <p className="text-[11px] text-slate-400 mt-1">Akses Root &amp; Manajemen</p>
+            </div>
+            <div className="bg-white border border-slate-200/80 p-5 rounded-xl">
+              <p className="text-xs font-medium text-slate-500">Resource Aktif</p>
+              <p className="text-2xl font-bold text-emerald-600 mt-1 font-sans">
+                {(stats?.total_projects ?? 0) + (stats?.total_databases ?? 0)}
+              </p>
+              <p className="text-[11px] text-slate-400 mt-1">
+                {stats?.total_projects ?? 0} Proj • {stats?.total_databases ?? 0} DB
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Sub Navigation Tabs */}
+        <div className="flex border-b border-slate-200 space-x-2 overflow-x-auto">
+          <button
+            type="button"
+            onClick={() => setActiveTab('users')}
+            className={`px-4 py-2.5 text-xs border-b-2 whitespace-nowrap transition-colors flex items-center space-x-2 ${
+              activeTab === 'users'
+                ? 'border-slate-900 text-slate-900 font-bold'
+                : 'border-transparent text-slate-500 hover:text-slate-900 font-medium'
+            }`}
+          >
+            <Users className="h-3.5 w-3.5" />
+            <span>Daftar Akun</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('create')}
+            className={`px-4 py-2.5 text-xs border-b-2 whitespace-nowrap transition-colors flex items-center space-x-2 ${
+              activeTab === 'create'
+                ? 'border-slate-900 text-slate-900 font-bold'
+                : 'border-transparent text-slate-500 hover:text-slate-900 font-medium'
+            }`}
+          >
+            <UserPlus className="h-3.5 w-3.5" />
+            <span>Tambah Akun</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('logs')}
+            className={`px-4 py-2.5 text-xs border-b-2 whitespace-nowrap transition-colors flex items-center space-x-2 ${
+              activeTab === 'logs'
+                ? 'border-slate-900 text-slate-900 font-bold'
+                : 'border-transparent text-slate-500 hover:text-slate-900 font-medium'
+            }`}
+          >
+            <Clock className="h-3.5 w-3.5" />
+            <span>Audit Log</span>
+          </button>
+        </div>
+
+        {/* TAB 1: DAFTAR AKUN */}
+        {activeTab === 'users' && (
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="relative flex-1">
+                <Search className="h-4 w-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Cari NIM, Username, atau Nama Akun..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && fetchUsers()}
+                  className="w-full bg-white border border-slate-200 rounded-lg pl-10 pr-4 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-slate-400 transition-colors"
+                />
+              </div>
+              <select
+                value={selectedRole}
+                onChange={(e) => {
+                  setSelectedRole(e.target.value)
+                  setUserPage(1)
+                }}
+                className="bg-white border border-slate-200 rounded-lg px-3.5 py-2 text-xs text-slate-700 focus:outline-none focus:border-slate-400 font-medium"
+              >
+                <option value="">Semua Role (Student &amp; Admin)</option>
+                <option value="student">Mahasiswa (Student)</option>
+                <option value="admin">Administrator (Admin)</option>
+              </select>
+              <Button
+                variant="primary"
+                size="md"
+                onClick={fetchUsers}
+              >
+                Cari
+              </Button>
+            </div>
+
+            {loading ? (
+              <SkeletonTable rows={5} />
+            ) : (
+              <div className="bg-white border border-slate-200/80 rounded-xl overflow-hidden">
+                {/* Bulk Action Toolbar */}
+                {selectedUserIds.length > 0 && (
+                  <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 bg-slate-50 border-b border-slate-200/80 text-xs">
+                    <div className="flex items-center space-x-2">
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-slate-900 text-white font-mono font-semibold text-xs">
+                        {selectedUserIds.length} Akun Terpilih
+                      </span>
+                      <span className="text-slate-600 text-xs hidden sm:inline">
+                        Pilih aksi massal untuk seluruh akun mahasiswa yang dicentang:
+                      </span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        type="button"
+                        onClick={openBulkLimitModal}
+                        className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 transition-colors"
+                      >
+                        <Sliders className="h-3.5 w-3.5 text-slate-600" />
+                        <span>Atur Limit ({selectedUserIds.length})</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={triggerBulkDelete}
+                        className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-rose-600 hover:bg-rose-700 text-white transition-colors"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        <span>Hapus Massal ({selectedUserIds.length})</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedUserIds([])}
+                        className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 rounded-lg transition-colors"
+                        title="Batalkan Pilihan"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs text-slate-700">
+                    <thead className="bg-slate-50 border-b border-slate-200/80">
+                      <tr className="text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                        <th className="p-4 w-12 text-center">
+                          <input
+                            type="checkbox"
+                            checked={allPageSelected}
+                            ref={(el) => {
+                              if (el) el.indeterminate = somePageSelected && !allPageSelected
+                            }}
+                            onChange={handleToggleSelectAll}
+                            className="w-4 h-4 rounded border-slate-300 text-slate-900 focus:ring-0 focus:ring-offset-0 bg-white cursor-pointer accent-slate-900"
+                            title="Pilih Semua Mahasiswa di Halaman Ini"
+                          />
+                        </th>
+                        <th className="p-4">NIM / Username</th>
+                        <th className="p-4">Nama</th>
+                        <th className="p-4">Role</th>
+                        <th className="p-4 text-center">Storage</th>
+                        <th className="p-4 text-center">RAM</th>
+                        <th className="p-4 text-center">CPU</th>
+                        <th className="p-4">Status</th>
+                        <th className="p-4 text-right">Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {paginatedUsers.length === 0 ? (
+                        <tr>
+                          <td colSpan="9" className="p-8 text-center text-slate-400">
+                            Tidak ada akun yang cocok dengan pencarian atau filter.
+                          </td>
+                        </tr>
+                      ) : (
+                        paginatedUsers.map((u) => (
+                          <tr
+                            key={u.id}
+                            className={`hover:bg-slate-50 transition-colors ${
+                              selectedUserIds.includes(u.id) ? 'bg-slate-50/90' : ''
+                            }`}
+                          >
+                            <td className="p-4 text-center">
+                              {u.role === 'admin' ? (
+                                <span className="text-xs text-slate-300 select-none">-</span>
+                              ) : (
+                                <input
+                                  type="checkbox"
+                                  checked={selectedUserIds.includes(u.id)}
+                                  onChange={() => handleToggleSelectUser(u.id)}
+                                  className="w-4 h-4 rounded border-slate-300 text-slate-900 focus:ring-0 focus:ring-offset-0 bg-white cursor-pointer accent-slate-900"
+                                />
+                              )}
+                            </td>
+                            <td className="p-4 font-mono font-semibold text-slate-900">{u.username}</td>
+                            <td className="p-4 font-medium text-slate-700">{u.name}</td>
+                            <td className="p-4">
+                              <span
+                                className={
+                                  u.role === 'admin'
+                                    ? 'bg-amber-50 text-amber-700 border border-amber-200/80 rounded-md px-2 py-0.5 text-xs font-medium uppercase font-mono'
+                                    : 'bg-slate-100 text-slate-700 border border-slate-200 rounded-md px-2 py-0.5 text-xs font-medium uppercase font-mono'
+                                }
+                              >
+                                {u.role}
+                              </span>
+                            </td>
+                            {/* Storage */}
+                            <td className="p-4 text-center">
+                              {u.role === 'admin' ? (
+                                <span
+                                  title="Akun Administrator memiliki akses penyimpanan Host Penuh (Tanpa Batasan)"
+                                  className="inline-flex items-center space-x-1.5 text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-md px-2 py-1 font-mono"
+                                >
+                                  <HardDrive className="h-3 w-3 text-slate-500" />
+                                  <span>Tanpa Batas</span>
+                                  <span className="text-slate-300">|</span>
+                                  <Database className="h-3 w-3 text-slate-500" />
+                                  <span>DB ∞</span>
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => openLimitPage(u)}
+                                  title="Klik untuk konfigurasi limit Storage & Database akun ini"
+                                  className="inline-flex items-center space-x-1.5 text-xs text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-md px-2 py-1 font-mono transition-colors"
+                                >
+                                  <HardDrive className="h-3 w-3 text-slate-500" />
+                                  <span>
+                                    {u.max_disk_mb >= 1000
+                                      ? `${(u.max_disk_mb / 1000).toFixed(u.max_disk_mb % 1000 === 0 ? 0 : 1)} GB`
+                                      : `${u.max_disk_mb || 500} MB`}
+                                  </span>
+                                  <span className="text-slate-300">|</span>
+                                  <Database className="h-3 w-3 text-slate-500" />
+                                  <span>
+                                    DB{' '}
+                                    {u.max_database_disk_mb >= 1000
+                                      ? `${(u.max_database_disk_mb / 1000).toFixed(u.max_database_disk_mb % 1000 === 0 ? 0 : 1)} GB`
+                                      : `${u.max_database_disk_mb || 100} MB`}
+                                  </span>
+                                </button>
+                              )}
+                            </td>
+                            {/* RAM */}
+                            <td className="p-4 text-center">
+                              {u.role === 'admin' ? (
+                                <span
+                                  title="Akun Administrator memiliki alokasi memori Host Penuh"
+                                  className="inline-flex items-center space-x-1 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-md px-2 py-1 font-mono"
+                                >
+                                  <Cpu className="h-3 w-3 text-emerald-600" />
+                                  <span>Host RAM</span>
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => openLimitPage(u)}
+                                  title="Klik untuk ubah limit RAM akun ini"
+                                  className="inline-flex items-center space-x-1 text-xs text-emerald-700 bg-emerald-50 hover:bg-emerald-100/70 border border-emerald-200 rounded-md px-2 py-1 font-mono transition-colors"
+                                >
+                                  <Cpu className="h-3 w-3 text-emerald-600" />
+                                  <span>
+                                    {u.max_memory_mb >= 1024
+                                      ? `${(u.max_memory_mb / 1024).toFixed(u.max_memory_mb % 1024 === 0 ? 0 : 1)} GB`
+                                      : `${u.max_memory_mb || 512} MB`}
+                                  </span>
+                                </button>
+                              )}
+                            </td>
+                            {/* CPU */}
+                            <td className="p-4 text-center">
+                              {u.role === 'admin' ? (
+                                <span
+                                  title="Akun Administrator memiliki akses komputasi CPU Host Penuh"
+                                  className="inline-flex items-center space-x-1 text-xs text-sky-700 bg-sky-50 border border-sky-200 rounded-md px-2 py-1 font-mono"
+                                >
+                                  <Sliders className="h-3 w-3 text-sky-600" />
+                                  <span>Host CPU</span>
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => openLimitPage(u)}
+                                  title="Klik untuk ubah limit CPU akun ini"
+                                  className="inline-flex items-center space-x-1 text-xs text-sky-700 bg-sky-50 hover:bg-sky-100/70 border border-sky-200 rounded-md px-2 py-1 font-mono transition-colors"
+                                >
+                                  <Sliders className="h-3 w-3 text-sky-600" />
+                                  <span>{u.max_cpu_cores ?? 1.0} Core</span>
+                                </button>
+                              )}
+                            </td>
+                            <td className="p-4">
+                              <span
+                                className={`inline-flex px-2 py-0.5 rounded-md text-xs font-medium border ${
+                                  u.is_active
+                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                    : 'bg-rose-50 text-rose-700 border-rose-200'
+                                }`}
+                              >
+                                {u.is_active ? 'Aktif' : 'Suspended'}
+                              </span>
+                            </td>
+                            <td className="p-4 text-right space-x-1 whitespace-nowrap">
+                              <button
+                                type="button"
+                                onClick={() => openLimitPage(u)}
+                                title="Atur Limit Resource & Konfigurasi DB"
+                                className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+                              >
+                                <Sliders className="h-4 w-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => triggerResetPassword(u.id, u.name)}
+                                title="Reset Password Sementara"
+                                className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+                              >
+                                <KeyRound className="h-4 w-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => triggerToggleSuspend(u.id, u.name, u.is_active)}
+                                title={u.is_active ? 'Suspend Akun' : 'Aktifkan Akun'}
+                                className={`p-1.5 rounded-lg transition-colors ${
+                                  u.is_active
+                                    ? 'text-slate-500 hover:text-amber-600 hover:bg-amber-50'
+                                    : 'text-emerald-600 hover:bg-emerald-50'
+                                }`}
+                              >
+                                {u.is_active ? <Ban className="h-4 w-4" /> : <UserCheck className="h-4 w-4" />}
+                              </button>
+                              {u.role !== 'admin' && (
+                                <button
+                                  type="button"
+                                  onClick={() => triggerDeleteUser(u.id, u.name)}
+                                  title="Hapus Akun Mahasiswa"
+                                  className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Pagination Controls */}
+                <div className="flex flex-col sm:flex-row items-center justify-between p-4 bg-slate-50/60 border-t border-slate-200/80 gap-3 text-xs text-slate-600">
+                  <div className="flex items-center space-x-2">
+                    <span>Tampilkan</span>
+                    <select
+                      value={userPageSize}
+                      onChange={(e) => {
+                        setUserPageSize(parseInt(e.target.value))
+                        setUserPage(1)
+                      }}
+                      className="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs text-slate-700 focus:outline-none focus:border-slate-400"
+                    >
+                      <option value={10}>10</option>
+                      <option value={25}>25</option>
+                      <option value={50}>50</option>
+                      <option value={100}>100</option>
+                    </select>
+                    <span>akun per halaman (Total {filteredUsers.length} akun)</span>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <span>
+                      Halaman {userPage} dari {totalUserPages}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={userPage <= 1}
+                      onClick={() => setUserPage((p) => Math.max(1, p - 1))}
+                      className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 hover:text-slate-900 disabled:opacity-40 transition-colors"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      disabled={userPage >= totalUserPages}
+                      onClick={() => setUserPage((p) => Math.min(totalUserPages, p + 1))}
+                      className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 hover:text-slate-900 disabled:opacity-40 transition-colors"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TAB 2: TAMBAH AKUN PENGGUNA */}
+        {activeTab === 'create' && (
+          <div className="bg-white border border-slate-200/80 rounded-xl p-6 sm:p-8 text-slate-900 max-w-xl">
+            <h3 className="text-lg font-sans font-bold text-slate-900 mb-1 flex items-center space-x-2">
+              <UserPlus className="h-5 w-5 text-slate-700" />
+              <span>Tambah Akun Pengguna Baru</span>
+            </h3>
+            <p className="text-xs text-slate-500 mb-6">
+              Buat akun pengguna baru dengan menentukan username, nama lengkap, password, dan role (Mahasiswa atau Administrator).
+            </p>
+
+            <form onSubmit={handleCreateAccount} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    NIM / Username <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. 23533001 atau admin_lab"
+                    value={manualUsername}
+                    onChange={(e) => setManualUsername(e.target.value)}
+                    className="w-full bg-white border border-slate-200 rounded-lg px-3.5 py-2 text-xs text-slate-900 font-mono focus:outline-none focus:border-slate-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Nama Lengkap <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Budi Santoso"
+                    value={manualName}
+                    onChange={(e) => setManualName(e.target.value)}
+                    className="w-full bg-white border border-slate-200 rounded-lg px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-slate-400"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Password <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Minimal 6 karakter"
+                    value={manualPassword}
+                    onChange={(e) => setManualPassword(e.target.value)}
+                    className="w-full bg-white border border-slate-200 rounded-lg px-3.5 py-2 text-xs text-slate-900 font-mono focus:outline-none focus:border-slate-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Role / Peran Akun <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    value={manualRole}
+                    onChange={(e) => setManualRole(e.target.value)}
+                    className="w-full bg-white border border-slate-200 rounded-lg px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-slate-400 font-medium"
+                  >
+                    <option value="student">Mahasiswa (Student)</option>
+                    <option value="admin">Administrator Lab (Admin)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-2 pt-1">
+                <input
+                  type="checkbox"
+                  id="mustChangeCheckV2"
+                  checked={manualMustChange}
+                  onChange={(e) => setManualMustChange(e.target.checked)}
+                  className="h-4 w-4 rounded accent-slate-900 bg-white border-slate-300"
+                />
+                <label htmlFor="mustChangeCheckV2" className="text-xs text-slate-600 cursor-pointer">
+                  Wajibkan ganti password saat user pertama kali login
+                </label>
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-end space-x-2.5">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="md"
+                  onClick={() => setActiveTab('users')}
+                >
+                  Batal
+                </Button>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="md"
+                  disabled={loadingAction}
+                >
+                  {loadingAction ? 'Menyimpan...' : 'Buat Akun Sekarang'}
+                </Button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* TAB 3: AUDIT LOGS */}
+        {activeTab === 'logs' && (
+          <div className="bg-white border border-slate-200/80 rounded-xl overflow-hidden text-slate-900">
+            <div className="p-4 sm:p-5 border-b border-slate-200/80 bg-slate-50/50 flex items-center justify-between">
+              <h4 className="text-base font-sans font-bold text-slate-900 flex items-center space-x-2">
+                <Clock className="h-5 w-5 text-slate-600" />
+                <span>Aktivitas Sistem &amp; Audit Log (50 Terakhir)</span>
+              </h4>
+              <button
+                type="button"
+                onClick={fetchAuditLogs}
+                className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-medium text-slate-700 transition-colors"
+              >
+                Refresh
+              </button>
+            </div>
+            <div>
+              {auditLogs.length === 0 ? (
+                <div className="p-8 text-center text-xs text-slate-400">Belum ada catatan aktivitas.</div>
+              ) : (
+                auditLogs.map((log) => (
+                  <div
+                    key={log.id}
+                    className="px-4 sm:px-5 py-3 border-b border-slate-100 last:border-b-0 hover:bg-slate-50 flex items-center justify-between gap-4 transition-colors"
+                  >
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-semibold text-slate-900 text-xs sm:text-sm">
+                          {log.actor_name || 'System'}
+                        </span>
+                        <span className="bg-slate-100 text-slate-700 border border-slate-200 px-2 py-0.5 rounded-md text-[10px] font-mono font-medium uppercase">
+                          {log.action}
+                        </span>
+                        <span className="font-mono text-xs text-slate-400">
+                          [{log.ip_address}]
+                        </span>
+                      </div>
+                      <p className="text-sm text-slate-600 mt-0.5">{log.details}</p>
+                    </div>
+                    <span className="text-xs font-mono text-slate-400 whitespace-nowrap">
+                      {log.created_at}
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Reusable Confirmation Modal */}
+        <ConfirmModal
+          isOpen={confirmModal.open}
+          title={confirmModal.title}
+          message={confirmModal.message}
+          onConfirm={confirmModal.onConfirm}
+          onClose={() => setConfirmModal({ open: false, title: '', message: '', onConfirm: () => {} })}
+        />
+
+        {/* Resource Limit (Bulk Only) Modal */}
+        <ModalPortal isOpen={limitModal.open}>
+          <div
+            onClick={() => setLimitModal((prev) => ({ ...prev, open: false }))}
+            className="fixed inset-0 !mt-0 z-[9999] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-150"
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-lg bg-white border border-slate-200 rounded-xl p-6 text-slate-900 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-150"
+            >
+              <div className="flex items-center justify-between pb-4 mb-5 border-b border-slate-100">
+                <div className="flex items-center space-x-3">
+                  <div className="h-10 w-10 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-700">
+                    <Sliders className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-sans font-bold text-slate-900">
+                      Atur Limit Resource Massal
+                    </h3>
+                    <p className="text-xs text-slate-500 font-mono mt-0.5">
+                      {selectedUserIds.length} Akun Mahasiswa Terpilih
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setLimitModal((prev) => ({ ...prev, open: false }))}
+                  className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveBulkLimit} className="space-y-4">
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-semibold text-slate-700 flex items-center space-x-1.5">
+                      <HardDrive className="h-4 w-4 text-slate-500" />
+                      <span>Storage File Manager (MB)</span>
+                    </label>
+                    <span className="font-mono text-xs text-slate-600">
+                      {limitModal.maxDiskMb >= 1000
+                        ? `${(limitModal.maxDiskMb / 1000).toFixed(limitModal.maxDiskMb % 1000 === 0 ? 0 : 1)} GB (${limitModal.maxDiskMb} MB)`
+                        : `${limitModal.maxDiskMb} MB`}
+                    </span>
+                  </div>
+                  <input
+                    type="number"
+                    min="100"
+                    max="100000"
+                    step="50"
+                    required
+                    value={limitModal.maxDiskMb}
+                    onChange={(e) => setLimitModal({ ...limitModal, maxDiskMb: parseInt(e.target.value) || 0 })}
+                    className="w-full bg-white border border-slate-200 rounded-lg px-3.5 py-2 text-xs text-slate-900 font-mono focus:outline-none focus:border-slate-400"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-semibold text-slate-700 flex items-center space-x-1.5">
+                      <Database className="h-4 w-4 text-slate-500" />
+                      <span>Storage Database (MB)</span>
+                    </label>
+                    <span className="font-mono text-xs text-slate-600">
+                      {limitModal.maxDatabaseDiskMb || 100} MB
+                    </span>
+                  </div>
+                  <input
+                    type="number"
+                    min="20"
+                    max="50000"
+                    step="20"
+                    required
+                    value={limitModal.maxDatabaseDiskMb || 100}
+                    onChange={(e) => setLimitModal({ ...limitModal, maxDatabaseDiskMb: parseInt(e.target.value) || 100 })}
+                    className="w-full bg-white border border-slate-200 rounded-lg px-3.5 py-2 text-xs text-slate-900 font-mono focus:outline-none focus:border-slate-400"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-semibold text-slate-700 flex items-center space-x-1.5">
+                      <Cpu className="h-4 w-4 text-emerald-600" />
+                      <span>RAM / Batas Memori Container (MB)</span>
+                    </label>
+                    <span className="font-mono text-xs text-emerald-700">
+                      {limitModal.maxMemoryMb >= 1024
+                        ? `${(limitModal.maxMemoryMb / 1024).toFixed(limitModal.maxMemoryMb % 1024 === 0 ? 0 : 1)} GB`
+                        : `${limitModal.maxMemoryMb} MB`}
+                    </span>
+                  </div>
+                  <input
+                    type="number"
+                    min="128"
+                    max="32768"
+                    step="64"
+                    required
+                    value={limitModal.maxMemoryMb}
+                    onChange={(e) => setLimitModal({ ...limitModal, maxMemoryMb: parseInt(e.target.value) || 0 })}
+                    className="w-full bg-white border border-slate-200 rounded-lg px-3.5 py-2 text-xs text-slate-900 font-mono focus:outline-none focus:border-slate-400"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-semibold text-slate-700 flex items-center space-x-1.5">
+                      <Sliders className="h-4 w-4 text-sky-600" />
+                      <span>CPU Core Allocation (Cores)</span>
+                    </label>
+                    <span className="font-mono text-xs text-sky-700">{limitModal.maxCpuCores} Core</span>
+                  </div>
+                  <input
+                    type="number"
+                    min="0.1"
+                    max="16"
+                    step="0.1"
+                    required
+                    value={limitModal.maxCpuCores}
+                    onChange={(e) => setLimitModal({ ...limitModal, maxCpuCores: parseFloat(e.target.value) || 0.1 })}
+                    className="w-full bg-white border border-slate-200 rounded-lg px-3.5 py-2 text-xs text-slate-900 font-mono focus:outline-none focus:border-slate-400"
+                  />
+                </div>
+
+                <div className="pt-3 border-t border-slate-100 flex items-center justify-end space-x-2.5">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="md"
+                    onClick={() => setLimitModal((prev) => ({ ...prev, open: false }))}
+                  >
+                    Batal
+                  </Button>
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    size="md"
+                    disabled={savingLimit}
+                  >
+                    {savingLimit ? 'Menyimpan...' : 'Simpan Limit'}
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </ModalPortal>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6 font-sans w-full">
