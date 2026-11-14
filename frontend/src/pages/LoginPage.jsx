@@ -17,11 +17,11 @@ import { Spinner } from '../components/Skeletons'
 const SHOWCASE_STEPS = [
   {
     id: 'auth',
-    number: '01 / OTENTIKASI SATU PINTU',
-    title: 'Terhubung Langsung ke SSO SIMTIK UMPO.',
+    number: '01 / MULTI-TENANT WORKSPACE',
+    title: 'Lingkungan Cloud Terdedikasi untuk Setiap Akun.',
     description:
-      'Tidak perlu registrasi baru. Masuk dengan akun kampus Anda; sistem otomatis membedakan alokasi Mahasiswa dan Dosen secara instan.',
-    label: 'Autentikasi Kampus',
+      'Setiap pengguna langsung memperoleh direktori home terisolasi, kuota storage mandiri, serta manajemen database dan file berbasis web.',
+    label: 'Multi-Tenant Cloud',
     type: 'card'
   },
   {
@@ -215,7 +215,7 @@ export default function LoginPage({ onLoginSuccess }) {
                     <ShieldCheck className="h-4 w-4 text-emerald-600" />
                   </div>
                   <span className="font-mono text-xs text-slate-700 truncate">
-                    SIMTIK Handshake: Connected • Role Auto-Detection Active
+                    Tenant Provisioner: Ready • Quota &amp; Directory Isolation Active
                   </span>
                 </div>
               </div>
@@ -270,7 +270,7 @@ export default function LoginPage({ onLoginSuccess }) {
                 Masuk ke Workspace
               </h3>
               <p className="text-xs text-slate-500 mt-1.5 leading-relaxed font-sans">
-                Gunakan akun SIMTIK UMPO Anda untuk mengakses workspace Mahasiswa atau Dosen.
+                Gunakan akun kampus Anda untuk mengakses workspace cloud Mahasiswa atau Dosen.
               </p>
             </div>
 
@@ -312,7 +312,7 @@ export default function LoginPage({ onLoginSuccess }) {
               {/* Input Password */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                  Password SIMTIK
+                  Password
                 </label>
                 <div className="relative group">
                   <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-slate-700 transition-colors pointer-events-none">
@@ -324,7 +324,7 @@ export default function LoginPage({ onLoginSuccess }) {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="w-full bg-slate-50/50 border border-slate-200 rounded-lg pl-10 pr-11 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-slate-400 transition font-sans"
-                    placeholder="Password SIMTIK"
+                    placeholder="Masukkan password akun"
                     autoComplete="current-password"
                   />
                   <button
