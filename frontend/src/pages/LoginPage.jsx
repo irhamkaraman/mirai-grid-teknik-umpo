@@ -307,10 +307,10 @@ export default function LoginPage({ onLoginSuccess }) {
                   <span>Memvalidasi Akun...</span>
                 </span>
               ) : (
-                <>
-                  <span>Masuk dengan SIMTIK</span>
+                <span className="inline-flex items-center justify-center gap-2">
+                  <span>Masuk</span>
                   <ArrowRight className="h-4 w-4" />
-                </>
+                </span>
               )}
             </Button>
           </form>
