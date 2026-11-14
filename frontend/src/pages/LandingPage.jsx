@@ -9,17 +9,17 @@ const PROJECTS = [
     runtime: 'PHP 8.3',
     database: 'MariaDB 11',
     status: 'Online',
-    url: 'toko-buku-23533740.miraigrid.web.id',
+    url: 'toko-buku-26533xxx.miraigrid.web.id',
     ram: '142 / 512 MB',
     cpu: '0.18 / 0.5 Core',
     storage: '340 MB / 10 GB',
     dbUsage: '24 MB / 5 GB',
     logs: [
-      '$ miraigrid deploy --runtime php8.3 --dir /home/23533740/toko-buku',
+      '$ miraigrid deploy --runtime php8.3 --dir /home/26533xxx/toko-buku',
       '[1/4] Memverifikasi arsip dan pemindaian keamanan berkas... bersih',
       '[2/4] Menyiapkan skema MariaDB 11 dan variabel lingkungan...',
       '[3/4] Menerapkan batas cgroup v2 (RAM 512 MB, CPU 0.5 Core)...',
-      '[4/4] Nginx ingress aktif pada https://toko-buku-23533740.miraigrid.web.id',
+      '[4/4] Nginx ingress aktif pada https://toko-buku-26533xxx.miraigrid.web.id',
     ],
   },
   {
@@ -28,17 +28,17 @@ const PROJECTS = [
     runtime: 'Node.js 20',
     database: 'PostgreSQL 16',
     status: 'Online',
-    url: 'iot-monitoring-23533740.miraigrid.web.id',
+    url: 'iot-monitoring-26533xxx.miraigrid.web.id',
     ram: '196 / 512 MB',
     cpu: '0.22 / 0.5 Core',
     storage: '512 MB / 10 GB',
     dbUsage: '68 MB / 5 GB',
     logs: [
-      '$ miraigrid deploy --runtime node20 --dir /home/23533740/iot-monitoring',
+      '$ miraigrid deploy --runtime node20 --dir /home/26533xxx/iot-monitoring',
       '[1/4] Memasang dependensi produksi (npm ci --omit=dev)...',
       '[2/4] Menghubungkan pool PostgreSQL 16 dan telemetri MQTT...',
       '[3/4] Menjalankan proses worker dengan proteksi OOM cgroup v2...',
-      '[4/4] Layanan aktif pada https://iot-monitoring-23533740.miraigrid.web.id',
+      '[4/4] Layanan aktif pada https://iot-monitoring-26533xxx.miraigrid.web.id',
     ],
   },
   {
@@ -47,17 +47,17 @@ const PROJECTS = [
     runtime: 'Python 3.12',
     database: 'PostgreSQL 16',
     status: 'Online',
-    url: 'api-presensi-23533740.miraigrid.web.id',
+    url: 'api-presensi-26533xxx.miraigrid.web.id',
     ram: '118 / 512 MB',
     cpu: '0.12 / 0.5 Core',
     storage: '280 MB / 10 GB',
     dbUsage: '42 MB / 5 GB',
     logs: [
-      '$ miraigrid deploy --runtime python3.12 --dir /home/23533740/api-presensi',
+      '$ miraigrid deploy --runtime python3.12 --dir /home/26533xxx/api-presensi',
       '[1/4] Menyiapkan virtual environment Python 3.12...',
       '[2/4] Menjalankan migrasi skema PostgreSQL 16...',
       '[3/4] Menjalankan worker Uvicorn pada port internal terisolasi...',
-      '[4/4] Endpoint aktif pada https://api-presensi-23533740.miraigrid.web.id',
+      '[4/4] Endpoint aktif pada https://api-presensi-26533xxx.miraigrid.web.id',
     ],
   },
   {
@@ -66,17 +66,17 @@ const PROJECTS = [
     runtime: 'PHP 8.3',
     database: 'MariaDB 11',
     status: 'Standby',
-    url: 'portal-krs-23533740.miraigrid.web.id',
+    url: 'portal-krs-26533xxx.miraigrid.web.id',
     ram: '64 / 512 MB',
     cpu: '0.04 / 0.5 Core',
     storage: '190 MB / 10 GB',
     dbUsage: '18 MB / 5 GB',
     logs: [
-      '$ miraigrid deploy --runtime php8.3 --dir /home/23533740/portal-krs',
+      '$ miraigrid deploy --runtime php8.3 --dir /home/26533xxx/portal-krs',
       '[1/4] Memverifikasi konfigurasi php.ini dan ekstensi mysqli...',
-      '[2/4] Mengikat database MariaDB 11 milik akun 23533740...',
+      '[2/4] Mengikat database MariaDB 11 milik akun 26533xxx...',
       '[3/4] Kontainer dalam mode siaga hemat memori...',
-      '[4/4] Siap menerima trafik pada https://portal-krs-23533740.miraigrid.web.id',
+      '[4/4] Siap menerima trafik pada https://portal-krs-26533xxx.miraigrid.web.id',
     ],
   },
   {
@@ -85,17 +85,17 @@ const PROJECTS = [
     runtime: 'OpenLiteSpeed',
     database: 'Tanpa DB',
     status: 'Online',
-    url: 'landing-himati-23533740.miraigrid.web.id',
+    url: 'landing-himati-26533xxx.miraigrid.web.id',
     ram: '48 / 512 MB',
     cpu: '0.02 / 0.5 Core',
     storage: '95 MB / 10 GB',
     dbUsage: '0 MB / 5 GB',
     logs: [
-      '$ miraigrid deploy --runtime openlitespeed --dir /home/23533740/landing-himati',
+      '$ miraigrid deploy --runtime openlitespeed --dir /home/26533xxx/landing-himati',
       '[1/4] Memeriksa aset statis HTML, CSS, dan bundle JavaScript...',
       '[2/4] Mengaktifkan kompresi Brotli dan cache header...',
       '[3/4] Memetakan rute virtual host pada Nginx ingress...',
-      '[4/4] Situs aktif pada https://landing-himati-23533740.miraigrid.web.id',
+      '[4/4] Situs aktif pada https://landing-himati-26533xxx.miraigrid.web.id',
     ],
   },
 ]
@@ -418,7 +418,7 @@ export default function LandingPage({ onLogin }) {
                     className="text-[14px] text-[#EDEDEA]"
                     style={{ fontFamily: "'Geist Mono', monospace" }}
                   >
-                    workspace / 23533740
+                    workspace / 26533xxx
                   </span>
                 </div>
                 <div

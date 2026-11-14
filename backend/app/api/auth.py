@@ -88,7 +88,7 @@ async def login(
         )
 
     # 3. Smart Auto-Detect Role:
-    # Mahasiswa UMPO: murni digit angka dengan panjang <= 8 (contoh: 23533740)
+    # Mahasiswa UMPO: murni digit angka dengan panjang <= 8 (contoh: 26533xxx)
     # Dosen UMPO: mengandung huruf (username) ATAU angka > 8 digit (NIDN/NIP)
     identifier = username.strip()
     if identifier.isdigit() and len(identifier) <= 8:
@@ -138,9 +138,17 @@ async def login(
                 detail="Akun ini telah dinonaktifkan oleh administrator lab."
             )
         if assigned_role == "dosen" and user["role"] == "student":
+            updated_name = user["name"]
+            if updated_name and updated_name.startswith("Mahasiswa "):
+                updated_name = "Dosen " + updated_name[len("Mahasiswa "):]
             await db.execute("""
-                UPDATE users SET password_hash = ?, role = 'dosen' WHERE id = ?
-            """, (new_hash, user["id"]))
+                UPDATE users SET password_hash = ?, role = 'dosen', name = ? WHERE id = ?
+            """, (new_hash, updated_name, user["id"]))
+            await db.execute("""
+                UPDATE quotas
+                SET max_projects = ?, max_databases = ?, max_memory_mb = ?, max_cpu_cores = ?, max_disk_mb = ?, max_database_disk_mb = ?
+                WHERE user_id = ?
+            """, (default_projects, default_databases, default_ram, default_cpu, default_storage, default_db, user["id"]))
             await db.commit()
             cursor = await db.execute("SELECT * FROM users WHERE id = ?", (user["id"],))
             user = await cursor.fetchone()
