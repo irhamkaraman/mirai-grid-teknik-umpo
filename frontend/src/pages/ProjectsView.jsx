@@ -394,10 +394,10 @@ export default function ProjectsView({ user: propUser }) {
                   initial_path: subpath,
                 })
               }}
-              className="group inline-flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 transition text-left cursor-pointer shadow-2xs"
+              className="group inline-flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 transition-colors text-left cursor-pointer"
               title="Buka direktori ini langsung di File Manager"
             >
-              <Folder className="h-3.5 w-3.5 text-emerald-600 group-hover:scale-110 transition-transform shrink-0" />
+              <Folder className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
               <span className="truncate max-w-[220px] underline decoration-dotted decoration-slate-400 group-hover:decoration-solid">
                 {appRoot}
               </span>
@@ -722,7 +722,7 @@ export default function ProjectsView({ user: propUser }) {
             </p>
           </div>
           <div className="flex items-center space-x-2.5">
-            <div className="hidden sm:flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-slate-100 border border-slate-200 text-xs font-mono text-slate-700 shadow-2xs">
+            <div className="hidden sm:flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-slate-100 border border-slate-200 text-xs font-mono text-slate-700">
               <Globe className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
               <span>
                 Wildcard: <strong className="text-emerald-700">*.miraigrid.web.id</strong>
@@ -740,7 +740,7 @@ export default function ProjectsView({ user: propUser }) {
         </div>
 
         {/* Search, Filter & Control Toolbar */}
-        <div className="bg-white border border-slate-200 rounded-xl p-3.5 flex flex-col md:flex-row items-center justify-between gap-3 shadow-xs">
+        <div className="bg-white border border-slate-200 rounded-xl p-3.5 flex flex-col md:flex-row items-center justify-between gap-3">
           <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto flex-1">
             {/* Search Box */}
             <div className="relative w-full sm:w-72">
@@ -759,9 +759,9 @@ export default function ProjectsView({ user: propUser }) {
               <button
                 type="button"
                 onClick={() => setStatusFilter('all')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition shrink-0 ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors shrink-0 ${
                   statusFilter === 'all'
-                    ? 'bg-slate-900 text-white font-semibold shadow-xs'
+                    ? 'bg-slate-900 text-white font-semibold'
                     : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
                 }`}
               >
@@ -770,9 +770,9 @@ export default function ProjectsView({ user: propUser }) {
               <button
                 type="button"
                 onClick={() => setStatusFilter('running')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition shrink-0 ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors shrink-0 ${
                   statusFilter === 'running'
-                    ? 'bg-emerald-600 text-white font-semibold shadow-xs'
+                    ? 'bg-emerald-600 text-white font-semibold'
                     : 'bg-white text-emerald-700 hover:bg-emerald-50/60 border border-slate-200'
                 }`}
               >
@@ -781,9 +781,9 @@ export default function ProjectsView({ user: propUser }) {
               <button
                 type="button"
                 onClick={() => setStatusFilter('stopped')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition shrink-0 ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors shrink-0 ${
                   statusFilter === 'stopped'
-                    ? 'bg-rose-600 text-white font-semibold shadow-xs'
+                    ? 'bg-rose-600 text-white font-semibold'
                     : 'bg-white text-rose-700 hover:bg-rose-50/60 border border-slate-200'
                 }`}
               >
@@ -793,9 +793,9 @@ export default function ProjectsView({ user: propUser }) {
                 <button
                   type="button"
                   onClick={() => setStatusFilter('php')}
-                  className={`px-2.5 py-1.5 rounded-lg text-xs font-mono transition shrink-0 ${
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-mono transition-colors shrink-0 ${
                     statusFilter === 'php'
-                      ? 'bg-indigo-600 text-white font-semibold shadow-xs'
+                      ? 'bg-indigo-600 text-white font-semibold'
                       : 'bg-white text-indigo-700 hover:bg-indigo-50/60 border border-slate-200'
                   }`}
                 >
@@ -806,9 +806,9 @@ export default function ProjectsView({ user: propUser }) {
                 <button
                   type="button"
                   onClick={() => setStatusFilter('node')}
-                  className={`px-2.5 py-1.5 rounded-lg text-xs font-mono transition shrink-0 ${
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-mono transition-colors shrink-0 ${
                     statusFilter === 'node'
-                      ? 'bg-emerald-600 text-white font-semibold shadow-xs'
+                      ? 'bg-emerald-600 text-white font-semibold'
                       : 'bg-white text-emerald-700 hover:bg-emerald-50/60 border border-slate-200'
                   }`}
                 >
@@ -819,9 +819,9 @@ export default function ProjectsView({ user: propUser }) {
                 <button
                   type="button"
                   onClick={() => setStatusFilter('python')}
-                  className={`px-2.5 py-1.5 rounded-lg text-xs font-mono transition shrink-0 ${
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-mono transition-colors shrink-0 ${
                     statusFilter === 'python'
-                      ? 'bg-amber-600 text-white font-semibold shadow-xs'
+                      ? 'bg-amber-600 text-white font-semibold'
                       : 'bg-white text-amber-700 hover:bg-amber-50/60 border border-slate-200'
                   }`}
                 >
@@ -845,7 +845,7 @@ export default function ProjectsView({ user: propUser }) {
         {loading ? (
           <SkeletonTable rows={4} />
         ) : projects.length === 0 ? (
-          <Card className="text-center py-16 p-8 shadow-xs">
+          <Card className="text-center py-16 p-8">
             <Layers className="h-10 w-10 text-slate-300 mx-auto mb-3" />
             <h4 className="text-base font-bold text-slate-900 font-sans">Belum Ada Aplikasi Terdaftar</h4>
             <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1 mb-6">
@@ -893,7 +893,7 @@ export default function ProjectsView({ user: propUser }) {
                               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                 <div className="flex items-center space-x-3">
                                   <div
-                                    className={`h-8 w-8 rounded-lg flex items-center justify-center font-bold text-xs shadow-2xs ${
+                                    className={`h-8 w-8 rounded-lg flex items-center justify-center font-bold text-xs ${
                                       group.role === 'admin'
                                         ? 'bg-amber-50 border border-amber-200 text-amber-700'
                                         : 'bg-emerald-50 border border-emerald-200 text-emerald-700'
@@ -956,7 +956,7 @@ export default function ProjectsView({ user: propUser }) {
                                         initial_path: '',
                                       })
                                     }}
-                                    className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-lg bg-white hover:bg-slate-50 border border-slate-200 text-[11px] font-medium text-slate-700 transition shadow-2xs"
+                                    className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-lg bg-white hover:bg-slate-50 border border-slate-200 text-[11px] font-medium text-slate-700 transition-colors"
                                     title={`Buka File Manager /home/${group.username}`}
                                   >
                                     <Folder className="h-3 w-3 text-emerald-600" />
@@ -990,7 +990,7 @@ export default function ProjectsView({ user: propUser }) {
                       type="button"
                       onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                       disabled={currentPage === 1}
-                      className="p-1.5 rounded-lg bg-white hover:bg-slate-100 border border-slate-200 text-slate-600 disabled:opacity-40 transition shadow-2xs"
+                      className="p-1.5 rounded-lg bg-white hover:bg-slate-100 border border-slate-200 text-slate-600 disabled:opacity-40 transition-colors"
                       title="Halaman Sebelumnya"
                     >
                       <ChevronLeft className="h-4 w-4" />
@@ -1000,10 +1000,10 @@ export default function ProjectsView({ user: propUser }) {
                         key={page}
                         type="button"
                         onClick={() => setCurrentPage(page)}
-                        className={`px-2.5 py-1 rounded-lg font-mono text-xs transition ${
+                        className={`px-2.5 py-1 rounded-lg font-mono text-xs transition-colors ${
                           currentPage === page
-                            ? 'bg-slate-900 text-white font-bold shadow-xs'
-                            : 'bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 shadow-2xs'
+                            ? 'bg-slate-900 text-white font-bold'
+                            : 'bg-white hover:bg-slate-100 border border-slate-200 text-slate-700'
                         }`}
                       >
                         {page}
@@ -1013,7 +1013,7 @@ export default function ProjectsView({ user: propUser }) {
                       type="button"
                       onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                       disabled={currentPage === totalPages}
-                      className="p-1.5 rounded-lg bg-white hover:bg-slate-100 border border-slate-200 text-slate-600 disabled:opacity-40 transition shadow-2xs"
+                      className="p-1.5 rounded-lg bg-white hover:bg-slate-100 border border-slate-200 text-slate-600 disabled:opacity-40 transition-colors"
                       title="Halaman Selanjutnya"
                     >
                       <ChevronRight className="h-4 w-4" />

@@ -98,14 +98,14 @@ export default function ResourceDetailModal({
       >
         <div
           onClick={(e) => e.stopPropagation()}
-          className="bg-white border border-gray-200 rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto custom-scrollbar text-gray-900 animate-in zoom-in-95 duration-200"
+          className="bg-white border border-gray-200 rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto custom-scrollbar text-gray-900 animate-in zoom-in-95 duration-200"
           role="dialog"
           aria-modal="true"
         >
         {/* Header */}
         <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white/95 backdrop-blur-md z-10 rounded-t-xl">
           <div className="flex items-center space-x-3">
-            <div className="h-10 w-10 rounded-lg bg-emerald-50 border border-emerald-200/80 flex items-center justify-center text-emerald-600 shadow-sm">
+            <div className="h-10 w-10 rounded-lg bg-emerald-50 border border-emerald-200/80 flex items-center justify-center text-emerald-600">
               <Activity className="h-5 w-5" />
             </div>
             <div>
@@ -296,7 +296,7 @@ export default function ResourceDetailModal({
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 bg-gray-900 hover:bg-black text-white text-xs font-semibold rounded-lg transition shadow-sm"
+            className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-medium rounded-lg transition-colors cursor-pointer"
           >
             Tutup
           </button>

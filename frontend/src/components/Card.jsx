@@ -20,8 +20,8 @@ export default function Card({
     <div
       className={twMerge(
         clsx(
-          'bg-white border border-slate-200/90 rounded-xl shadow-xs transition-all duration-200 font-sans',
-          hover && 'hover:border-slate-300 hover:shadow-sm',
+          'bg-white border border-slate-200/80 rounded-xl transition-colors duration-150 font-sans',
+          hover && 'hover:border-slate-300 hover:bg-slate-50/50',
           paddingClasses[padding] || paddingClasses.md,
           className
         )

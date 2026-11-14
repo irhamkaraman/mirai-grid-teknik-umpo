@@ -269,9 +269,9 @@ export default function StudentResourcesPage({ user, onNavigate }) {
 
       {/* 2. Header Halaman & Status Bar (Floating Clean Card) */}
       <div
-        className={`rounded-2xl p-6 transition-all duration-200 ${
+        className={`rounded-2xl p-6 transition-colors duration-150 ${
           isV2
-            ? 'bg-white border border-slate-200/80 shadow-xs'
+            ? 'bg-white border border-slate-200/80'
             : 'bg-[#2B1810] border border-[#4D2D1E] shadow-sm text-[#FAF5EC]'
         }`}
       >
@@ -338,7 +338,7 @@ export default function StudentResourcesPage({ user, onNavigate }) {
               onClick={handleManualRefresh}
               disabled={isRefreshing}
               title="Perbarui Data Resource"
-              className={`p-2 rounded-xl border transition shadow-xs flex items-center justify-center ${
+              className={`p-2 rounded-lg border transition-colors flex items-center justify-center ${
                 isV2
                   ? 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700'
                   : 'bg-[#341F14] hover:bg-[#3D2518] border-[#4D2D1E] text-[#D0B8A2]'
@@ -354,9 +354,9 @@ export default function StudentResourcesPage({ user, onNavigate }) {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
         {/* Card 1: Penggunaan Memori RAM */}
         <div
-          className={`rounded-2xl p-5 flex flex-col justify-between transition-all duration-200 ${
+          className={`rounded-2xl p-5 flex flex-col justify-between transition-colors duration-150 ${
             isV2
-              ? 'bg-white border border-slate-200/80 shadow-xs hover:border-slate-300'
+              ? 'bg-white border border-slate-200/80 hover:border-slate-300'
               : 'bg-[#2B1810] border border-[#4D2D1E] shadow-sm text-[#FAF5EC]'
           }`}
         >
@@ -416,9 +416,9 @@ export default function StudentResourcesPage({ user, onNavigate }) {
 
         {/* Card 2: CPU & Proses Aktif */}
         <div
-          className={`rounded-2xl p-5 flex flex-col justify-between transition-all duration-200 ${
+          className={`rounded-2xl p-5 flex flex-col justify-between transition-colors duration-150 ${
             isV2
-              ? 'bg-white border border-slate-200/80 shadow-xs hover:border-slate-300'
+              ? 'bg-white border border-slate-200/80 hover:border-slate-300'
               : 'bg-[#2B1810] border border-[#4D2D1E] shadow-sm text-[#FAF5EC]'
           }`}
         >
@@ -474,9 +474,9 @@ export default function StudentResourcesPage({ user, onNavigate }) {
 
         {/* Card 3: Penyimpanan Berkas & Web (Disk Usage) */}
         <div
-          className={`rounded-2xl p-5 flex flex-col justify-between transition-all duration-200 ${
+          className={`rounded-2xl p-5 flex flex-col justify-between transition-colors duration-150 ${
             isV2
-              ? 'bg-white border border-slate-200/80 shadow-xs hover:border-slate-300'
+              ? 'bg-white border border-slate-200/80 hover:border-slate-300'
               : 'bg-[#2B1810] border border-[#4D2D1E] shadow-sm text-[#FAF5EC]'
           }`}
         >
@@ -536,9 +536,9 @@ export default function StudentResourcesPage({ user, onNavigate }) {
 
         {/* Card 4: Storage Database Praktikum */}
         <div
-          className={`rounded-2xl p-5 flex flex-col justify-between transition-all duration-200 ${
+          className={`rounded-2xl p-5 flex flex-col justify-between transition-colors duration-150 ${
             isV2
-              ? 'bg-white border border-slate-200/80 shadow-xs hover:border-slate-300'
+              ? 'bg-white border border-slate-200/80 hover:border-slate-300'
               : 'bg-[#2B1810] border border-[#4D2D1E] shadow-sm text-[#FAF5EC]'
           }`}
         >
@@ -599,9 +599,9 @@ export default function StudentResourcesPage({ user, onNavigate }) {
 
       {/* 4. Kartu Spesifikasi Jaringan, Port & Server */}
       <div
-        className={`rounded-2xl p-6 transition-all duration-200 ${
+        className={`rounded-2xl p-6 transition-colors duration-150 ${
           isV2
-            ? 'bg-white border border-slate-200/80 shadow-xs'
+            ? 'bg-white border border-slate-200/80'
             : 'bg-[#2B1810] border border-[#4D2D1E] shadow-sm text-[#FAF5EC]'
         }`}
       >

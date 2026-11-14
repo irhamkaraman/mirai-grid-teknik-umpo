@@ -142,15 +142,7 @@ export default function CreateProjectPage({ onBack, onCreated, user: propUser })
     return (
       <div className="space-y-6 font-sans pb-12 animate-in fade-in duration-200">
         {/* Top Breadcrumb Bar */}
-        <div className="flex items-center space-x-3 pb-3 border-b border-slate-200">
-          <Button
-            variant="secondary"
-            size="sm"
-            icon={ArrowLeft}
-            onClick={onBack}
-          >
-            Kembali
-          </Button>
+        <div className="pb-3 border-b border-slate-200">
           <div>
             <h2 className="text-xl font-bold text-slate-900 tracking-tight">
               Buat Project Web Baru
@@ -202,21 +194,21 @@ export default function CreateProjectPage({ onBack, onCreated, user: propUser })
                       key={lang.id}
                       type="button"
                       onClick={() => handleLanguageSelect(lang.id)}
-                      className={`p-5 rounded-xl border text-center flex flex-col items-center justify-between transition-all duration-200 relative group cursor-pointer ${
+                      className={`p-5 rounded-xl border text-center flex flex-col items-center justify-between transition-colors duration-150 relative group cursor-pointer ${
                         isSelected
-                          ? 'bg-emerald-50/40 border-emerald-500 shadow-sm ring-2 ring-emerald-500/20'
+                          ? 'bg-emerald-50/40 border-emerald-500 ring-2 ring-emerald-500/20'
                           : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/50'
                       }`}
                     >
                       {/* Selected Check Badge */}
                       {isSelected && (
-                        <div className="absolute top-3 right-3 h-5 w-5 rounded-full bg-emerald-600 text-white flex items-center justify-center shadow-xs">
+                        <div className="absolute top-3 right-3 h-5 w-5 rounded-full bg-emerald-600 text-white flex items-center justify-center">
                           <Check className="h-3 w-3 stroke-[3]" />
                         </div>
                       )}
 
                       {/* Logo Image */}
-                      <div className="h-16 w-16 rounded-xl bg-slate-50 border border-slate-100 p-2.5 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
+                      <div className="h-16 w-16 rounded-xl bg-slate-50 border border-slate-100 p-2.5 flex items-center justify-center mb-3">
                         <img
                           src={lang.logo}
                           alt={`${lang.name} logo`}
@@ -301,10 +293,10 @@ export default function CreateProjectPage({ onBack, onCreated, user: propUser })
                         key={repo.id}
                         type="button"
                         onClick={() => setAppRoot(repo.path)}
-                        className={`text-[10px] font-mono px-2.5 py-1 rounded-md border transition flex items-center space-x-1 cursor-pointer ${
+                        className={`text-[10px] font-mono px-2.5 py-1 rounded-md border transition-colors flex items-center space-x-1 cursor-pointer ${
                           appRoot === repo.path
-                            ? 'bg-slate-900 text-white border-slate-900 font-bold shadow-xs'
-                            : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'
+                            ? 'bg-slate-900 text-white border-slate-900 font-bold'
+                            : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
                         }`}
                         title={repo.path}
                       >

@@ -250,23 +250,11 @@ export default function AboutPage({ user, onNavigate }) {
   if (isV2) {
     return (
       <div className="w-full space-y-8 font-sans pb-12 animate-in fade-in duration-200">
-        {/* 1. TOP HEADER & BREADCRUMB */}
-        <div className="flex items-center justify-start">
-          <Button
-            variant="secondary"
-            size="sm"
-            icon={ArrowLeft}
-            onClick={() => onNavigate('/dashboard')}
-          >
-            Kembali ke Tools
-          </Button>
-        </div>
-
-        {/* 2. HERO BANNER: MODERN SAAS V2 */}
-        <div className="relative overflow-hidden rounded-xl bg-white border border-slate-200 shadow-xs p-6 sm:p-8">
+        {/* 1. HERO BANNER: MODERN SAAS V2 */}
+        <div className="relative overflow-hidden rounded-xl bg-white border border-slate-200 p-6 sm:p-8">
           <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
             <div className="flex items-start sm:items-center space-x-5">
-              <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-xl bg-slate-50 p-2.5 shadow-xs border border-slate-200 shrink-0 flex items-center justify-center">
+              <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-xl bg-slate-50 p-2.5 border border-slate-200 shrink-0 flex items-center justify-center">
                 <img
                   src="/logos/miraigrid-logo.svg"
                   alt="MiraiGrid Logo"
@@ -334,7 +322,7 @@ export default function AboutPage({ user, onNavigate }) {
                 </p>
               </div>
             </div>
-            <span className="hidden sm:inline-flex text-[11px] font-mono text-slate-600 bg-white px-3 py-1 rounded-lg border border-slate-200 shadow-2xs">
+            <span className="hidden sm:inline-flex text-[11px] font-mono text-slate-600 bg-white px-3 py-1 rounded-lg border border-slate-200">
               Enterprise Cloud Architecture
             </span>
           </div>
@@ -368,7 +356,7 @@ export default function AboutPage({ user, onNavigate }) {
                         padding="sm"
                         className="flex items-center space-x-3.5 bg-white border border-slate-200/90 rounded-xl group relative overflow-hidden"
                       >
-                        <div className="h-11 w-11 sm:h-12 sm:w-12 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center shrink-0 p-2 group-hover:border-slate-300 shadow-2xs transition-colors relative z-10">
+                        <div className="h-11 w-11 sm:h-12 sm:w-12 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center shrink-0 p-2 group-hover:border-slate-300 transition-colors relative z-10">
                           {tech.logo ? (
                             <img
                               src={tech.logo}

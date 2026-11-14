@@ -111,28 +111,18 @@ export default function DatabaseWizardPage({ user, onNavigate }) {
     return (
       <div className="space-y-6 font-sans pb-12 animate-in fade-in duration-200">
         {/* Top Header & Breadcrumb */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-200">
-          <div className="flex items-center space-x-3">
-            <Button
-              variant="secondary"
-              size="sm"
-              icon={ArrowLeft}
-              onClick={() => onNavigate('/dashboard')}
-            >
-              Kembali
-            </Button>
-            <div>
-              <div className="flex items-center space-x-2">
-                <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200 font-bold">
-                  Database Wizard
-                </span>
-                <span className="text-xs text-slate-500">/ Tools</span>
-              </div>
-              <h1 className="text-xl font-bold text-slate-900 flex items-center space-x-2 mt-0.5">
-                <Wand2 className="h-5 w-5 text-emerald-600" />
-                <span>Panduan Pembuatan Database Mandiri</span>
-              </h1>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-slate-200">
+          <div>
+            <div className="flex items-center space-x-2">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 font-bold">
+                Database Wizard
+              </span>
+              <span className="text-xs text-slate-500">/ Tools</span>
             </div>
+            <h1 className="text-xl font-bold text-slate-900 flex items-center space-x-2 mt-1">
+              <Wand2 className="h-5 w-5 text-emerald-600" />
+              <span>Panduan Pembuatan Database Mandiri</span>
+            </h1>
           </div>
 
           <Button
@@ -166,9 +156,9 @@ export default function DatabaseWizardPage({ user, onNavigate }) {
             {/* Step 1 Indicator */}
             <div className="flex items-center space-x-2.5">
               <div
-                className={`h-8 w-8 rounded-full flex items-center justify-center font-bold text-xs font-mono transition-all ${
+                className={`h-8 w-8 rounded-full flex items-center justify-center font-bold text-xs font-mono transition-colors ${
                   step >= 1
-                    ? 'bg-slate-900 text-white shadow-xs'
+                    ? 'bg-slate-900 text-white'
                     : 'bg-slate-100 text-slate-400 border border-slate-200'
                 }`}
               >
@@ -185,9 +175,9 @@ export default function DatabaseWizardPage({ user, onNavigate }) {
             {/* Step 2 Indicator */}
             <div className="flex items-center space-x-2.5">
               <div
-                className={`h-8 w-8 rounded-full flex items-center justify-center font-bold text-xs font-mono transition-all ${
+                className={`h-8 w-8 rounded-full flex items-center justify-center font-bold text-xs font-mono transition-colors ${
                   step >= 2
-                    ? 'bg-slate-900 text-white shadow-xs'
+                    ? 'bg-slate-900 text-white'
                     : 'bg-slate-100 text-slate-400 border border-slate-200'
                 }`}
               >
@@ -204,9 +194,9 @@ export default function DatabaseWizardPage({ user, onNavigate }) {
             {/* Step 3 Indicator */}
             <div className="flex items-center space-x-2.5">
               <div
-                className={`h-8 w-8 rounded-full flex items-center justify-center font-bold text-xs font-mono transition-all ${
+                className={`h-8 w-8 rounded-full flex items-center justify-center font-bold text-xs font-mono transition-colors ${
                   step === 3
-                    ? 'bg-emerald-600 text-white shadow-xs'
+                    ? 'bg-emerald-600 text-white'
                     : 'bg-slate-100 text-slate-400 border border-slate-200'
                 }`}
               >
@@ -236,9 +226,9 @@ export default function DatabaseWizardPage({ user, onNavigate }) {
               {/* PostgreSQL Card */}
               <div
                 onClick={() => setEngine('postgres')}
-                className={`p-5 rounded-xl border-2 transition-all cursor-pointer relative overflow-hidden ${
+                className={`p-5 rounded-xl border-2 transition-colors cursor-pointer relative overflow-hidden ${
                   engine === 'postgres'
-                    ? 'bg-cyan-50/30 border-cyan-500 shadow-sm ring-2 ring-cyan-500/20'
+                    ? 'bg-cyan-50/30 border-cyan-500 ring-2 ring-cyan-500/20'
                     : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/50'
                 }`}
               >
@@ -272,9 +262,9 @@ export default function DatabaseWizardPage({ user, onNavigate }) {
               {/* MariaDB / MySQL Card */}
               <div
                 onClick={() => setEngine('mariadb')}
-                className={`p-5 rounded-xl border-2 transition-all cursor-pointer relative overflow-hidden ${
+                className={`p-5 rounded-xl border-2 transition-colors cursor-pointer relative overflow-hidden ${
                   engine === 'mariadb'
-                    ? 'bg-amber-50/30 border-amber-500 shadow-sm ring-2 ring-amber-500/20'
+                    ? 'bg-amber-50/30 border-amber-500 ring-2 ring-amber-500/20'
                     : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/50'
                 }`}
               >
@@ -306,7 +296,15 @@ export default function DatabaseWizardPage({ user, onNavigate }) {
               </div>
             </div>
 
-            <div className="flex justify-end pt-3 border-t border-slate-100">
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+              <Button
+                type="button"
+                variant="secondary"
+                size="md"
+                onClick={() => onNavigate('/databases')}
+              >
+                Batal
+              </Button>
               <Button
                 variant="primary"
                 size="md"
@@ -339,7 +337,7 @@ export default function DatabaseWizardPage({ user, onNavigate }) {
                     NAMA DATABASE (HURUF KECIL, ANGKA, UNDERSCORE)
                   </label>
 
-                  <div className="flex items-center rounded-lg bg-white border border-slate-200 focus-within:border-emerald-500 focus-within:ring-1 focus-within:ring-emerald-500 overflow-hidden shadow-xs">
+                  <div className="flex items-center rounded-lg bg-white border border-slate-200 focus-within:border-emerald-500 focus-within:ring-1 focus-within:ring-emerald-500 overflow-hidden">
                     <span className="px-3.5 py-2.5 bg-slate-50 border-r border-slate-200 text-slate-500 font-mono text-sm font-bold select-none">
                       s{studentNim}_
                     </span>
@@ -377,26 +375,25 @@ export default function DatabaseWizardPage({ user, onNavigate }) {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
                 <Button
                   type="button"
                   variant="secondary"
                   size="md"
-                  icon={ArrowLeft}
                   onClick={() => setStep(1)}
                 >
-                  Kembali ke Langkah 1
+                  Sebelumnya
                 </Button>
 
                 <Button
                   type="submit"
-                  variant="emerald"
+                  variant="primary"
                   size="md"
                   icon={Sparkles}
                   loading={loading}
                   disabled={!cleanDbName}
                 >
-                  Buat Database Sekarang
+                  Buat & Inisialisasi Database
                 </Button>
               </div>
             </Card>

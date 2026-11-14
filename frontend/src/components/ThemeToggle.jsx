@@ -9,10 +9,10 @@ export default function ThemeToggle({ theme = 'v1', onToggle }) {
       type="button"
       onClick={onToggle}
       title={isV2 ? 'Beralih ke Tema Klasik Vintage (v1)' : 'Beralih ke Tema Modern MiG-Cloud (v2)'}
-      className={`group relative flex items-center space-x-2 px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-300 shadow-sm hover:scale-[1.02] active:scale-95 ${
+      className={`group relative flex items-center space-x-2 px-3.5 py-1.5 text-xs font-medium select-none cursor-pointer ${
         isV2
-          ? 'bg-white hover:bg-emerald-50/60 border border-gray-200 hover:border-emerald-300 text-gray-700 hover:text-emerald-700'
-          : 'bg-[#3A2216] hover:bg-[#4D2E1F] border border-[#5C3825] hover:border-[#8A5132] text-[#FAF5EC]'
+          ? 'rounded-lg transition-colors duration-150 bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 text-slate-700 hover:text-slate-900'
+          : 'rounded-full transition-all duration-300 shadow-sm hover:scale-[1.02] active:scale-95 bg-[#3A2216] hover:bg-[#4D2E1F] border border-[#5C3825] hover:border-[#8A5132] text-[#FAF5EC]'
       }`}
     >
       {isV2 ? (

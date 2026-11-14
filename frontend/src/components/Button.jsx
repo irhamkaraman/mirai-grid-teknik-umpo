@@ -20,19 +20,19 @@ export default function Button({
   ...props
 }) {
   const baseClasses =
-    'inline-flex items-center justify-center font-medium font-sans transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed select-none active:scale-[0.98]'
+    'inline-flex items-center justify-center font-medium font-sans transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed select-none'
 
   const variantClasses = {
     primary:
-      'bg-slate-900 hover:bg-slate-800 text-white rounded-lg border border-transparent shadow-sm focus:ring-slate-900',
+      'bg-slate-900 hover:bg-slate-800 text-white rounded-lg border border-transparent focus:ring-slate-900',
     secondary:
-      'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-lg shadow-xs focus:ring-slate-300',
+      'bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-lg focus:ring-slate-300',
     emerald:
-      'bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg border border-transparent shadow-sm focus:ring-emerald-500',
+      'bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg border border-transparent focus:ring-emerald-500',
     danger:
       'bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg focus:ring-rose-400',
     'danger-solid':
-      'bg-rose-600 hover:bg-rose-700 text-white rounded-lg border border-transparent shadow-sm focus:ring-rose-500',
+      'bg-rose-600 hover:bg-rose-700 text-white rounded-lg border border-transparent focus:ring-rose-500',
     ghost:
       'bg-transparent hover:bg-slate-100 text-slate-600 hover:text-slate-900 rounded-lg border border-transparent focus:ring-slate-200',
     outline:
@@ -40,7 +40,7 @@ export default function Button({
   }
 
   const sizeClasses = {
-    xs: 'px-2.5 py-1 text-xs gap-1.5 rounded-md',
+    xs: 'px-2.5 py-1 text-xs gap-1.5 rounded-lg',
     sm: 'px-3 py-1.5 text-xs gap-1.5 rounded-lg',
     md: 'px-4 py-2 text-sm gap-2 rounded-lg',
     lg: 'px-5 py-2.5 text-base gap-2.5 rounded-lg',

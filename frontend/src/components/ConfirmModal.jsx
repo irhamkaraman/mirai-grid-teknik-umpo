@@ -24,7 +24,7 @@ export default function ConfirmModal({
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-sm bg-white border border-slate-200 rounded-xl shadow-2xl p-6 text-center text-slate-900 animate-in zoom-in-95 duration-150 font-sans"
+            className="w-full max-w-sm bg-white border border-slate-200 rounded-xl p-6 text-center text-slate-900 animate-in zoom-in-95 duration-150 font-sans"
           >
             <div className="h-12 w-12 rounded-xl bg-rose-50 border border-rose-100 text-rose-600 flex items-center justify-center mx-auto mb-3.5">
               <AlertTriangle className="h-6 w-6" />

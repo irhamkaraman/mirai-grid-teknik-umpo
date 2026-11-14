@@ -1231,12 +1231,12 @@ export default function DashboardV2({
                 }}
                 onClick={() => handleItemOpen(item)}
                 onContextMenu={(e) => handleContextMenu(e, item)}
-                className={`group relative bg-white rounded-xl p-4 border transition-all duration-200 cursor-pointer select-none hover:-translate-y-0.5 ${
+                className={`group relative bg-white rounded-xl p-4 border transition-colors duration-150 cursor-pointer select-none ${
                   isSelected
-                    ? 'border-slate-400 ring-2 ring-slate-200 bg-slate-50/70 shadow-xs'
+                    ? 'border-slate-400 ring-2 ring-slate-200 bg-slate-50/70'
                     : isDropTarget
-                    ? 'border-emerald-600 ring-4 ring-emerald-200 bg-emerald-50 scale-102'
-                    : 'border-slate-200/90 hover:border-slate-300 hover:shadow-md'
+                    ? 'border-emerald-600 ring-2 ring-emerald-200 bg-emerald-50'
+                    : 'border-slate-200/80 hover:border-slate-300 hover:bg-slate-50/60'
                 }`}
               >
                 {/* Header Card: Checkbox + Icon + Options Menu */}

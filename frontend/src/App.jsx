@@ -374,7 +374,7 @@ export default function App() {
       {/* Top Header Bar for Theme V2 (Solid Cloud Theme Header) */}
       {isV2 && (
         <header
-          className={`h-16 bg-white/95 backdrop-blur-md border-b border-gray-200/80 sticky top-0 z-20 px-4 sm:px-8 flex items-center justify-between shadow-xs transition-all duration-300 ease-in-out ${
+          className={`h-16 bg-white/95 backdrop-blur-md border-b border-slate-200/80 sticky top-0 z-20 px-4 sm:px-8 flex items-center justify-between transition-all duration-300 ease-in-out ${
             isCollapsed ? 'md:ml-20' : 'md:ml-64'
           }`}
         >
@@ -383,7 +383,7 @@ export default function App() {
             <button
               type="button"
               onClick={() => setMobileNavOpen(true)}
-              className="md:hidden p-2 rounded-lg bg-gray-50 border border-gray-200 text-gray-700 hover:bg-gray-100 transition shadow-xs shrink-0"
+              className="md:hidden p-2 rounded-lg bg-slate-50 border border-slate-200 text-slate-700 hover:bg-slate-100 transition-colors shrink-0"
               title="Buka Menu Navigasi"
             >
               <Menu className="h-5 w-5" />

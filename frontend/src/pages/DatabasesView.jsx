@@ -376,7 +376,7 @@ export default function DatabasesView({ user: propUser }) {
           </div>
 
           {/* Search, Filter & Control Toolbar */}
-          <div className="bg-white border border-slate-200 rounded-xl p-3.5 flex flex-col md:flex-row items-center justify-between gap-3 shadow-xs">
+          <div className="bg-white border border-slate-200 rounded-xl p-3.5 flex flex-col md:flex-row items-center justify-between gap-3">
             <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto flex-1">
               {/* Search Box */}
               <div className="relative w-full sm:w-72">
@@ -395,9 +395,9 @@ export default function DatabasesView({ user: propUser }) {
                 <button
                   type="button"
                   onClick={() => setEngineFilter('all')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition shrink-0 ${
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors shrink-0 ${
                     engineFilter === 'all'
-                      ? 'bg-slate-900 text-white font-semibold shadow-xs'
+                      ? 'bg-slate-900 text-white font-semibold'
                       : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
                   }`}
                 >
@@ -406,9 +406,9 @@ export default function DatabasesView({ user: propUser }) {
                 <button
                   type="button"
                   onClick={() => setEngineFilter('postgres')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition shrink-0 ${
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors shrink-0 ${
                     engineFilter === 'postgres'
-                      ? 'bg-indigo-600 text-white font-semibold shadow-xs'
+                      ? 'bg-indigo-600 text-white font-semibold'
                       : 'bg-white text-indigo-700 hover:bg-indigo-50/60 border border-slate-200'
                   }`}
                 >
@@ -417,9 +417,9 @@ export default function DatabasesView({ user: propUser }) {
                 <button
                   type="button"
                   onClick={() => setEngineFilter('mariadb')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition shrink-0 ${
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors shrink-0 ${
                     engineFilter === 'mariadb'
-                      ? 'bg-amber-600 text-white font-semibold shadow-xs'
+                      ? 'bg-amber-600 text-white font-semibold'
                       : 'bg-white text-amber-700 hover:bg-amber-50/60 border border-slate-200'
                   }`}
                 >
@@ -441,12 +441,12 @@ export default function DatabasesView({ user: propUser }) {
           {loading ? (
             <SkeletonTable rows={3} />
           ) : databases.length === 0 ? (
-            <Card className="text-center py-14 p-6 shadow-xs">
+            <Card className="text-center py-14 p-6">
               <Database className="h-8 w-8 text-slate-300 mx-auto mb-2" />
               <p className="text-xs text-slate-500">Belum ada database dibuat.</p>
             </Card>
           ) : (
-            <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs">
+            <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
                   <thead className="bg-slate-50 text-slate-500 uppercase text-[10px] tracking-wider border-b border-slate-200">
@@ -577,7 +577,7 @@ export default function DatabasesView({ user: propUser }) {
                                       { duration: 5000 }
                                     )
                                   }}
-                                  className="inline-flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg bg-white hover:bg-slate-50 border border-slate-200 text-xs text-slate-700 hover:text-slate-900 transition font-medium shadow-2xs"
+                                  className="inline-flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg bg-white hover:bg-slate-50 border border-slate-200 text-xs text-slate-700 hover:text-slate-900 transition-colors font-medium"
                                   title="Buka CloudBeaver Visual SQL Studio"
                                 >
                                   <Database className="h-3.5 w-3.5 text-slate-500" />
@@ -589,7 +589,7 @@ export default function DatabasesView({ user: propUser }) {
                                   <button
                                     type="button"
                                     onClick={() => launchDatabaseSSO('postgres', db.id)}
-                                    className="inline-flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg bg-white hover:bg-slate-50 border border-slate-200 text-xs text-slate-700 hover:text-slate-900 transition font-medium shadow-2xs active:scale-95"
+                                    className="inline-flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg bg-white hover:bg-slate-50 border border-slate-200 text-xs text-slate-700 hover:text-slate-900 transition-colors font-medium"
                                     title="Auto-Login ke phpPgAdmin"
                                   >
                                     {!isAdmin && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>}
@@ -600,7 +600,7 @@ export default function DatabasesView({ user: propUser }) {
                                   <button
                                     type="button"
                                     onClick={() => launchDatabaseSSO('mariadb', db.id)}
-                                    className="inline-flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg bg-white hover:bg-slate-50 border border-slate-200 text-xs text-slate-700 hover:text-slate-900 transition font-medium shadow-2xs active:scale-95"
+                                    className="inline-flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg bg-white hover:bg-slate-50 border border-slate-200 text-xs text-slate-700 hover:text-slate-900 transition-colors font-medium"
                                     title="Auto-Login ke phpMyAdmin"
                                   >
                                     {!isAdmin && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>}
@@ -644,7 +644,7 @@ export default function DatabasesView({ user: propUser }) {
                         type="button"
                         onClick={() => setDbPage((p) => Math.max(1, p - 1))}
                         disabled={dbPage === 1}
-                        className="p-1.5 rounded-lg bg-white hover:bg-slate-100 border border-slate-200 text-slate-600 disabled:opacity-40 transition shadow-2xs"
+                        className="p-1.5 rounded-lg bg-white hover:bg-slate-100 border border-slate-200 text-slate-600 disabled:opacity-40 transition-colors"
                         title="Halaman Sebelumnya"
                       >
                         <ChevronLeft className="h-4 w-4" />
@@ -654,10 +654,10 @@ export default function DatabasesView({ user: propUser }) {
                           key={page}
                           type="button"
                           onClick={() => setDbPage(page)}
-                          className={`px-2.5 py-1 rounded-lg font-mono text-xs transition ${
+                          className={`px-2.5 py-1 rounded-lg font-mono text-xs transition-colors ${
                             dbPage === page
-                              ? 'bg-slate-900 text-white font-bold shadow-xs'
-                              : 'bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 shadow-2xs'
+                              ? 'bg-slate-900 text-white font-bold'
+                              : 'bg-white hover:bg-slate-100 border border-slate-200 text-slate-700'
                           }`}
                         >
                           {page}
@@ -667,7 +667,7 @@ export default function DatabasesView({ user: propUser }) {
                         type="button"
                         onClick={() => setDbPage((p) => Math.min(totalDbPages, p + 1))}
                         disabled={dbPage === totalDbPages}
-                        className="p-1.5 rounded-lg bg-white hover:bg-slate-100 border border-slate-200 text-slate-600 disabled:opacity-40 transition shadow-2xs"
+                        className="p-1.5 rounded-lg bg-white hover:bg-slate-100 border border-slate-200 text-slate-600 disabled:opacity-40 transition-colors"
                         title="Halaman Selanjutnya"
                       >
                         <ChevronRight className="h-4 w-4" />
@@ -725,7 +725,7 @@ export default function DatabasesView({ user: propUser }) {
           >
             <div
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-md bg-white border border-slate-200 rounded-xl shadow-2xl p-6 sm:p-7 text-slate-900 animate-in zoom-in-95 duration-150 font-sans"
+              className="w-full max-w-md bg-white border border-slate-200 rounded-xl p-6 sm:p-7 text-slate-900 animate-in zoom-in-95 duration-150 font-sans"
             >
               <h3 className="text-lg font-bold text-slate-900 mb-1">Buat Database Praktikum</h3>
               <p className="text-xs text-slate-500 mb-5">
@@ -748,9 +748,9 @@ export default function DatabasesView({ user: propUser }) {
                     <button
                       type="button"
                       onClick={() => setEngine('postgres')}
-                      className={`p-3 rounded-lg text-left border transition ${
+                      className={`p-3 rounded-lg text-left border transition-colors ${
                         engine === 'postgres'
-                          ? 'bg-emerald-50 border-emerald-500 text-emerald-950 shadow-xs'
+                          ? 'bg-emerald-50 border-emerald-500 text-emerald-950'
                           : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                       }`}
                     >
@@ -761,9 +761,9 @@ export default function DatabasesView({ user: propUser }) {
                     <button
                       type="button"
                       onClick={() => setEngine('mariadb')}
-                      className={`p-3 rounded-lg text-left border transition ${
+                      className={`p-3 rounded-lg text-left border transition-colors ${
                         engine === 'mariadb'
-                          ? 'bg-emerald-50 border-emerald-500 text-emerald-950 shadow-xs'
+                          ? 'bg-emerald-50 border-emerald-500 text-emerald-950'
                           : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                       }`}
                     >
@@ -820,7 +820,7 @@ export default function DatabasesView({ user: propUser }) {
           >
             <div
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-md bg-white border border-slate-200 rounded-xl shadow-2xl p-6 sm:p-7 text-slate-900 animate-in zoom-in-95 duration-150 font-sans"
+              className="w-full max-w-md bg-white border border-slate-200 rounded-xl p-6 sm:p-7 text-slate-900 animate-in zoom-in-95 duration-150 font-sans"
             >
               <h3 className="text-lg font-bold text-slate-900 mb-1">Simpan Database Eksternal</h3>
               <p className="text-xs text-slate-500 mb-4">

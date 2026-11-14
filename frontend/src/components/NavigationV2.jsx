@@ -178,7 +178,7 @@ export default function NavigationV2({
                 <img
                   src="/logos/miraigrid-logo.svg"
                   alt="MiraiGrid"
-                  className="h-8 w-8 rounded-xl object-contain shadow-xs shrink-0 group-hover:scale-105 transition-transform"
+                  className="h-8 w-8 rounded-lg object-contain shrink-0"
                   onError={(e) => {
                     e.currentTarget.onerror = null
                     e.currentTarget.src = '/logos/miraigrid-logo.png'
@@ -230,7 +230,7 @@ export default function NavigationV2({
                 <img
                   src="/logos/miraigrid-logo.svg"
                   alt="MiraiGrid"
-                  className="h-8 w-8 rounded-xl object-contain shadow-xs shrink-0 group-hover:scale-105 transition-transform"
+                  className="h-8 w-8 rounded-lg object-contain shrink-0"
                   onError={(e) => {
                     e.currentTarget.onerror = null
                     e.currentTarget.src = '/logos/miraigrid-logo.png'
@@ -255,9 +255,9 @@ export default function NavigationV2({
                     title={item.label}
                     className={`w-full flex items-center ${
                       effectiveCollapsed ? 'justify-center px-0' : 'justify-between px-3'
-                    } py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 ${
+                    } py-2.5 rounded-lg text-xs font-semibold transition-colors duration-150 ${
                       isActive
-                        ? 'bg-emerald-50 text-emerald-700 font-bold shadow-xs border border-emerald-100'
+                        ? 'bg-emerald-50 text-emerald-700 font-bold border border-emerald-200/80'
                         : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100/80 border border-transparent'
                     }`}
                   >
@@ -353,7 +353,7 @@ export default function NavigationV2({
                   }
                   if (isMobile) setMobileOpen(false)
                 }}
-                className="w-full py-1.5 px-2.5 bg-white hover:bg-emerald-50 border border-gray-200 hover:border-emerald-300 rounded-lg text-[11px] font-bold text-gray-700 hover:text-emerald-700 transition flex items-center justify-center space-x-1.5 shadow-sm"
+                className="w-full py-1.5 px-2.5 bg-white hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 rounded-lg text-[11px] font-bold text-slate-700 hover:text-emerald-700 transition-colors flex items-center justify-center space-x-1.5"
               >
                 <Activity className="h-3.5 w-3.5 text-emerald-600" />
                 <span>Lihat Detail Resource</span>
@@ -365,7 +365,7 @@ export default function NavigationV2({
                 type="button"
                 onClick={onOpenResources || (() => navigate('/resources'))}
                 title={`Detail Resource: ${diskPercent}% terpakai`}
-                className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 hover:scale-105 transition"
+                className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100/70 transition-colors"
               >
                 <Activity className="h-4 w-4" />
               </button>
@@ -421,7 +421,7 @@ export default function NavigationV2({
             className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm animate-in fade-in duration-200"
             onClick={() => setMobileOpen(false)}
           />
-          <div className="relative w-72 max-w-[85vw] bg-white h-full shadow-2xl flex flex-col z-10 animate-in slide-in-from-left duration-200">
+          <div className="relative w-72 max-w-[85vw] bg-white h-full border-r border-slate-200 flex flex-col z-10 animate-in slide-in-from-left duration-200">
             {renderSidebarContent(true)}
           </div>
         </div>

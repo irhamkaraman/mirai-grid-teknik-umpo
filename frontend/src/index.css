@@ -113,7 +113,7 @@ html.theme-mig-cloud #root {
   background-color: #0F172A !important; /* slate-900 */
   color: #FFFFFF !important;
   border-color: transparent !important;
-  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05) !important;
+  box-shadow: none !important;
 }
 .theme-v2 button[class*="bg-[#2b1810]" i]:hover,
 .theme-mig-cloud button[class*="bg-[#2b1810]" i]:hover,
@@ -135,7 +135,7 @@ html.theme-mig-cloud #root {
   background-color: #FFFFFF !important;
   color: #334155 !important; /* slate-700 */
   border: 1px solid #E2E8F0 !important; /* slate-200 */
-  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05) !important;
+  box-shadow: none !important;
 }
 .theme-v2 button[class*="bg-[#1c0f0a]" i]:hover,
 .theme-mig-cloud button[class*="bg-[#1c0f0a]" i]:hover,
@@ -339,3 +339,30 @@ html.theme-mig-cloud #root {
 .animate-spin-reverse {
   animation: spin-reverse 2s linear infinite;
 }
+
+/* ========================================================================== */
+/* V2 (MiG-Cloud) ZERO SHADOW POLICY & FLAT CLEAN MINIMALIST GUARDRAILS        */
+/* ========================================================================== */
+.theme-v2 [class*="shadow"],
+.theme-mig-cloud [class*="shadow"] {
+  box-shadow: none !important;
+  --tw-shadow: 0 0 #0000 !important;
+  --tw-shadow-colored: 0 0 #0000 !important;
+}
+
+.theme-v2 .alpine-hover-card:hover,
+.theme-mig-cloud .alpine-hover-card:hover,
+.theme-v2 [class*="hover:-translate-y"]:hover,
+.theme-mig-cloud [class*="hover:-translate-y"]:hover,
+.theme-v2 [class*="hover:scale-"]:hover,
+.theme-mig-cloud [class*="hover:scale-"]:hover,
+.theme-v2 .group:hover [class*="group-hover:scale-"],
+.theme-mig-cloud .group:hover [class*="group-hover:scale-"] {
+  transform: none !important;
+}
+
+.theme-v2 tbody tr:hover,
+.theme-mig-cloud tbody tr:hover {
+  background-color: rgba(248, 250, 252, 0.8) !important;
+}
+
