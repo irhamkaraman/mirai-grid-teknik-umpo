@@ -52,7 +52,7 @@ function IsoCube({
 
 function MultiTenantScene() {
   const cx = 230
-  const cy = 116
+  const cy = 124
   const gridRange = [-90, -60, -30, 0, 30, 60, 90]
 
   const gwTop = iso(48, 48, 12, cx, cy)
@@ -62,7 +62,7 @@ function MultiTenantScene() {
 
   return (
     <svg
-      viewBox="0 0 460 210"
+      viewBox="0 0 460 220"
       className="w-full h-auto select-none"
       role="img"
       aria-label="Ilustrasi Isometrik Multi-Tenant Cloud Architecture"
@@ -135,8 +135,8 @@ function MultiTenantScene() {
         <IsoCube x={-78} y={-78} z={16} dx={36} dy={36} dz={34} cx={cx} cy={cy} />
         <circle cx={t1Bot[0]} cy={t1Bot[1] - 32} r="2.8" fill="#10B981" />
         <text
-          x={t1Bot[0] - 24}
-          y={t1Bot[1] - 48}
+          x={t1Bot[0] - 88}
+          y={t1Bot[1] - 28}
           className="fill-slate-600 font-mono text-[9px] font-semibold"
         >
           TENANT_01
@@ -192,7 +192,7 @@ function KernelSandboxScene() {
 
   return (
     <svg
-      viewBox="0 0 460 210"
+      viewBox="0 0 460 220"
       className="w-full h-auto select-none"
       role="img"
       aria-label="Ilustrasi Isometrik Kernel Sandboxing & Cgroup V2"
@@ -296,7 +296,7 @@ function KernelSandboxScene() {
 
 function EdgeIngressScene() {
   const cx = 230
-  const cy = 118
+  const cy = 132
 
   const routerTop = iso(-72, 22, 28, cx, cy)
   const browserEntry = iso(-8, -10, 40, cx, cy)
@@ -321,7 +321,7 @@ function EdgeIngressScene() {
 
   return (
     <svg
-      viewBox="0 0 460 210"
+      viewBox="0 0 460 220"
       className="w-full h-auto select-none"
       role="img"
       aria-label="Ilustrasi Isometrik Edge Ingress & Publikasi Web"
@@ -417,8 +417,8 @@ function EdgeIngressScene() {
           strokeLinejoin="round"
         />
         <text
-          x={b3[0] - 4}
-          y={b3[1] - 8}
+          x={b3[0] + 6}
+          y={b3[1] - 6}
           className="fill-emerald-700 font-mono text-[9px] font-semibold"
         >
           *.miraigrid.web.id (SSL)
