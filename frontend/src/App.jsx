@@ -333,8 +333,10 @@ export default function App() {
       <UploadProvider>
       <div
         className={`min-h-screen ${
-          isV2 ? 'bg-[#F8FAFC] text-gray-900' : 'bg-[#E6D7BE] text-[#26160F]'
-        } flex flex-col font-sans selection:bg-[#5A3521] selection:text-[#FAF5EC] relative transition-colors duration-300`}
+          isV2
+            ? 'mig-shell-canvas bg-[#F8FAFC] text-gray-900 selection:bg-emerald-100 selection:text-emerald-900'
+            : 'bg-[#E6D7BE] text-[#26160F] selection:bg-[#5A3521] selection:text-[#FAF5EC]'
+        } flex flex-col font-sans relative transition-colors duration-300`}
       >
       <Toaster
         richColors
@@ -432,7 +434,7 @@ export default function App() {
       <main
         className={`flex-1 transition-all duration-300 ease-in-out ${
           isV2
-            ? `px-3 sm:px-4 md:pl-1 md:pr-4 pb-20 md:pb-4 pt-0 ${
+            ? `mig-shell-canvas bg-transparent px-3 sm:px-4 md:pl-1 md:pr-4 pb-20 md:pb-4 pt-0 ${
                 isCollapsed ? 'md:ml-20' : 'md:ml-64'
               }`
             : `p-4 sm:p-6 md:p-8 pb-24 md:pb-12 ${
@@ -443,7 +445,7 @@ export default function App() {
         <div
           className={
             isV2
-              ? 'w-full min-h-[calc(100vh-4.5rem)] bg-white rounded-2xl border border-slate-200/80 p-4 sm:p-6 md:p-7'
+              ? 'mig-main-card w-full min-h-[calc(100vh-4.5rem)] bg-white rounded-2xl border border-slate-200/80 overflow-hidden flex flex-col p-4 sm:p-6 md:p-7'
               : 'w-full'
           }
         >

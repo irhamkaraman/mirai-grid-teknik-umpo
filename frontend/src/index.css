@@ -23,9 +23,18 @@ body.theme-v2,
 html.theme-v2 #root,
 html.theme-mig-cloud,
 body.theme-mig-cloud,
-html.theme-mig-cloud #root {
+html.theme-mig-cloud #root,
+.theme-v2 .mig-shell-canvas,
+.theme-mig-cloud .mig-shell-canvas {
   background-color: #F8FAFC !important;
   color: #0F172A !important;
+}
+
+.theme-v2 .mig-main-card,
+.theme-mig-cloud .mig-main-card {
+  background-color: #FFFFFF !important;
+  border-radius: 1rem !important; /* rounded-2xl (16px) */
+  overflow: hidden !important;
 }
 
 .theme-v2 ::-webkit-scrollbar-track,
@@ -220,8 +229,8 @@ html.theme-mig-cloud #root {
 .theme-mig-cloud .rounded-3xl {
   border-radius: 0.75rem !important; /* rounded-xl */
 }
-.theme-v2 .rounded-2xl:not(button):not(input):not(select):not(.rounded-full),
-.theme-mig-cloud .rounded-2xl:not(button):not(input):not(select):not(.rounded-full) {
+.theme-v2 .rounded-2xl:not(button):not(input):not(select):not(.rounded-full):not(.mig-main-card),
+.theme-mig-cloud .rounded-2xl:not(button):not(input):not(select):not(.rounded-full):not(.mig-main-card) {
   border-radius: 0.75rem !important; /* rounded-xl */
 }
 .theme-v2 button.rounded-2xl,
@@ -364,5 +373,18 @@ html.theme-mig-cloud #root {
 .theme-v2 tbody tr:hover,
 .theme-mig-cloud tbody tr:hover {
   background-color: rgba(248, 250, 252, 0.8) !important;
+}
+
+/* Enforce clean #F8FAFC shell outside the rounded main content container */
+.theme-v2 .mig-shell-canvas,
+.theme-mig-cloud .mig-shell-canvas {
+  background-color: #F8FAFC !important;
+}
+
+.theme-v2 .mig-main-card,
+.theme-mig-cloud .mig-main-card {
+  background-color: #FFFFFF !important;
+  border-radius: 1rem !important;
+  overflow: hidden !important;
 }
 

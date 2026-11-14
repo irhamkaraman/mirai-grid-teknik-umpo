@@ -810,14 +810,14 @@ export default function DashboardV2({
       </ModalPortal>
 
       {/* 1. BREADCRUMB PATH & SEARCH BAR */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border border-slate-200/90 rounded-xl px-4 py-2.5 shadow-xs">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white border border-slate-200/90 rounded-xl px-4 py-2.5">
         {/* Breadcrumb Path Navigation */}
         <div className="flex items-center space-x-1 overflow-x-auto py-0.5 no-scrollbar">
           {currentPath && (
             <button
               type="button"
               onClick={handleGoUp}
-              className="flex items-center space-x-1 px-2.5 py-1 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition border border-slate-200 mr-1.5 shrink-0 font-medium text-xs shadow-xs"
+              className="flex items-center space-x-1 px-2.5 py-1 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition border border-slate-200 mr-1.5 shrink-0 font-medium text-xs"
               title="Naik satu tingkat folder"
             >
               <ArrowUp className="h-3.5 w-3.5" />
