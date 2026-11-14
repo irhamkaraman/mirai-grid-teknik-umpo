@@ -1310,3 +1310,283 @@ async def sync_container_limit(
         "max_memory_mb": max_mem_mb,
         "max_cpu_cores": max_cpu_cores,
     }
+
+
+def _extract_host_port(inspect_data: Optional[Dict[str, Any]]) -> Optional[int]:
+    if not inspect_data:
+        return None
+    port_bindings = (inspect_data.get("HostConfig") or {}).get("PortBindings") or {}
+    for _, bindings in port_bindings.items():
+        if isinstance(bindings, list) and bindings:
+            hp = bindings[0].get("HostPort")
+            if hp and str(hp).isdigit():
+                return int(hp)
+    return None
+
+
+def _get_du_sm_mb(username: str) -> float:
+    home_dir = os.path.join("/app/data/home", username)
+    if os.path.isdir(home_dir):
+        try:
+            res = subprocess.run(["du", "-sm", home_dir], capture_output=True, text=True, timeout=8)
+            if res.returncode == 0 and res.stdout.strip():
+                val = res.stdout.strip().split()[0]
+                if val.isdigit():
+                    return float(int(val))
+        except Exception:
+            pass
+    used_mb, _ = calculate_account_disk_usage(username, 0)
+    return used_mb
+
+
+async def _build_fleet_summary(db: aiosqlite.Connection) -> List[Dict[str, Any]]:
+    cursor = await db.execute("""
+        SELECT u.id, u.username, u.name, u.role,
+               COALESCE(q.max_memory_mb, CASE WHEN u.role = 'dosen' THEN 1024 WHEN u.role = 'admin' THEN 1024 ELSE 512 END) as max_memory_mb,
+               COALESCE(q.max_cpu_cores, CASE WHEN u.role = 'dosen' THEN 1.5 WHEN u.role = 'admin' THEN 2.0 ELSE 0.5 END) as max_cpu_cores,
+               COALESCE(q.max_disk_mb, CASE WHEN u.role = 'dosen' THEN 20480 WHEN u.role = 'admin' THEN 116000 ELSE 10240 END) as max_disk_mb
+        FROM users u
+        LEFT JOIN quotas q ON q.user_id = u.id
+    """)
+    user_rows = await cursor.fetchall()
+    users_map: Dict[str, Dict[str, Any]] = {r["username"]: dict(r) for r in user_rows}
+    known_usernames = set(users_map.keys())
+
+    containers = portainer.list_containers_socket(all_containers=True)
+    if containers is None:
+        containers = await portainer.list_containers(all_containers=True)
+
+    host_partitions = _collect_disk_partitions()
+    host_disk_mb = round(host_partitions[0]["total_gb"] * 1024, 1) if host_partitions else 116000.0
+    sem = asyncio.Semaphore(10)
+
+    async def _inspect_one(c: Dict[str, Any]) -> Dict[str, Any]:
+        names = [n.lstrip("/") for n in (c.get("Names") or [])]
+        cname = names[0] if names else (c.get("Id") or "")[:12]
+        cid = c.get("Id") or cname
+        state = (c.get("State") or "unknown").lower()
+        image = c.get("Image") or ""
+        labels = c.get("Labels") or {}
+
+        owner_username = _extract_container_owner(cname, labels, known_usernames)
+        async with sem:
+            inspect_data = await asyncio.to_thread(portainer.inspect_container_socket, cid)
+            stats_data = await asyncio.to_thread(portainer.get_container_stats_socket, cid) if state == "running" else None
+
+        host_cfg = (inspect_data or {}).get("HostConfig") or {}
+        mem_limit_bytes = host_cfg.get("Memory") or 0
+        nano_cpus = host_cfg.get("NanoCpus") or 0
+        ram_limit_mb = round(mem_limit_bytes / (1024 * 1024), 1) if mem_limit_bytes > 0 else None
+        cpu_quota_cores = round(nano_cpus / 1e9, 2) if nano_cpus > 0 else None
+        internal_port = _extract_host_port(inspect_data)
+
+        ram_used_mb = 0.0
+        cpu_pct = 0.0
+        if stats_data:
+            mem_stats = stats_data.get("memory_stats") or {}
+            raw_usage = mem_stats.get("usage") or 0
+            st_detail = mem_stats.get("stats") or {}
+            cache = st_detail.get("inactive_file") or st_detail.get("cache") or 0
+            ram_used_mb = round(max(0.0, (raw_usage - cache) / (1024 * 1024)), 1)
+
+            cpu_stats = stats_data.get("cpu_stats") or {}
+            precpu_stats = stats_data.get("precpu_stats") or {}
+            cpu_delta = (cpu_stats.get("cpu_usage") or {}).get("total_usage", 0) - (precpu_stats.get("cpu_usage") or {}).get("total_usage", 0)
+            sys_delta = (cpu_stats.get("system_cpu_usage") or 0) - (precpu_stats.get("system_cpu_usage") or 0)
+            online_cpus = cpu_stats.get("online_cpus") or len((cpu_stats.get("cpu_usage") or {}).get("percpu_usage") or []) or 1
+            if sys_delta > 0 and cpu_delta > 0:
+                cpu_pct = round((cpu_delta / sys_delta) * online_cpus * 100.0, 1)
+
+        project_slug = None
+        if owner_username and cname.startswith(f"app_{owner_username}_"):
+            project_slug = cname[len(f"app_{owner_username}_"):]
+
+        return {
+            "id": cid[:12],
+            "name": cname,
+            "project_slug": project_slug,
+            "image": image,
+            "port": internal_port,
+            "state": state,
+            "health_status": "Running" if state == "running" else "Exited",
+            "owner_username": owner_username,
+            "ram_used_mb": ram_used_mb,
+            "ram_limit_mb": ram_limit_mb,
+            "cpu_pct": cpu_pct,
+            "cpu_quota_cores": cpu_quota_cores,
+        }
+
+    inspected = await asyncio.gather(*[_inspect_one(c) for c in containers])
+
+    grouped: Dict[str, List[Dict[str, Any]]] = {}
+    for item in inspected:
+        key = item["owner_username"] or "__system__"
+        grouped.setdefault(key, []).append(item)
+
+    accounts: List[Dict[str, Any]] = []
+    for key, c_list in grouped.items():
+        c_list.sort(key=lambda x: x["name"])
+        total_ram_used_mb = round(sum(c["ram_used_mb"] for c in c_list if c["state"] == "running"), 1)
+        running_count = sum(1 for c in c_list if c["state"] == "running")
+
+        if key == "__system__":
+            accounts.append({
+                "username": "system",
+                "name": "Core Infrastructure",
+                "role": "system",
+                "role_label": "Sistem",
+                "container_count": len(c_list),
+                "running_count": running_count,
+                "total_ram_used_mb": total_ram_used_mb,
+                "ram_limit_mb": None,
+                "ram_pct": None,
+                "disk_used_mb": None,
+                "disk_limit_mb": None,
+                "disk_pct": None,
+                "is_uncapped_disk": True,
+                "is_high_ram": False,
+                "is_high_disk": False,
+                "is_alert": False,
+                "health_status": "Normal" if running_count > 0 else "Stopped",
+                "containers": c_list,
+            })
+            continue
+
+        u_info = users_map[key]
+        raw_role = (u_info.get("role") or "student").lower()
+        role_label = "Dosen" if raw_role == "dosen" else ("Admin" if raw_role == "admin" else "Mahasiswa")
+        ram_limit_mb = float(u_info.get("max_memory_mb") or (1024 if raw_role in ("dosen", "admin") else 512))
+        ram_pct = round((total_ram_used_mb / ram_limit_mb) * 100.0, 1) if ram_limit_mb > 0 else 0.0
+
+        disk_used_mb = await asyncio.to_thread(_get_du_sm_mb, key)
+        is_uncapped_disk = (raw_role == "admin")
+        disk_limit_mb = host_disk_mb if is_uncapped_disk else float(u_info.get("max_disk_mb") or (20480 if raw_role == "dosen" else 10240))
+        disk_pct = round((disk_used_mb / disk_limit_mb) * 100.0, 1) if disk_limit_mb > 0 else 0.0
+
+        is_high_ram = ram_pct >= 85.0
+        is_high_disk = disk_pct >= 90.0
+        is_alert = is_high_ram or is_high_disk
+
+        if is_high_ram:
+            health_status = "High Memory"
+        elif is_high_disk:
+            health_status = "High Disk"
+        elif running_count == 0:
+            health_status = "Stopped"
+        else:
+            health_status = "Normal"
+
+        accounts.append({
+            "username": key,
+            "name": u_info.get("name") or key,
+            "role": raw_role,
+            "role_label": role_label,
+            "container_count": len(c_list),
+            "running_count": running_count,
+            "total_ram_used_mb": total_ram_used_mb,
+            "ram_limit_mb": ram_limit_mb,
+            "ram_pct": ram_pct,
+            "disk_used_mb": disk_used_mb,
+            "disk_limit_mb": disk_limit_mb,
+            "disk_pct": disk_pct,
+            "is_uncapped_disk": is_uncapped_disk,
+            "is_high_ram": is_high_ram,
+            "is_high_disk": is_high_disk,
+            "is_alert": is_alert,
+            "health_status": health_status,
+            "containers": c_list,
+        })
+
+    accounts.sort(key=lambda x: (not x["is_alert"], x["role"] == "system", x["username"]))
+    return accounts
+
+
+@router.get("/fleet/summary")
+async def get_fleet_summary(
+    admin: dict = Depends(require_admin),
+    db: aiosqlite.Connection = Depends(get_db)
+):
+    """
+    Aggregates Docker fleet metrics per user account (1 row per user) with live RAM sum and du -sm disk pool.
+    """
+    accounts = await _build_fleet_summary(db)
+    return {"accounts": accounts, "total": len(accounts)}
+
+
+@router.get("/fleet/users/{username}/containers")
+async def get_user_fleet_containers(
+    username: str,
+    admin: dict = Depends(require_admin),
+    db: aiosqlite.Connection = Depends(get_db)
+):
+    accounts = await _build_fleet_summary(db)
+    target = next((a for a in accounts if a["username"].lower() == username.strip().lower()), None)
+    if not target:
+        raise HTTPException(status_code=404, detail=f"Data kontainer untuk akun '{username}' tidak ditemukan.")
+    return {"account": target}
+
+
+@router.post("/containers/{container_name}/restart")
+async def admin_restart_container(
+    container_name: str,
+    request: Request,
+    admin: dict = Depends(require_admin),
+    db: aiosqlite.Connection = Depends(get_db)
+):
+    status_code, text = await asyncio.to_thread(
+        portainer._docker_socket_request, "POST", f"/containers/{container_name}/restart?t=5"
+    )
+    if status_code not in (204, 304):
+        raise HTTPException(status_code=500, detail=f"Gagal me-restart container '{container_name}': {text}")
+    ip = get_client_ip(request)
+    await db.execute(
+        "INSERT INTO audit_logs (actor_id, action, target_resource, ip_address, details) VALUES (?, 'ADMIN_RESTART_CONTAINER', ?, ?, ?)",
+        (admin["id"], container_name, ip, f"Admin restarted container {container_name}"),
+    )
+    await db.commit()
+    return {"success": True, "message": f"Container '{container_name}' berhasil di-restart."}
+
+
+@router.post("/containers/{container_name}/stop")
+async def admin_stop_container(
+    container_name: str,
+    request: Request,
+    admin: dict = Depends(require_admin),
+    db: aiosqlite.Connection = Depends(get_db)
+):
+    if container_name in ("miraigrid_backend", "miraigrid_frontend"):
+        raise HTTPException(status_code=400, detail="Container inti platform tidak dapat dihentikan dari panel ini.")
+    status_code, text = await asyncio.to_thread(
+        portainer._docker_socket_request, "POST", f"/containers/{container_name}/stop?t=5"
+    )
+    if status_code not in (204, 304):
+        raise HTTPException(status_code=500, detail=f"Gagal menghentikan container '{container_name}': {text}")
+    ip = get_client_ip(request)
+    await db.execute(
+        "INSERT INTO audit_logs (actor_id, action, target_resource, ip_address, details) VALUES (?, 'ADMIN_STOP_CONTAINER', ?, ?, ?)",
+        (admin["id"], container_name, ip, f"Admin stopped container {container_name}"),
+    )
+    await db.commit()
+    return {"success": True, "message": f"Container '{container_name}' berhasil dihentikan."}
+
+
+@router.get("/containers/{container_name}/logs")
+async def admin_container_logs(
+    container_name: str,
+    tail: int = 120,
+    admin: dict = Depends(require_admin),
+):
+    safe_tail = max(10, min(500, tail))
+    status_code, raw_logs = await asyncio.to_thread(
+        portainer._docker_socket_request,
+        "GET",
+        f"/containers/{container_name}/logs?stdout=1&stderr=1&tail={safe_tail}",
+    )
+    if status_code == 404:
+        raise HTTPException(status_code=404, detail=f"Container '{container_name}' tidak ditemukan.")
+    # Strip Docker multiplexed stream 8-byte header characters if present
+    cleaned_lines = []
+    for line in (raw_logs or "").splitlines():
+        cleaned_lines.append("".join(ch for ch in line if ch == "\t" or ord(ch) >= 32))
+    return {"container_name": container_name, "logs": "\n".join(cleaned_lines)}
+

@@ -16,6 +16,7 @@ import ProjectsView from './pages/ProjectsView'
 import DatabasesView from './pages/DatabasesView'
 import AdminView from './pages/AdminView'
 import AdminDashboardPage from './pages/AdminDashboardPage'
+import AdminContainerDetailPage from './pages/AdminContainerDetailPage'
 import DiskUsagePage from './pages/DiskUsagePage'
 import RemoteDatabasePage from './pages/RemoteDatabasePage'
 import DatabaseWizardPage from './pages/DatabaseWizardPage'
@@ -446,6 +447,16 @@ export default function App() {
             <Route
               path="/about"
               element={<AboutPage user={user} onNavigate={(path) => navigate(path.startsWith('/') ? path : '/' + path)} />}
+            />
+            <Route
+              path="/admin/dashboard/containers/:username"
+              element={user.role === 'admin' ? (
+                <ErrorBoundary>
+                  <AdminContainerDetailPage />
+                </ErrorBoundary>
+              ) : (
+                <Navigate to="/dashboard" replace />
+              )}
             />
             <Route
               path="/admin/dashboard"

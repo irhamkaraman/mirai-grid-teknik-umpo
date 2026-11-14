@@ -72,7 +72,7 @@ export default function NavigationV2({
         p === '/' ||
         p === '/dashboard' ||
         p.startsWith('/files') ||
-        (userRole === 'admin' && p === '/admin/dashboard'),
+        (userRole === 'admin' && (p === '/admin/dashboard' || p.startsWith('/admin/dashboard/'))),
     },
     {
       id: 'tools',
@@ -106,10 +106,12 @@ export default function NavigationV2({
       ? [
           {
             id: 'admin',
-            label: 'Kelola Akun (Admin)',
+            label: 'Kelola Akun',
             path: '/admin',
             icon: Layers,
-            activeCheck: (p) => p.startsWith('/admin'),
+            activeCheck: (p) =>
+              (p === '/admin' || p.startsWith('/admin/users') || p.startsWith('/admin/accounts')) &&
+              !p.includes('dashboard'),
           },
         ]
       : []),
@@ -306,7 +308,7 @@ export default function NavigationV2({
                           requestGuardedNavigation('/admin/dashboard', navigate)
                         }}
                         className={`w-full flex items-center space-x-2 px-2.5 py-1.5 rounded-xl text-[11px] font-medium transition text-left ${
-                          location.pathname === '/admin/dashboard'
+                          location.pathname === '/admin/dashboard' || location.pathname.startsWith('/admin/dashboard/')
                             ? 'bg-emerald-50 text-emerald-700 font-bold'
                             : 'text-gray-600 hover:text-emerald-700 hover:bg-emerald-50/50'
                         }`}

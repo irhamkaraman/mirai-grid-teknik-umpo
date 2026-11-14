@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Activity,
   AlertTriangle,
   Cpu,
+  Eye,
   HardDrive,
   Monitor,
   RefreshCw,
@@ -11,7 +13,6 @@ import {
   ShieldCheck,
   SlidersHorizontal,
   Box,
-  CheckCircle2,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react'
@@ -21,11 +22,11 @@ import Button from '../components/Button'
 import { formatMBSize } from '../utils/formatters'
 
 export default function AdminDashboardPage({ user }) {
+  const navigate = useNavigate()
   const [hostMetrics, setHostMetrics] = useState(null)
-  const [containers, setContainers] = useState([])
+  const [accounts, setAccounts] = useState([])
   const [loadingHost, setLoadingHost] = useState(true)
   const [loadingFleet, setLoadingFleet] = useState(true)
-  const [syncingContainer, setSyncingContainer] = useState(null)
 
   // Filters & Pagination
   const [searchQuery, setSearchQuery] = useState('')
@@ -42,10 +43,10 @@ export default function AdminDashboardPage({ user }) {
     try {
       const [hostRes, fleetRes] = await Promise.all([
         api.get('/admin/host-metrics'),
-        api.get('/admin/containers/tracking'),
+        api.get('/admin/fleet/summary'),
       ])
       setHostMetrics(hostRes.data)
-      setContainers(fleetRes.data?.containers || [])
+      setAccounts(fleetRes.data?.accounts || [])
     } catch (err) {
       toast.error(err?.response?.data?.detail || 'Gagal memuat telemetri infrastruktur.')
     } finally {
@@ -58,47 +59,35 @@ export default function AdminDashboardPage({ user }) {
     fetchAll(false)
   }, [fetchAll])
 
-  const handleSyncLimit = async (containerName) => {
-    setSyncingContainer(containerName)
-    try {
-      const res = await api.post(`/admin/containers/${encodeURIComponent(containerName)}/sync-limit`)
-      toast.success(res.data?.message || `Limit ${containerName} berhasil disinkronkan.`)
-      await fetchAll(true)
-    } catch (err) {
-      toast.error(err?.response?.data?.detail || `Gagal menyinkronkan limit ${containerName}.`)
-    } finally {
-      setSyncingContainer(null)
-    }
-  }
-
-  const filteredContainers = useMemo(() => {
+  const filteredAccounts = useMemo(() => {
     const q = searchQuery.trim().toLowerCase()
-    return containers.filter((c) => {
-      if (roleFilter !== 'all' && c.role !== roleFilter) return false
-      if (statusFilter === 'warning' && !c.is_alert && !c.has_drift) return false
-      if (statusFilter === 'normal' && (c.is_alert || c.state !== 'running')) return false
-      if (statusFilter === 'exited' && c.state === 'running') return false
+    return accounts.filter((a) => {
+      if (roleFilter !== 'all' && a.role !== roleFilter) return false
+      if (statusFilter === 'warning' && !a.is_alert) return false
+      if (statusFilter === 'normal' && (a.is_alert || a.running_count === 0)) return false
+      if (statusFilter === 'exited' && a.running_count > 0) return false
       if (q) {
-        const hay = `${c.name} ${c.owner_username || ''} ${c.owner_name || ''} ${c.image || ''}`.toLowerCase()
+        const containerNames = (a.containers || []).map((c) => c.name).join(' ')
+        const hay = `${a.username} ${a.name || ''} ${containerNames}`.toLowerCase()
         if (!hay.includes(q)) return false
       }
       return true
     })
-  }, [containers, roleFilter, statusFilter, searchQuery])
+  }, [accounts, roleFilter, statusFilter, searchQuery])
 
   useEffect(() => {
     setCurrentPage(1)
   }, [roleFilter, statusFilter, searchQuery, pageSize])
 
-  const totalPages = Math.max(1, Math.ceil(filteredContainers.length / pageSize))
+  const totalPages = Math.max(1, Math.ceil(filteredAccounts.length / pageSize))
   const safePage = Math.min(currentPage, totalPages)
-  const paginatedContainers = useMemo(() => {
+  const paginatedAccounts = useMemo(() => {
     const start = (safePage - 1) * pageSize
-    return filteredContainers.slice(start, start + pageSize)
-  }, [filteredContainers, safePage, pageSize])
+    return filteredAccounts.slice(start, start + pageSize)
+  }, [filteredAccounts, safePage, pageSize])
 
-  const alertCount = useMemo(() => containers.filter((c) => c.is_alert).length, [containers])
-  const driftCount = useMemo(() => containers.filter((c) => c.has_drift).length, [containers])
+  const alertCount = useMemo(() => accounts.filter((a) => a.is_alert).length, [accounts])
+  const driftCount = 0
 
   const ram = hostMetrics?.ram
   const cpu = hostMetrics?.cpu
@@ -107,17 +96,12 @@ export default function AdminDashboardPage({ user }) {
   const summary = hostMetrics?.containers_summary
 
   return (
-    <div className="flex-1 min-h-0 h-full overflow-y-auto p-6 sm:p-8 space-y-6 pb-12">
+    <div className="flex-1 min-h-0 h-full overflow-y-auto p-6 space-y-6 pb-12">
       {/* A. Header langsung di atas kanvas putih (Zero Double-Box) */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 pb-4 border-b border-slate-100">
         <div>
-          <div className="flex items-center space-x-2 text-xs font-medium text-slate-400 mb-1">
-            <span>Workspace</span>
-            <ChevronRight className="h-3.5 w-3.5" />
-            <span className="text-slate-600 font-semibold">Dashboard Infrastruktur</span>
-          </div>
           <h1 className="text-xl font-bold text-slate-900 tracking-tight">
-            Admin Infrastructure & Docker Fleet Center
+            Admin Infrastructure &amp; Docker Fleet Center
           </h1>
           <p className="text-xs text-slate-500 mt-1">
             Telemetri resource node host, pemantauan kontainer multi-tenant, dan rekonsiliasi kuota DB vs Docker.
@@ -365,150 +349,114 @@ export default function AdminDashboardPage({ user }) {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-slate-200/80 bg-slate-50/70 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-                <th className="py-3 px-4">Kontainer & Pemilik</th>
+                <th className="py-3 px-4">Pengguna &amp; NIM</th>
                 <th className="py-3 px-4">Role</th>
-                <th className="py-3 px-4">RAM / Limit</th>
-                <th className="py-3 px-4">Disk / Kuota</th>
-                <th className="py-3 px-4">CPU Quota</th>
+                <th className="py-3 px-4">Kontainer Aktif</th>
+                <th className="py-3 px-4">Total RAM / Batas Akun</th>
+                <th className="py-3 px-4">Total Disk / Kuota Akun</th>
                 <th className="py-3 px-4">Status Health</th>
-                <th className="py-3 px-4 text-right">Rekonsiliasi</th>
+                <th className="py-3 px-4 text-right">Aksi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200/70 text-xs">
               {loadingFleet ? (
                 <tr>
                   <td colSpan={7} className="py-10 text-center text-slate-400">
-                    Memuat telemetri kontainer Docker...
+                    Memuat agregasi resource pool per akun...
                   </td>
                 </tr>
-              ) : paginatedContainers.length === 0 ? (
+              ) : paginatedAccounts.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="py-10 text-center text-slate-400">
-                    Tidak ada kontainer yang sesuai filter.
+                    Tidak ada akun yang sesuai filter.
                   </td>
                 </tr>
               ) : (
-                paginatedContainers.map((c) => (
+                paginatedAccounts.map((a) => (
                   <tr
-                    key={c.id + c.name}
+                    key={a.username}
                     className={
-                      c.is_alert
+                      a.is_alert
                         ? 'bg-rose-50/70 text-rose-900 border-l-4 border-rose-500'
                         : 'hover:bg-slate-50/70 text-slate-700'
                     }
                   >
                     <td className="py-3 px-4">
-                      <div className="font-mono font-semibold text-slate-900">{c.name}</div>
-                      <div className="text-[11px] text-slate-500 mt-0.5">
-                        {c.owner_username ? `${c.owner_name} (${c.owner_username})` : c.image}
-                      </div>
+                      <div className="font-semibold text-slate-900">{a.name}</div>
+                      <div className="font-mono text-[11px] text-slate-500 mt-0.5">{a.username}</div>
                     </td>
                     <td className="py-3 px-4">
                       <span
                         className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold border ${
-                          c.role === 'dosen'
+                          a.role === 'dosen'
                             ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
-                            : c.role === 'student'
+                            : a.role === 'student'
                             ? 'bg-slate-100 text-slate-700 border-slate-200/80'
-                            : c.role === 'admin'
+                            : a.role === 'admin'
                             ? 'bg-amber-50 text-amber-800 border-amber-200/80'
                             : 'bg-slate-50 text-slate-500 border-slate-200/80'
                         }`}
                       >
-                        {c.role_label}
+                        {a.role_label}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-200/80 font-mono">
+                        {a.container_count} Kontainer
                       </span>
                     </td>
                     <td className="py-3 px-4 font-mono">
                       <div>
-                        {formatMBSize(c.ram_used_mb)} / {c.ram_limit_mb ? formatMBSize(c.ram_limit_mb) : 'Tanpa Batas'}
+                        {formatMBSize(a.total_ram_used_mb)} / {a.ram_limit_mb ? formatMBSize(a.ram_limit_mb) : 'Tanpa Batas'}
                       </div>
-                      {c.ram_pct !== null && (
-                        <div className="w-24 h-1.5 bg-slate-200/70 rounded-full mt-1 overflow-hidden">
+                      {a.ram_pct !== null && (
+                        <div className="w-28 h-1.5 bg-slate-200/70 rounded-full mt-1 overflow-hidden">
                           <div
                             className={`h-full rounded-full ${
-                              c.ram_pct > 85 ? 'bg-rose-600' : 'bg-emerald-600'
+                              a.ram_pct >= 85 ? 'bg-rose-600' : 'bg-emerald-600'
                             }`}
-                            style={{ width: `${Math.min(100, c.ram_pct)}%` }}
+                            style={{ width: `${Math.min(100, a.ram_pct)}%` }}
                           />
                         </div>
                       )}
                     </td>
                     <td className="py-3 px-4 font-mono">
-                      {c.disk_used_mb !== null ? (
+                      {a.disk_used_mb !== null ? (
                         <div>
-                          {c.is_pool_storage ? (
-                            <>
-                              <div className="text-slate-900 font-semibold">
-                                {formatMBSize(c.disk_used_mb)}
-                              </div>
-                              <div className="text-[11px] text-slate-500">
-                                Pool Akun: {formatMBSize(c.account_disk_used_mb ?? c.disk_used_mb)} /{' '}
-                                {c.is_uncapped_disk
-                                  ? `Kapasitas Host (${formatMBSize(c.disk_limit_mb)})`
-                                  : formatMBSize(c.disk_limit_mb)}{' '}
-                                ({c.disk_pct ?? 0}%)
-                              </div>
-                            </>
-                          ) : (
-                            <>
-                              <div>
-                                {formatMBSize(c.disk_used_mb)} /{' '}
-                                {c.is_uncapped_disk
-                                  ? `Kapasitas Host (${formatMBSize(c.disk_limit_mb)})`
-                                  : formatMBSize(c.disk_limit_mb)}
-                              </div>
-                              <div className="text-[11px] text-slate-500">{c.disk_pct}% terpakai</div>
-                            </>
-                          )}
+                          <div>
+                            {formatMBSize(a.disk_used_mb)} /{' '}
+                            {a.is_uncapped_disk
+                              ? `Kapasitas Host (${formatMBSize(a.disk_limit_mb)})`
+                              : formatMBSize(a.disk_limit_mb)}
+                          </div>
+                          <div className="text-[11px] text-slate-500">{a.disk_pct}% terpakai</div>
                         </div>
                       ) : (
                         <span className="text-slate-400">-</span>
                       )}
                     </td>
-                    <td className="py-3 px-4 font-mono">
-                      <div>{c.cpu_pct}%</div>
-                      <div className="text-[11px] text-slate-500">
-                        {c.cpu_quota_cores ? `${c.cpu_quota_cores} Cores` : 'Shared'}
-                      </div>
-                    </td>
                     <td className="py-3 px-4">
-                      <div className="flex flex-col items-start gap-1">
-                        <span
-                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold border ${
-                            c.health_status === 'Running'
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
-                              : c.health_status === 'Exited'
-                              ? 'bg-slate-100 text-slate-600 border-slate-200/80'
-                              : 'bg-rose-100 text-rose-800 border-rose-200/80'
-                          }`}
-                        >
-                          {c.health_status}
-                        </span>
-                        {c.has_drift && (
-                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-800 border border-amber-200/80">
-                            Drift: DB {c.db_quota_memory_mb}MB / {c.db_quota_cpu_cores}c
-                          </span>
-                        )}
-                      </div>
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold border ${
+                          a.health_status === 'Normal'
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
+                            : a.health_status === 'Stopped'
+                            ? 'bg-slate-100 text-slate-600 border-slate-200/80'
+                            : 'bg-rose-100 text-rose-800 border-rose-200/80'
+                        }`}
+                      >
+                        {a.health_status}
+                      </span>
                     </td>
                     <td className="py-3 px-4 text-right">
-                      {c.has_drift ? (
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          onClick={() => handleSyncLimit(c.name)}
-                          disabled={syncingContainer === c.name}
-                        >
-                          {syncingContainer === c.name ? 'Menyinkronkan...' : 'Sinkronkan Limit'}
-                        </Button>
-                      ) : c.owner_username && (c.name.startsWith('app_') || c.name.startsWith('miraigrid_')) ? (
-                        <span className="inline-flex items-center gap-1 text-[11px] text-emerald-700 font-medium">
-                          <CheckCircle2 className="h-3.5 w-3.5" />
-                          <span>Selaras</span>
-                        </span>
-                      ) : (
-                        <span className="text-[11px] text-slate-400">-</span>
-                      )}
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => navigate(`/admin/dashboard/containers/${encodeURIComponent(a.username)}`)}
+                      >
+                        <Eye className="h-3.5 w-3.5 mr-1.5" />
+                        <span>Lihat Detail Kontainer</span>
+                      </Button>
                     </td>
                   </tr>
                 ))
@@ -531,7 +479,7 @@ export default function AdminDashboardPage({ user }) {
               <option value={50}>50</option>
             </select>
             <span>
-              dari <span className="font-semibold text-slate-900">{filteredContainers.length}</span> kontainer
+              dari <span className="font-semibold text-slate-900">{filteredAccounts.length}</span> akun
             </span>
           </div>
 
