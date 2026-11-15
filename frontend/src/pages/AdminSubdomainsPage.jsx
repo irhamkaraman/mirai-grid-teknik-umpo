@@ -38,6 +38,7 @@ export default function AdminSubdomainsPage() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [statusFilter, setStatusFilter] = useState('all')
+  const [categoryFilter, setCategoryFilter] = useState('all')
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [page, setPage] = useState(1)
@@ -65,6 +66,7 @@ export default function AdminSubdomainsPage() {
       const res = await api.get('/admin/subdomains', {
         params: {
           status: statusFilter,
+          category: categoryFilter,
           search: debouncedSearch,
           page,
           limit,
@@ -80,7 +82,7 @@ export default function AdminSubdomainsPage() {
       setLoading(false)
       setRefreshing(false)
     }
-  }, [statusFilter, debouncedSearch, page])
+  }, [statusFilter, categoryFilter, debouncedSearch, page])
 
   useEffect(() => {
     fetchSubdomains()
@@ -399,6 +401,30 @@ export default function AdminSubdomainsPage() {
               </span>
             </button>
           </div>
+        </div>
+
+        {/* Category Filter Pills */}
+        <div className="flex flex-wrap items-center gap-1.5 border-t border-slate-100 pt-3">
+          <span className="text-[11px] font-semibold text-slate-400 mr-1">Kategori:</span>
+          {[
+            { id: 'all', label: 'Semua Kategori' },
+            { id: 'system', label: 'Sistem & Database (auth, api, pma, ppa, cloudbeaver, jupyter)' },
+            { id: 'service', label: 'Layanan Akun (code-*, n8n-*, tb-*, ssh-*)' },
+            { id: 'deployment', label: 'Web Deployment (web-*)' },
+          ].map((cat) => (
+            <button
+              key={cat.id}
+              type="button"
+              onClick={() => { setCategoryFilter(cat.id); setPage(1) }}
+              className={`rounded-lg px-2.5 py-1 text-[11px] font-medium border transition ${
+                categoryFilter === cat.id
+                  ? 'border-slate-900 bg-slate-900 text-white'
+                  : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              {cat.label}
+            </button>
+          ))}
         </div>
 
         {/* Table (Desktop) & Cards (Mobile) */}

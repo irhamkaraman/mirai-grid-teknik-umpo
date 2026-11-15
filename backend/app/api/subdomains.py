@@ -262,6 +262,7 @@ async def _build_inventory(db: aiosqlite.Connection) -> Dict[str, Any]:
         items_by_key[clean_fqdn] = {
             "fqdn": clean_fqdn,
             "label": _extract_label(clean_fqdn),
+            "category": "deployment",
             "record_type": "WILDCARD/APP",
             "content": f"10.10.10.10 ({container_name})" if container_name else "10.10.10.10",
             "proxied": True,
@@ -281,6 +282,59 @@ async def _build_inventory(db: aiosqlite.Connection) -> Dict[str, Any]:
             "deployment_id": deployment_id,
             "project_id": project_id,
             "created_at": created_at,
+        }
+
+    # 0. Register System & Infrastructure Subdomains (Bawaan Sistem & Database)
+    system_specs = [
+        (PRIMARY_DOMAIN, "Portal & Dashboard Utama", ["miraigrid_frontend"]),
+        (f"auth.{PRIMARY_DOMAIN}", "Gateway Otentikasi & SSO", ["miraigrid_frontend"]),
+        (f"api.{PRIMARY_DOMAIN}", "Backend API Core (FastAPI)", ["miraigrid_backend"]),
+        (f"pma.{PRIMARY_DOMAIN}", "Database Studio (phpMyAdmin)", ["phpmyadmin", "miraigrid_phpmyadmin", "pma"]),
+        (f"phpmyadmin.{PRIMARY_DOMAIN}", "Database Studio (phpMyAdmin Alias)", ["phpmyadmin", "miraigrid_phpmyadmin", "pma"]),
+        (f"ppa.{PRIMARY_DOMAIN}", "Database Studio (phpPgAdmin)", ["phppgadmin", "miraigrid_phppgadmin", "ppa"]),
+        (f"phppgadmin.{PRIMARY_DOMAIN}", "Database Studio (phpPgAdmin Alias)", ["phppgadmin", "miraigrid_phppgadmin", "ppa"]),
+        (f"cloudbeaver.{PRIMARY_DOMAIN}", "Database Studio (CloudBeaver)", ["cloudbeaver", "miraigrid_cloudbeaver"]),
+        (f"dbeaver.{PRIMARY_DOMAIN}", "Database Studio (CloudBeaver Alias)", ["cloudbeaver", "miraigrid_cloudbeaver"]),
+        (f"jupyter.{PRIMARY_DOMAIN}", "JupyterHub Gateway", []),
+        (f"jupyterhub.{PRIMARY_DOMAIN}", "JupyterHub Gateway Alias", []),
+        (f"*.{PRIMARY_DOMAIN}", "Wildcard Reverse Proxy Ingress", []),
+    ]
+    for sys_fqdn, sys_desc, hint_containers in system_specs:
+        matched_cname = None
+        matched_state = None
+        if portainer_available and hint_containers:
+            for hc in hint_containers:
+                for cname, cstate in docker_map.items():
+                    if cname == hc or hc in cname:
+                        matched_cname = cname
+                        matched_state = cstate
+                        break
+                if matched_cname:
+                    break
+        sys_active = (not portainer_available) or (not hint_containers) or (matched_state == "running")
+        items_by_key[sys_fqdn] = {
+            "fqdn": sys_fqdn,
+            "label": _extract_label(sys_fqdn),
+            "category": "system",
+            "record_type": "SYSTEM/NGINX",
+            "content": f"10.10.10.10 ({matched_cname})" if matched_cname else "10.10.10.10 / Cloudflare Tunnel",
+            "proxied": True,
+            "status": "active" if sys_active else "inactive",
+            "status_reason": sys_desc if sys_active else f"{sys_desc} (container {matched_state or 'tidak berjalan'})",
+            "source": "system_nginx",
+            "in_cloudflare": False,
+            "cf_record_id": None,
+            "protected": True,
+            "protected_reason": "Subdomain bawaan sistem & database dilindungi",
+            "owner_username": "system",
+            "owner_name": "Infrastruktur MiraiGrid",
+            "owner_active": True,
+            "container_name": matched_cname,
+            "container_state": matched_state,
+            "project_name": sys_desc,
+            "deployment_id": None,
+            "project_id": None,
+            "created_at": "",
         }
 
     # 1. From web_deployments
@@ -316,6 +370,113 @@ async def _build_inventory(db: aiosqlite.Connection) -> Dict[str, Any]:
                 created_at=str(p.get("created_at") or ""),
                 project_id=p["id"],
             )
+
+    # 2b. Per-Account Service Subdomains (VS Code, n8n, ThingsBoard, SSH)
+    service_specs = [
+        ("code", "Web IDE (VS Code)", lambda u: [f"code_{u}", f"vscode_{u}"]),
+        ("n8n", "Otomasi n8n", lambda u: [f"n8n_{u}"]),
+        ("tb", "ThingsBoard IoT", lambda u: [f"tb_{u}", f"thingsboard_{u}"]),
+        ("ssh", "SSH Terminal Sandbox", lambda u: [f"ssh_{u}", f"miraigrid_ssh_{u}"]),
+    ]
+    for u in users_rows:
+        uname = str(u["username"]).strip().lower()
+        if not uname:
+            continue
+        user_active = bool(u["is_active"])
+        for svc_prefix, svc_label, cname_fn in service_specs:
+            svc_fqdn = f"{svc_prefix}-{uname}.{PRIMARY_DOMAIN}"
+            if svc_fqdn in items_by_key:
+                continue
+            candidates = cname_fn(uname)
+            matched_cname = None
+            matched_state = None
+            if portainer_available:
+                for cand in candidates:
+                    for cname, cstate in docker_map.items():
+                        if cname == cand or cname.startswith(f"{cand}_"):
+                            matched_cname = cname
+                            matched_state = cstate
+                            break
+                    if matched_cname:
+                        break
+            if not user_active:
+                svc_status = "inactive"
+                svc_reason = f"{svc_label}: Akun {uname} dinonaktifkan"
+            elif matched_state == "running":
+                svc_status = "active"
+                svc_reason = f"{svc_label} aktif (container berjalan)"
+            elif matched_cname:
+                svc_status = "inactive"
+                svc_reason = f"{svc_label}: Container {matched_cname} berstatus {matched_state}"
+            else:
+                svc_status = "inactive"
+                svc_reason = f"{svc_label}: Belum di-provisioning / container tidak aktif"
+
+            items_by_key[svc_fqdn] = {
+                "fqdn": svc_fqdn,
+                "label": f"{svc_prefix}-{uname}",
+                "category": "service",
+                "record_type": "SERVICE/WILDCARD",
+                "content": f"10.10.10.10 ({matched_cname})" if matched_cname else "10.10.10.10 (Lazy Provision)",
+                "proxied": True,
+                "status": svc_status,
+                "status_reason": svc_reason,
+                "source": f"account_{svc_prefix}",
+                "in_cloudflare": False,
+                "cf_record_id": None,
+                "protected": False,
+                "protected_reason": None,
+                "owner_username": u["username"],
+                "owner_name": u["name"],
+                "owner_active": user_active,
+                "container_name": matched_cname,
+                "container_state": matched_state,
+                "project_name": svc_label,
+                "deployment_id": None,
+                "project_id": None,
+                "created_at": "",
+            }
+
+    # 2c. Detect orphaned service containers whose user was deleted from MiraiGrid
+    if portainer_available:
+        for cname, cstate in docker_map.items():
+            for svc_prefix, c_prefix, svc_label in [
+                ("code", "code_", "Web IDE (VS Code)"),
+                ("code", "vscode_", "Web IDE (VS Code)"),
+                ("n8n", "n8n_", "Otomasi n8n"),
+                ("tb", "tb_", "ThingsBoard IoT"),
+                ("ssh", "ssh_", "SSH Terminal Sandbox"),
+            ]:
+                if cname.startswith(c_prefix):
+                    rest = cname[len(c_prefix):]
+                    uname = rest.split("_")[0].strip().lower()
+                    if uname and uname not in users_by_username and uname not in ("postgres", "mariadb", "redis", "server"):
+                        orphan_fqdn = f"{svc_prefix}-{uname}.{PRIMARY_DOMAIN}"
+                        if orphan_fqdn not in items_by_key:
+                            items_by_key[orphan_fqdn] = {
+                                "fqdn": orphan_fqdn,
+                                "label": f"{svc_prefix}-{uname}",
+                                "category": "service",
+                                "record_type": "SERVICE/ORPHAN",
+                                "content": f"10.10.10.10 ({cname})",
+                                "proxied": True,
+                                "status": "orphan",
+                                "status_reason": f"Akun '{uname}' sudah dihapus tetapi container '{cname}' masih ada ({cstate})",
+                                "source": "docker_orphan",
+                                "in_cloudflare": False,
+                                "cf_record_id": None,
+                                "protected": False,
+                                "protected_reason": None,
+                                "owner_username": uname,
+                                "owner_name": None,
+                                "owner_active": False,
+                                "container_name": cname,
+                                "container_state": cstate,
+                                "project_name": svc_label,
+                                "deployment_id": None,
+                                "project_id": None,
+                                "created_at": "",
+                            }
 
     # 3. Merge Cloudflare DNS records
     cf_dns_count = len(cf_records)
@@ -376,6 +537,7 @@ async def _build_inventory(db: aiosqlite.Connection) -> Dict[str, Any]:
         items_by_key[key] = {
             "fqdn": rec_name,
             "label": label,
+            "category": "system" if protected else ("service" if any(label.startswith(p) for p in ("code-", "ssh-", "tb-", "n8n-")) else "cloudflare"),
             "record_type": rec_type,
             "content": rec_content,
             "proxied": rec_proxied,
@@ -441,6 +603,7 @@ async def _build_inventory(db: aiosqlite.Connection) -> Dict[str, Any]:
 @router.get("")
 async def list_subdomains(
     status_filter: str = Query("all", alias="status"),
+    category_filter: str = Query("all", alias="category"),
     search: str = Query("", max_length=120),
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
@@ -453,6 +616,10 @@ async def list_subdomains(
     sf = (status_filter or "all").strip().lower()
     if sf in ("active", "inactive", "orphan"):
         items = [x for x in items if x["status"] == sf]
+
+    cf = (category_filter or "all").strip().lower()
+    if cf in ("system", "service", "deployment", "cloudflare"):
+        items = [x for x in items if x.get("category") == cf]
 
     q = (search or "").strip().lower()
     if q:
