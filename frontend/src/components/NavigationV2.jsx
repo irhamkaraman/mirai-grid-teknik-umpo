@@ -403,7 +403,7 @@ export default function NavigationV2({
                   )}
 
                   {/* Submenu Platform & Lab */}
-                  {!effectiveCollapsed && item.isDropdown && item.dropdownKey !== 'workspace' && showPlatformMenu && (
+                  {!effectiveCollapsed && item.isDropdown && item.dropdownKey === 'platform' && showPlatformMenu && (
                     <div className="ml-4 mt-1 pl-3 border-l-2 border-emerald-100 space-y-1">
                       <button
                         onClick={() => handleLaunchPlatform('jupyter')}
