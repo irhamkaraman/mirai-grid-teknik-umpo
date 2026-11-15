@@ -160,11 +160,16 @@ async def resolve_subdomain(
         SELECT d.target_port, d.status, p.status as project_status
         FROM web_deployments d
         LEFT JOIN projects p ON d.project_id = p.id
-        WHERE LOWER(d.subdomain) = ? AND d.status = 'active'
+        WHERE LOWER(d.subdomain) = ?
+        LIMIT 1
     """, (target_host,))
     row = await cursor.fetchone()
 
-    if row and row["target_port"] and row["project_status"] != "stopped" and row["project_status"] != "deleted":
+    if row:
+        if row["status"] != "active" or not row["target_port"] or row["project_status"] in ("stopped", "deleted"):
+            response = Response(status_code=404, content="Deployment Not Found or Inactive")
+            response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            return response
         target_port = row["target_port"]
         deploy_status = row["status"]
     else:
@@ -233,16 +238,35 @@ async def publish_deployment(
     Publish a web project to a public subdomain:
     web-<random4hex>-<nim>.miraigrid.web.id
     """
-    nim = re.sub(r'[^a-zA-Z0-9_-]', '', str(current_user["username"])).lower()
+    is_admin = current_user.get("role") == "admin"
 
-    # 1. Verify project ownership & existence
-    cursor = await db.execute(
-        "SELECT * FROM projects WHERE id = ? AND user_id = ?",
-        (body.project_id, current_user["id"])
-    )
+    # 1. Verify project ownership & existence (admin can publish any project)
+    if is_admin:
+        cursor = await db.execute(
+            """
+            SELECT p.*, u.username as owner_username
+            FROM projects p
+            JOIN users u ON p.user_id = u.id
+            WHERE p.id = ?
+            """,
+            (body.project_id,)
+        )
+    else:
+        cursor = await db.execute(
+            """
+            SELECT p.*, u.username as owner_username
+            FROM projects p
+            JOIN users u ON p.user_id = u.id
+            WHERE p.id = ? AND p.user_id = ?
+            """,
+            (body.project_id, current_user["id"])
+        )
     project = await cursor.fetchone()
     if not project:
         raise HTTPException(status_code=404, detail="Proyek web tidak ditemukan atau Anda tidak memiliki akses.")
+
+    owner_user_id = project["user_id"]
+    nim = re.sub(r'[^a-zA-Z0-9_-]', '', str(project["owner_username"])).lower()
 
     target_port = project["allocated_port"]
     if not target_port:
@@ -254,7 +278,7 @@ async def publish_deployment(
     # 2. Check if a deployment already exists for this project
     cursor = await db.execute(
         "SELECT * FROM web_deployments WHERE project_id = ? AND user_id = ?",
-        (body.project_id, current_user["id"])
+        (body.project_id, owner_user_id)
     )
     existing = await cursor.fetchone()
 
@@ -263,9 +287,9 @@ async def publish_deployment(
         if existing["status"] != "active":
             c_active = await (await db.execute(
                 "SELECT COUNT(*) FROM web_deployments WHERE user_id = ? AND status = 'active' AND id != ?",
-                (current_user["id"], existing["id"])
+                (owner_user_id, existing["id"])
             )).fetchone()
-            if current_user.get("role") != "admin" and c_active[0] >= MAX_ACTIVE_DEPLOYMENTS_PER_STUDENT:
+            if not is_admin and c_active[0] >= MAX_ACTIVE_DEPLOYMENTS_PER_STUDENT:
                 raise HTTPException(
                     status_code=400,
                     detail=f"Batas kuota tercapai: Tiap mahasiswa maksimal memiliki {MAX_ACTIVE_DEPLOYMENTS_PER_STUDENT} deployment web aktif."
@@ -288,10 +312,10 @@ async def publish_deployment(
         return format_deployment_dict(updated)
 
     # 3. Quota verification for new deployment
-    if current_user.get("role") != "admin":
+    if not is_admin:
         c_active = await (await db.execute(
             "SELECT COUNT(*) FROM web_deployments WHERE user_id = ? AND status = 'active'",
-            (current_user["id"],)
+            (owner_user_id,)
         )).fetchone()
         if c_active[0] >= MAX_ACTIVE_DEPLOYMENTS_PER_STUDENT:
             raise HTTPException(
@@ -319,7 +343,7 @@ async def publish_deployment(
         INSERT INTO web_deployments (user_id, project_id, subdomain, target_port, container_name, status, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     """, (
-        current_user["id"],
+        owner_user_id,
         body.project_id,
         subdomain,
         target_port,
@@ -345,10 +369,14 @@ async def toggle_deployment_status(
     db: aiosqlite.Connection = Depends(get_db)
 ):
     """Toggle deployment status between 'active' and 'stopped'."""
-    cursor = await db.execute(
-        "SELECT * FROM web_deployments WHERE id = ? AND user_id = ?",
-        (deployment_id, current_user["id"])
-    )
+    is_admin = current_user.get("role") == "admin"
+    if is_admin:
+        cursor = await db.execute("SELECT * FROM web_deployments WHERE id = ?", (deployment_id,))
+    else:
+        cursor = await db.execute(
+            "SELECT * FROM web_deployments WHERE id = ? AND user_id = ?",
+            (deployment_id, current_user["id"])
+        )
     dep = await cursor.fetchone()
     if not dep:
         raise HTTPException(status_code=404, detail="Deployment tidak ditemukan.")
@@ -356,10 +384,10 @@ async def toggle_deployment_status(
     new_status = "stopped" if dep["status"] == "active" else "active"
 
     # If reactivating, verify quota
-    if new_status == "active" and current_user.get("role") != "admin":
+    if new_status == "active" and not is_admin:
         c_active = await (await db.execute(
             "SELECT COUNT(*) FROM web_deployments WHERE user_id = ? AND status = 'active' AND id != ?",
-            (current_user["id"], deployment_id)
+            (dep["user_id"], deployment_id)
         )).fetchone()
         if c_active[0] >= MAX_ACTIVE_DEPLOYMENTS_PER_STUDENT:
             raise HTTPException(
@@ -391,10 +419,13 @@ async def delete_deployment(
     db: aiosqlite.Connection = Depends(get_db)
 ):
     """Delete a deployment and free up subdomain and quota."""
-    cursor = await db.execute(
-        "SELECT id FROM web_deployments WHERE id = ? AND user_id = ?",
-        (deployment_id, current_user["id"])
-    )
+    if current_user.get("role") == "admin":
+        cursor = await db.execute("SELECT id FROM web_deployments WHERE id = ?", (deployment_id,))
+    else:
+        cursor = await db.execute(
+            "SELECT id FROM web_deployments WHERE id = ? AND user_id = ?",
+            (deployment_id, current_user["id"])
+        )
     if not await cursor.fetchone():
         raise HTTPException(status_code=404, detail="Deployment tidak ditemukan.")
 

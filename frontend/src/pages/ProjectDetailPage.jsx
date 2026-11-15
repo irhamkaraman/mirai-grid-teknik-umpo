@@ -31,6 +31,79 @@ export default function ProjectDetailPage({ project: propProject, onBack, onUpda
   })
   const [savingSubdomain, setSavingSubdomain] = useState(false)
 
+  const initIsPhp = project?.language === 'php' || project?.template_type?.startsWith('php')
+  const initIsPython = project?.language === 'python' || project?.template_type?.startsWith('python')
+  const initialCfg = project?.app_config || {}
+
+  const [activeTab, setActiveTab] = useState(initIsPhp ? 'directives' : initIsPython ? 'python' : 'node')
+  const [controlLoading, setControlLoading] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [runningAction, setRunningAction] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [publishLoading, setPublishLoading] = useState(false)
+  const [copied, setCopied] = useState(false)
+
+  // PHP Directives State
+  const [phpDirectives, setPhpDirectives] = useState(initialCfg.directives || {
+    display_errors: 'Disabled',
+    error_log: 'error_log',
+    log_errors: 'Enabled',
+    max_execution_time: 30,
+    max_input_time: 60,
+    max_input_vars: 1000,
+    memory_limit: '256M',
+    post_max_size: '128M',
+    upload_max_filesize: '128M',
+    session_gc_maxlifetime: 1440,
+    session_save_path: '/tmp',
+    zlib_output_compression: 'Disabled',
+  })
+
+  // PHP Extensions State
+  const [phpExtensions, setPhpExtensions] = useState(initialCfg.extensions || [
+    'pdo', 'pdo_mysql', 'pdo_pgsql', 'pdo_sqlite', 'curl', 'mbstring', 'gd', 'bcmath', 'intl', 'zip', 'json', 'sodium'
+  ])
+  const [phpAppRoot, setPhpAppRoot] = useState(initialCfg.app_root_subpath || initialCfg.app_root || initialCfg.display_app_root || '')
+
+  // Python Settings State
+  const [pyVersion, setPyVersion] = useState(project?.version || '3.11')
+  const [pyAppRoot, setPyAppRoot] = useState(initialCfg.app_root_subpath || initialCfg.app_root || initialCfg.display_app_root || '')
+  const [pyStartupFile, setPyStartupFile] = useState(initialCfg.startup_file || 'app.py')
+  const [pyEntryPoint, setPyEntryPoint] = useState(initialCfg.entry_point || 'app')
+  const [pyCustomScript, setPyCustomScript] = useState('')
+
+  // Node.js Settings State
+  const [nodeVersion, setNodeVersion] = useState(project?.version || '20')
+  const [nodeAppMode, setNodeAppMode] = useState(initialCfg.app_mode || 'development')
+  const [nodeAppRoot, setNodeAppRoot] = useState(initialCfg.app_root_subpath || initialCfg.app_root || initialCfg.display_app_root || '')
+  const [nodeStartupFile, setNodeStartupFile] = useState(initialCfg.startup_file || 'server.js')
+  const [nodeCustomScript, setNodeCustomScript] = useState('')
+
+  // Build / Compiler Output Modal State
+  const [buildOutput, setBuildOutput] = useState('')
+  const [showBuildModal, setShowBuildModal] = useState(false)
+  const [buildTitle, setBuildTitle] = useState('')
+
+  useEffect(() => {
+    if (!project) return
+    const cfg = project.app_config || {}
+    const php = project.language === 'php' || project.template_type?.startsWith('php')
+    const py = project.language === 'python' || project.template_type?.startsWith('python')
+    setActiveTab(php ? 'directives' : py ? 'python' : 'node')
+    if (cfg.directives) setPhpDirectives(cfg.directives)
+    if (cfg.extensions) setPhpExtensions(cfg.extensions)
+    const rootVal = cfg.app_root_subpath || cfg.app_root || cfg.display_app_root || ''
+    setPhpAppRoot(rootVal)
+    setPyVersion(project.version || '3.11')
+    setPyAppRoot(rootVal)
+    setPyStartupFile(cfg.startup_file || 'app.py')
+    setPyEntryPoint(cfg.entry_point || 'app')
+    setNodeVersion(project.version || '20')
+    setNodeAppMode(cfg.app_mode || 'development')
+    setNodeAppRoot(rootVal)
+    setNodeStartupFile(cfg.startup_file || 'server.js')
+  }, [project?.id])
+
   const handleOpenInFileManager = (targetPath) => {
     const subpath = (targetPath || '').replace(new RegExp('^/home/[^/]+/?'), '').replace(/^\/+|\/+$/g, '')
       navigate(subpath ? `/dashboard?path=${encodeURIComponent(subpath)}` : '/dashboard')
@@ -162,17 +235,8 @@ export default function ProjectDetailPage({ project: propProject, onBack, onUpda
   const isPython = project.language === 'python' || project.template_type?.startsWith('python')
   const isNode = project.language === 'node' || project.template_type?.startsWith('node')
 
-  const initialCfg = project.app_config || {}
-  const [activeTab, setActiveTab] = useState(isPhp ? 'directives' : isPython ? 'python' : 'node')
-
   // Status
   const isRunning = project.status === 'running'
-  const [controlLoading, setControlLoading] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [runningAction, setRunningAction] = useState(false)
-  const [confirmDelete, setConfirmDelete] = useState(false)
-  const [publishLoading, setPublishLoading] = useState(false)
-  const [copied, setCopied] = useState(false)
 
   const handlePublishWeb = async () => {
     setPublishLoading(true)
@@ -208,22 +272,6 @@ export default function ProjectDetailPage({ project: propProject, onBack, onUpda
     setTimeout(() => setCopied(false), 2500)
   }
 
-  // PHP Directives State (Image 2)
-  const [phpDirectives, setPhpDirectives] = useState(initialCfg.directives || {
-    display_errors: 'Disabled',
-    error_log: 'error_log',
-    log_errors: 'Enabled',
-    max_execution_time: 30,
-    max_input_time: 60,
-    max_input_vars: 1000,
-    memory_limit: '256M',
-    post_max_size: '128M',
-    upload_max_filesize: '128M',
-    session_gc_maxlifetime: 1440,
-    session_save_path: '/tmp',
-    zlib_output_compression: 'Disabled',
-  })
-
   // PHP Extensions State (Image 3)
   const defaultExts = [
     'bcmath', 'brotli', 'bz2', 'calendar', 'core', 'ctype', 'curl', 'date',
@@ -233,29 +281,6 @@ export default function ProjectDetailPage({ project: propProject, onBack, onUpda
     'session', 'simplexml', 'soap', 'sockets', 'sodium', 'spl', 'sqlite3',
     'standard', 'tokenizer', 'xml', 'xmlreader', 'xmlwriter', 'zip', 'zlib'
   ]
-  const [phpExtensions, setPhpExtensions] = useState(initialCfg.extensions || [
-    'pdo', 'pdo_mysql', 'pdo_pgsql', 'pdo_sqlite', 'curl', 'mbstring', 'gd', 'bcmath', 'intl', 'zip', 'json', 'sodium'
-  ])
-  const [phpAppRoot, setPhpAppRoot] = useState(initialCfg.app_root_subpath || initialCfg.app_root || initialCfg.display_app_root || '')
-
-  // Python Settings State (Image 4)
-  const [pyVersion, setPyVersion] = useState(project.version || '3.11')
-  const [pyAppRoot, setPyAppRoot] = useState(initialCfg.app_root_subpath || initialCfg.app_root || initialCfg.display_app_root || '')
-  const [pyStartupFile, setPyStartupFile] = useState(initialCfg.startup_file || 'app.py')
-  const [pyEntryPoint, setPyEntryPoint] = useState(initialCfg.entry_point || 'app')
-  const [pyCustomScript, setPyCustomScript] = useState('')
-
-  // Node.js Settings State (Image 5)
-  const [nodeVersion, setNodeVersion] = useState(project.version || '20')
-  const [nodeAppMode, setNodeAppMode] = useState(initialCfg.app_mode || 'development')
-  const [nodeAppRoot, setNodeAppRoot] = useState(initialCfg.app_root_subpath || initialCfg.app_root || initialCfg.display_app_root || '')
-  const [nodeStartupFile, setNodeStartupFile] = useState(initialCfg.startup_file || 'server.js')
-  const [nodeCustomScript, setNodeCustomScript] = useState('')
-
-  // Build / Compiler Output Modal State
-  const [buildOutput, setBuildOutput] = useState('')
-  const [showBuildModal, setShowBuildModal] = useState(false)
-  const [buildTitle, setBuildTitle] = useState('')
 
   // Toggle extension
   const toggleExtension = (ext) => {

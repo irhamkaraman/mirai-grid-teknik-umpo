@@ -194,7 +194,7 @@ export default function ProjectsView({ user: propUser }) {
     setControlLoadingId(projectId)
     const toastId = toast.loading(`Menjalankan perintah ${action}...`)
     try {
-      await api.post(`/projects/${projectId}/${action}`)
+      await api.post(`/projects/${projectId}/control?action=${action}`)
       toast.success(`Aplikasi berhasil di-${action}!`, { id: toastId })
       await fetchProjects(true)
     } catch (err) {
