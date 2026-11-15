@@ -64,6 +64,13 @@ class UserPurgeService:
         except Exception as e:
             report["thingsboard_error"] = str(e)
 
+        # 3c. Remove dedicated n8n container (data inside /home/<username>/.n8n is cleaned in step 5)
+        try:
+            from app.services.n8n_manager import N8nManager
+            report["n8n_purged"] = await N8nManager.remove_container(clean_user)
+        except Exception as e:
+            report["n8n_error"] = str(e)
+
         # 4. Purge All MariaDB & PostgreSQL Databases and Users
         try:
             db_res = await DatabaseProvisioner.purge_all_user_databases(clean_user)

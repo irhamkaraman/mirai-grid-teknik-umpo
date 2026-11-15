@@ -30,6 +30,7 @@ import CronJobsPage from './pages/CronJobsPage'
 import RedisView from './pages/RedisView'
 import VSCodeView from './pages/VSCodeView'
 import ThingsBoardView from './pages/ThingsBoardView'
+import N8nView from './pages/N8nView'
 import OnboardingWizardPage from './pages/OnboardingWizardPage'
 import ErrorBoundary from './components/ErrorBoundary'
 import { syncPageRoute, checkUrlTampering, triggerRouteSecurityAlarm } from './utils/securityRoute'
@@ -427,6 +428,10 @@ export default function App() {
             <Route
               path="/thingsboard"
               element={<ThingsBoardView user={user} onNavigate={(path) => navigate(path.startsWith('/') ? path : '/' + path)} />}
+            />
+            <Route
+              path="/n8n"
+              element={<N8nView user={user} onNavigate={(path) => navigate(path.startsWith('/') ? path : '/' + path)} />}
             />
             <Route
               path="/redis"

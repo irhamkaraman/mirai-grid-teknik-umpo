@@ -21,7 +21,8 @@ import {
   Cpu,
   PanelLeftClose,
   PanelLeftOpen,
-  LayoutDashboard
+  LayoutDashboard,
+  Workflow
 } from 'lucide-react'
 import { launchJupyterLab } from '../api/jupyter'
 import { useUpload } from '../context/UploadContext'
@@ -93,7 +94,7 @@ export default function NavigationV2({
       label: 'Platform & Lab',
       icon: Globe,
       isDropdown: true,
-      activeCheck: (p) => p.startsWith('/thingsboard') || p.startsWith('/vscode') || p.startsWith('/terminal') || p.startsWith('/redis'),
+      activeCheck: (p) => p.startsWith('/thingsboard') || p.startsWith('/n8n') || p.startsWith('/vscode') || p.startsWith('/terminal') || p.startsWith('/redis'),
     },
     {
       id: 'about',
@@ -179,6 +180,40 @@ export default function NavigationV2({
     }
     if (type === 'redis') {
       requestGuardedNavigation('/redis', navigate)
+      return
+    }
+    if (type === 'n8n') {
+      requestGuardedNavigation('/n8n', async () => {
+        const popup = window.open('', '_blank')
+        if (popup) {
+          try {
+            popup.opener = null
+            popup.document.write('<!DOCTYPE html><html><body style="font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#F8FAFC;color:#334155;"><div style="text-align:center"><p style="font-size:14px;font-weight:600">Menyiapkan Engine Otomasi n8n...</p><p style="font-size:12px;color:#64748B">Auto-login sedang diproses.</p></div></body></html>')
+          } catch (e) {}
+        }
+        try {
+          const localMgToken = localStorage.getItem('miraigrid_token') || localStorage.getItem('token') || ''
+          if (localMgToken) {
+            try {
+              document.cookie = `miraigrid_token=${localMgToken}; path=/; domain=.miraigrid.web.id; max-age=604800; SameSite=Lax; Secure`
+            } catch (e) {}
+          }
+          const { getN8nSSO } = await import('../api/n8n')
+          const ssoData = await getN8nSSO()
+          if (ssoData && ssoData.ready && ssoData.sso_url) {
+            if (popup && !popup.closed) {
+              popup.location.href = ssoData.sso_url
+            } else {
+              window.location.href = ssoData.sso_url
+            }
+            return
+          }
+        } catch (e) {
+          console.error('[n8n SSO] Fast launch fallback to /n8n:', e)
+        }
+        if (popup && !popup.closed) popup.close()
+        navigate('/n8n')
+      })
       return
     }
   }
@@ -350,6 +385,17 @@ export default function NavigationV2({
                       >
                         <span className="text-[10px] font-bold text-blue-600 font-mono">IoT</span>
                         <span>ThingsBoard</span>
+                      </button>
+                      <button
+                        onClick={() => handleLaunchPlatform('n8n')}
+                        className={`w-full flex items-center space-x-2 px-2.5 py-1.5 rounded-xl text-[11px] font-medium transition text-left ${
+                          location.pathname.startsWith('/n8n')
+                            ? 'bg-emerald-50 text-emerald-700 font-bold'
+                            : 'text-gray-600 hover:text-emerald-700 hover:bg-emerald-50/50'
+                        }`}
+                      >
+                        <Workflow className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                        <span>Otomasi n8n</span>
                       </button>
                       <button
                         onClick={() => handleLaunchPlatform('vscode')}
