@@ -1342,15 +1342,26 @@ def _get_du_sm_mb(username: str) -> float:
     return used_mb
 
 
-async def _build_fleet_summary(db: aiosqlite.Connection) -> List[Dict[str, Any]]:
-    cursor = await db.execute("""
-        SELECT u.id, u.username, u.name, u.role,
-               COALESCE(q.max_memory_mb, CASE WHEN u.role = 'dosen' THEN 1024 WHEN u.role = 'admin' THEN 1024 ELSE 512 END) as max_memory_mb,
-               COALESCE(q.max_cpu_cores, CASE WHEN u.role = 'dosen' THEN 1.5 WHEN u.role = 'admin' THEN 2.0 ELSE 0.5 END) as max_cpu_cores,
-               COALESCE(q.max_disk_mb, CASE WHEN u.role = 'dosen' THEN 20480 WHEN u.role = 'admin' THEN 116000 ELSE 10240 END) as max_disk_mb
-        FROM users u
-        LEFT JOIN quotas q ON q.user_id = u.id
-    """)
+async def _build_fleet_summary(db: aiosqlite.Connection, only_username: Optional[str] = None) -> List[Dict[str, Any]]:
+    if only_username:
+        cursor = await db.execute("""
+            SELECT u.id, u.username, u.name, u.role,
+                   COALESCE(q.max_memory_mb, CASE WHEN u.role = 'dosen' THEN 1024 WHEN u.role = 'admin' THEN 1024 ELSE 512 END) as max_memory_mb,
+                   COALESCE(q.max_cpu_cores, CASE WHEN u.role = 'dosen' THEN 1.5 WHEN u.role = 'admin' THEN 2.0 ELSE 0.5 END) as max_cpu_cores,
+                   COALESCE(q.max_disk_mb, CASE WHEN u.role = 'dosen' THEN 20480 WHEN u.role = 'admin' THEN 116000 ELSE 10240 END) as max_disk_mb
+            FROM users u
+            LEFT JOIN quotas q ON q.user_id = u.id
+            WHERE u.username = ?
+        """, (only_username,))
+    else:
+        cursor = await db.execute("""
+            SELECT u.id, u.username, u.name, u.role,
+                   COALESCE(q.max_memory_mb, CASE WHEN u.role = 'dosen' THEN 1024 WHEN u.role = 'admin' THEN 1024 ELSE 512 END) as max_memory_mb,
+                   COALESCE(q.max_cpu_cores, CASE WHEN u.role = 'dosen' THEN 1.5 WHEN u.role = 'admin' THEN 2.0 ELSE 0.5 END) as max_cpu_cores,
+                   COALESCE(q.max_disk_mb, CASE WHEN u.role = 'dosen' THEN 20480 WHEN u.role = 'admin' THEN 116000 ELSE 10240 END) as max_disk_mb
+            FROM users u
+            LEFT JOIN quotas q ON q.user_id = u.id
+        """)
     user_rows = await cursor.fetchall()
     users_map: Dict[str, Dict[str, Any]] = {r["username"]: dict(r) for r in user_rows}
     known_usernames = set(users_map.keys())
@@ -1361,6 +1372,16 @@ async def _build_fleet_summary(db: aiosqlite.Connection) -> List[Dict[str, Any]]
     containers = portainer.list_containers_socket(all_containers=True)
     if containers is None:
         containers = await portainer.list_containers(all_containers=True)
+
+    if only_username:
+        filtered_containers = []
+        for c in containers:
+            names = [n.lstrip("/") for n in (c.get("Names") or [])]
+            cname = names[0] if names else (c.get("Id") or "")[:12]
+            labels = c.get("Labels") or {}
+            if _extract_container_owner(cname, labels, known_usernames) == only_username:
+                filtered_containers.append(c)
+        containers = filtered_containers
 
     host_partitions = _collect_disk_partitions()
     host_disk_mb = round(host_partitions[0]["total_gb"] * 1024, 1) if host_partitions else 116000.0
@@ -1425,6 +1446,8 @@ async def _build_fleet_summary(db: aiosqlite.Connection) -> List[Dict[str, Any]]
     inspected = await asyncio.gather(*[_inspect_one(c) for c in containers])
 
     grouped: Dict[str, List[Dict[str, Any]]] = {}
+    if only_username and only_username in users_map:
+        grouped[only_username] = []
     for item in inspected:
         key = item["owner_username"] or "__system__"
         grouped.setdefault(key, []).append(item)

@@ -21,6 +21,7 @@ from app.api.thingsboard import router as thingsboard_router
 from app.api.n8n_router import router as n8n_router, platform_n8n_router
 from app.api.ssh_router import router as ssh_router
 from app.api.resources import router as resources_router
+from app.api.user_dashboard import router as user_dashboard_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -77,6 +78,7 @@ app.include_router(n8n_router, prefix="/api")
 app.include_router(platform_n8n_router, prefix="/api")
 app.include_router(ssh_router, prefix="/api")
 app.include_router(resources_router, prefix="/api")
+app.include_router(user_dashboard_router, prefix="/api")
 
 if __name__ == "__main__":
     import uvicorn

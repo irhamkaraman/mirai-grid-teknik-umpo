@@ -52,7 +52,7 @@ export default function NavigationV2({
   const location = useLocation()
   const { requestGuardedNavigation } = useUpload()
   const [showPlatformMenu, setShowPlatformMenu] = useState(false)
-  const [showWorkspaceMenu, setShowWorkspaceMenu] = useState(userRole === 'admin')
+  const [showWorkspaceMenu, setShowWorkspaceMenu] = useState(true)
   const [logoFailed, setLogoFailed] = useState(false)
 
   const isQuotaLoaded = Boolean(
@@ -73,11 +73,12 @@ export default function NavigationV2({
       label: 'Workspace',
       path: '/dashboard',
       icon: Folder,
-      isDropdown: userRole === 'admin',
+      isDropdown: true,
       dropdownKey: 'workspace',
       activeCheck: (p) =>
         p === '/' ||
         p === '/dashboard' ||
+        p.startsWith('/workspace/files') ||
         p.startsWith('/files') ||
         (userRole === 'admin' && (p === '/admin/dashboard' || p.startsWith('/admin/dashboard/'))),
     },
@@ -314,17 +315,19 @@ export default function NavigationV2({
                     )}
                   </button>
 
-                  {/* Submenu Workspace (Admin: Dashboard & File Manager) */}
+                  {/* Submenu Workspace (Dashboard & File Manager) */}
                   {!effectiveCollapsed && item.isDropdown && item.dropdownKey === 'workspace' && showWorkspaceMenu && (
                     <div className="ml-4 mt-1 pl-3 border-l-2 border-emerald-100 space-y-1">
                       <button
                         type="button"
                         onClick={() => {
                           setMobileOpen(false)
-                          requestGuardedNavigation('/admin/dashboard', navigate)
+                          requestGuardedNavigation(userRole === 'admin' ? '/admin/dashboard' : '/dashboard', navigate)
                         }}
                         className={`w-full flex items-center space-x-2 px-2.5 py-1.5 rounded-xl text-[11px] font-medium transition text-left ${
-                          location.pathname === '/admin/dashboard' || location.pathname.startsWith('/admin/dashboard/')
+                          (userRole === 'admin'
+                            ? location.pathname === '/admin/dashboard' || location.pathname.startsWith('/admin/dashboard/')
+                            : location.pathname === '/dashboard' || location.pathname === '/')
                             ? 'bg-emerald-50 text-emerald-700 font-bold'
                             : 'text-gray-600 hover:text-emerald-700 hover:bg-emerald-50/50'
                         }`}
@@ -336,10 +339,12 @@ export default function NavigationV2({
                         type="button"
                         onClick={() => {
                           setMobileOpen(false)
-                          requestGuardedNavigation('/dashboard', navigate)
+                          requestGuardedNavigation(userRole === 'admin' ? '/dashboard' : '/workspace/files', navigate)
                         }}
                         className={`w-full flex items-center space-x-2 px-2.5 py-1.5 rounded-xl text-[11px] font-medium transition text-left ${
-                          location.pathname === '/dashboard' || location.pathname.startsWith('/files')
+                          (userRole === 'admin'
+                            ? location.pathname === '/dashboard' || location.pathname.startsWith('/files') || location.pathname.startsWith('/workspace/files')
+                            : location.pathname.startsWith('/workspace/files') || location.pathname.startsWith('/files'))
                             ? 'bg-emerald-50 text-emerald-700 font-bold'
                             : 'text-gray-600 hover:text-emerald-700 hover:bg-emerald-50/50'
                         }`}

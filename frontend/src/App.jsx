@@ -12,6 +12,7 @@ import ChangePasswordModal from './components/ChangePasswordModal'
 import LoginPage from './pages/LoginPage'
 import LandingPage from './pages/LandingPage'
 import DashboardV2 from './pages/DashboardV2'
+import UserDashboardPage from './pages/UserDashboardPage'
 import ProjectsView from './pages/ProjectsView'
 import DatabasesView from './pages/DatabasesView'
 import AdminView from './pages/AdminView'
@@ -252,12 +253,13 @@ export default function App() {
     )
   }
 
-  // 1. STANDALONE /files ROUTE -> REDIRECT TO WORKSPACE V2
+  // 1. STANDALONE /files ROUTE -> REDIRECT TO WORKSPACE FILE MANAGER
   const isStandaloneFilesView = location.pathname.startsWith('/files')
   if (isStandaloneFilesView) {
     const searchParams = new URLSearchParams(location.search)
     const targetSubpath = (searchParams.get('path') || searchParams.get('dir') || '').replace(/^\/+|\/+$/g, '')
-    return <Navigate to={targetSubpath ? `/dashboard?path=${encodeURIComponent(targetSubpath)}` : '/dashboard'} replace />
+    const baseFilesRoute = user?.role === 'admin' ? '/dashboard' : '/workspace/files'
+    return <Navigate to={targetSubpath ? `${baseFilesRoute}?path=${encodeURIComponent(targetSubpath)}` : baseFilesRoute} replace />
   }
 
   // 2. STANDALONE LAYOUT FOR WEB IDE (VS CODE SERVER) (Tampilan Terpisah Bebas Distraksi Tanpa Sidebar & Header Utama)
@@ -386,7 +388,7 @@ export default function App() {
       >
         <div
           className={
-            location.pathname === '/dashboard' || location.pathname === '/'
+            location.pathname === '/workspace/files' || (user?.role === 'admin' && (location.pathname === '/dashboard' || location.pathname === '/'))
               ? 'mig-main-card w-full h-[calc(100vh-4.5rem)] bg-white rounded-2xl border border-slate-200/80 overflow-hidden flex flex-col p-0'
               : 'mig-main-card w-full h-[calc(100vh-4.5rem)] bg-white rounded-2xl border border-slate-200/80 overflow-y-auto overflow-x-hidden flex flex-col p-4 sm:p-6 md:p-7'
           }
@@ -397,6 +399,24 @@ export default function App() {
             <Route path="/onboarding" element={<Navigate to="/dashboard" replace />} />
             <Route
               path="/dashboard"
+              element={
+                user?.role === 'admin' ? (
+                  <DashboardV2
+                    user={user}
+                    onNavigate={(path) => navigate(path.startsWith('/') ? path : '/' + path)}
+                    searchQuery={searchQuery}
+                    setSearchQuery={setSearchQuery}
+                    onOpenResources={() => navigate('/resources')}
+                  />
+                ) : new URLSearchParams(location.search).get('path') ? (
+                  <Navigate to={`/workspace/files${location.search}`} replace />
+                ) : (
+                  <UserDashboardPage user={user} />
+                )
+              }
+            />
+            <Route
+              path="/workspace/files"
               element={
                 <DashboardV2
                   user={user}
