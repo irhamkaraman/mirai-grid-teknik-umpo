@@ -544,17 +544,17 @@ export default function GitVersionControlView({ user, onNavigate }) {
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
                     <tr className="border-b border-slate-200/80 bg-slate-50/80 text-slate-500 font-semibold text-[11px] uppercase tracking-wider">
-                      <th className="py-3.5 px-5">Repository</th>
-                      <th className="py-3.5 px-4">Repository Path</th>
-                      <th className="py-3.5 px-4">Branch</th>
-                      <th className="py-3.5 px-4">Last Commit</th>
-                      <th className="py-3.5 px-5 text-right">Actions</th>
+                      <th className="py-3 px-4">Repository</th>
+                      <th className="py-3 px-3">Repository Path</th>
+                      <th className="py-3 px-3">Branch</th>
+                      <th className="py-3 px-3">Last Commit</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200/70">
                     {filteredRepos.map((repo) => (
                       <tr key={repo.id} className="hover:bg-slate-50/70 transition-colors">
-                        <td className="py-3.5 px-5 font-medium text-slate-900">
+                        <td className="py-3 px-4 font-medium text-slate-900">
                           <div className="flex items-center space-x-2.5">
                             <div className="w-8 h-8 rounded-lg bg-slate-100 border border-slate-200/80 flex items-center justify-center text-slate-700 shrink-0">
                               <GitBranch className="h-4 w-4" />
@@ -568,38 +568,38 @@ export default function GitVersionControlView({ user, onNavigate }) {
                                 {repo.name}
                               </button>
                               {repo.remote_url && (
-                                <p className="text-[10px] text-slate-500 truncate max-w-xs font-mono">
+                                <p className="text-[10px] text-slate-500 truncate max-w-[190px] font-mono">
                                   {repo.remote_url}
                                 </p>
                               )}
                             </div>
                           </div>
                         </td>
-                        <td className="py-3.5 px-4">
+                        <td className="py-3 px-3">
                           <button
                             type="button"
                             onClick={() => openRepoPathInFileManager(repo.path)}
                             title={`Buka ${repo.path} di File Manager`}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-50 border border-slate-200/80 text-[11px] font-mono text-slate-700 hover:border-emerald-300 hover:bg-emerald-50/50 hover:text-emerald-700 transition max-w-[260px]"
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-50 border border-slate-200/80 text-[11px] font-mono text-slate-700 hover:border-emerald-300 hover:bg-emerald-50/50 hover:text-emerald-700 transition max-w-[200px]"
                           >
                             <Folder className="h-3.5 w-3.5 text-slate-400 shrink-0" />
                             <span className="truncate">{repo.path}</span>
                             <ExternalLink className="h-3 w-3 text-slate-400 shrink-0" />
                           </button>
                         </td>
-                        <td className="py-3.5 px-4">
+                        <td className="py-3 px-3 whitespace-nowrap">
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200/80 font-mono text-[11px] font-medium">
                             <GitBranch className="h-3 w-3" />
                             <span>{repo.current_branch || 'main'}</span>
                           </span>
                         </td>
-                        <td className="py-3.5 px-4 text-slate-600">
+                        <td className="py-3 px-3 text-slate-600">
                           {repo.last_commit_short ? (
                             <div className="flex items-center gap-1.5">
-                              <span className="font-mono text-slate-700 bg-slate-100 border border-slate-200/80 px-1.5 py-0.5 rounded text-[11px] font-semibold">
+                              <span className="font-mono text-slate-700 bg-slate-100 border border-slate-200/80 px-1.5 py-0.5 rounded text-[11px] font-semibold shrink-0">
                                 {repo.last_commit_short}
                               </span>
-                              <span className="truncate inline-block max-w-[180px] text-slate-700">
+                              <span className="truncate inline-block max-w-[130px] text-slate-700">
                                 {repo.last_commit_message}
                               </span>
                             </div>
@@ -607,7 +607,7 @@ export default function GitVersionControlView({ user, onNavigate }) {
                             <span className="text-slate-400 italic">Belum ada commit</span>
                           )}
                         </td>
-                        <td className="py-3.5 px-5 text-right">
+                        <td className="py-3 px-4 text-right whitespace-nowrap">
                           <div className="flex items-center justify-end gap-1">
                             <button
                               type="button"
