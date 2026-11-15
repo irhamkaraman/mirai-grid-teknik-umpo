@@ -106,6 +106,7 @@ export default function NavigationV2({
       label: 'Platform & Lab',
       icon: Globe,
       isDropdown: true,
+      dropdownKey: 'platform',
       activeCheck: (p) => p.startsWith('/thingsboard') || p.startsWith('/n8n') || p.startsWith('/vscode') || p.startsWith('/terminal') || p.startsWith('/redis'),
     },
     {
