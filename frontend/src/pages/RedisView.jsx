@@ -406,25 +406,15 @@ export default function RedisView({ user: propUser, onNavigate }) {
       {/* Top Header - Consistent with DatabasesView, ProjectsView, and CronJobsPage */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center space-x-3 mb-1">
-            <button
-              type="button"
-              onClick={handleBack}
-              className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-900 border border-slate-200 transition cursor-pointer"
-              title="Kembali ke Dashboard"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            <div className="flex items-center space-x-2.5">
-              <div className="w-9 h-9 rounded-xl bg-white border border-slate-200 p-1.5 flex items-center justify-center">
-                <img src="/logos/redis.png" alt="Redis" className="w-6 h-6 object-contain" />
-              </div>
-              <h2 className="text-2xl font-sans font-bold text-slate-900">
-                Redis™ Manager
-              </h2>
+          <div className="flex items-center space-x-2.5 mb-1">
+            <div className="w-9 h-9 rounded-xl bg-white border border-slate-200 p-1.5 flex items-center justify-center">
+              <img src="/logos/redis.png" alt="Redis" className="w-6 h-6 object-contain" />
             </div>
+            <h2 className="text-2xl font-sans font-bold text-slate-900">
+              Redis™ Manager
+            </h2>
           </div>
-          <p className="text-xs text-slate-500 font-sans ml-12">
+          <p className="text-xs text-slate-500 font-sans mt-1">
             In-memory data caching, session storage mandiri, dan message broker terisolasi per akun mahasiswa.
           </p>
         </div>
@@ -435,7 +425,7 @@ export default function RedisView({ user: propUser, onNavigate }) {
             type="button"
             onClick={() => fetchStatus(true)}
             title="Segarkan Metrik"
-            className="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-900 border border-slate-200 transition cursor-pointer"
+            className="p-2.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-200 transition cursor-pointer"
           >
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
@@ -446,7 +436,7 @@ export default function RedisView({ user: propUser, onNavigate }) {
                 type="button"
                 onClick={handleRestart}
                 disabled={actionLoading}
-                className="px-4 py-2.5 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-900 border border-slate-200 transition flex items-center space-x-1.5 cursor-pointer"
+                className="px-4 py-2.5 rounded-xl text-xs font-semibold bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-200 transition flex items-center space-x-1.5 cursor-pointer disabled:opacity-50"
               >
                 <RotateCw className={`h-3.5 w-3.5 ${actionLoading ? 'animate-spin' : ''}`} />
                 <span>Restart</span>
@@ -459,12 +449,12 @@ export default function RedisView({ user: propUser, onNavigate }) {
                     title: 'Nonaktifkan Redis Instance',
                     message: 'Apakah Anda yakin ingin mematikan Redis instance? Aplikasi web yang bergantung pada caching atau session Redis mungkin akan mengalami penurunan performa atau logout.',
                     confirmText: 'Hentikan Redis',
-                    confirmColor: 'bg-rose-900 hover:bg-rose-950',
+                    confirmColor: 'bg-rose-600 hover:bg-rose-700',
                     onConfirm: handleStop
                   })
                 }
                 disabled={actionLoading}
-                className="px-4 py-2.5 rounded-xl text-xs font-semibold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition flex items-center space-x-1.5 cursor-pointer"
+                className="px-4 py-2.5 rounded-xl text-xs font-semibold bg-rose-50 hover:bg-rose-100 text-rose-600 hover:text-rose-700 border border-rose-200 transition flex items-center space-x-1.5 cursor-pointer disabled:opacity-50"
               >
                 <Square className="h-3.5 w-3.5 fill-current" />
                 <span>Hentikan (Stop)</span>
@@ -475,7 +465,7 @@ export default function RedisView({ user: propUser, onNavigate }) {
               type="button"
               onClick={() => handleStart()}
               disabled={actionLoading}
-              className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white transition shrink-0 cursor-pointer"
+              className="inline-flex items-center space-x-2 px-5 py-2.5 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white transition shrink-0 cursor-pointer disabled:opacity-50"
             >
               <Play className="h-4 w-4 fill-current" />
               <span>Aktifkan Redis (Enable)</span>
@@ -604,9 +594,9 @@ export default function RedisView({ user: propUser, onNavigate }) {
                 <button
                   type="button"
                   onClick={() => setShowConfigModal(true)}
-                  className="px-2.5 py-1 rounded-xl bg-slate-50 hover:bg-slate-200 border border-slate-200 text-[11px] font-semibold text-emerald-600 hover:text-slate-900 transition flex items-center gap-1 cursor-pointer"
+                  className="px-2.5 py-1 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 hover:border-slate-300 text-[11px] font-semibold text-slate-700 hover:text-slate-900 transition flex items-center gap-1 cursor-pointer"
                 >
-                  <Sliders className="h-3 w-3" />
+                  <Sliders className="h-3 w-3 text-emerald-600" />
                   <span>Ubah</span>
                 </button>
               </div>
@@ -620,21 +610,21 @@ export default function RedisView({ user: propUser, onNavigate }) {
                   </div>
                   <span
                     className={`text-xs font-bold ${
-                      isMemoryFull ? 'text-red-400' : memoryPercent > 70 ? 'text-amber-400' : 'text-emerald-400'
+                      isMemoryFull ? 'text-rose-600' : memoryPercent > 70 ? 'text-amber-600' : 'text-emerald-600'
                     }`}
                   >
                     {memoryPercent}%
                   </span>
                 </div>
 
-                <div className="w-full bg-slate-50 h-3 rounded-full overflow-hidden p-0.5 border border-slate-200">
+                <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden border border-slate-200">
                   <div
                     className={`h-full rounded-full transition-all duration-500 ${
                       isMemoryFull
-                        ? 'bg-gradient-to-r from-red-600 to-rose-500'
+                        ? 'bg-rose-500'
                         : memoryPercent > 70
-                        ? 'bg-gradient-to-r from-amber-600 to-yellow-500'
-                        : 'bg-gradient-to-r from-emerald-600 to-teal-500'
+                        ? 'bg-amber-500'
+                        : 'bg-emerald-500'
                     }`}
                     style={{ width: `${Math.min(100, Math.max(3, memoryPercent))}%` }}
                   ></div>
@@ -651,7 +641,7 @@ export default function RedisView({ user: propUser, onNavigate }) {
                   </div>
                   <div className="flex items-center justify-between text-slate-500">
                     <span>Kebijakan Eviction (Penuh):</span>
-                    <span className="font-mono text-[11px] px-2 py-0.5 rounded-lg bg-slate-50 border border-slate-200 text-amber-300">
+                    <span className="font-mono text-[11px] px-2 py-0.5 rounded-lg bg-slate-100 border border-slate-200 text-slate-700 font-medium">
                       {status?.eviction_policy || 'allkeys-lru'}
                     </span>
                   </div>
@@ -659,10 +649,10 @@ export default function RedisView({ user: propUser, onNavigate }) {
 
                 {isMemoryFull && (
                   <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 flex items-start gap-2 mt-2">
-                    <AlertTriangle className="h-4 w-4 shrink-0 text-red-400 mt-0.5" />
+                    <AlertTriangle className="h-4 w-4 shrink-0 text-rose-600 mt-0.5" />
                     <div>
                       <div className="font-bold">Memori Redis Mendekati Penuh!</div>
-                      <div className="text-[11px] text-red-300 mt-0.5">
+                      <div className="text-[11px] text-rose-600 mt-0.5">
                         Kebijakan <b>{status?.eviction_policy}</b> aktif menghapus key usang secara otomatis agar sistem tetap stabil.
                       </div>
                     </div>
@@ -676,10 +666,10 @@ export default function RedisView({ user: propUser, onNavigate }) {
                 type="button"
                 onClick={handleFillMemoryTest}
                 disabled={fillTestLoading}
-                className="w-full py-2 px-3 rounded-xl bg-slate-50 hover:bg-slate-200 border border-slate-200 text-xs font-semibold text-emerald-600 hover:text-slate-900 transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                className="w-full py-2 px-3 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 hover:border-slate-300 text-xs font-semibold text-slate-700 hover:text-slate-900 transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
                 title="Simulasi penulisan data kapasitas penuh untuk menguji mekanisme eviction & proteksi OOM"
               >
-                <Flame className={`h-3.5 w-3.5 text-amber-400 ${fillTestLoading ? 'animate-bounce' : ''}`} />
+                <Flame className={`h-3.5 w-3.5 text-amber-500 ${fillTestLoading ? 'animate-bounce' : ''}`} />
                 <span>{fillTestLoading ? 'Menguji Kapasitas Penuh...' : 'Uji Beban Kapasitas Penuh (Full Test)'}</span>
               </button>
             </div>
@@ -700,10 +690,10 @@ export default function RedisView({ user: propUser, onNavigate }) {
                 <button
                   type="button"
                   onClick={handlePing}
-                  className="px-2.5 py-1 rounded-xl bg-slate-50 hover:bg-slate-200 border border-slate-200 text-[11px] font-semibold text-emerald-400 hover:text-white transition flex items-center gap-1 cursor-pointer"
+                  className="px-2.5 py-1 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 hover:border-slate-300 text-[11px] font-semibold text-slate-700 hover:text-slate-900 transition flex items-center gap-1 cursor-pointer"
                   title="Ping socket redis"
                 >
-                  <Zap className="h-3 w-3 fill-current" />
+                  <Zap className="h-3 w-3 text-emerald-600 fill-current" />
                   <span>Ping Test</span>
                 </button>
               </div>
@@ -727,7 +717,7 @@ export default function RedisView({ user: propUser, onNavigate }) {
               <div className="space-y-2 text-xs font-sans">
                 <div className="flex items-center justify-between text-slate-500">
                   <span>Cache Hit Rate:</span>
-                  <span className="font-mono font-bold text-emerald-400">
+                  <span className="font-mono font-bold text-emerald-600">
                     {status?.hit_rate_percent || 0}% ({status?.keyspace_hits || 0} hits)
                   </span>
                 </div>
@@ -736,7 +726,7 @@ export default function RedisView({ user: propUser, onNavigate }) {
                   <span className="font-mono font-bold text-slate-600">{status?.keyspace_misses || 0}</span>
                 </div>
                 {pingResult && (
-                  <div className="p-2 rounded-xl bg-emerald-950/60 border border-emerald-800/50 text-[11px] text-emerald-300 flex items-center justify-between font-mono mt-2">
+                  <div className="p-2 rounded-xl bg-emerald-50 border border-emerald-200 text-[11px] text-emerald-700 flex items-center justify-between font-mono mt-2">
                     <span>Hasil Ping: {pingResult.status}</span>
                     <span className="font-bold">{pingResult.latency} ms</span>
                   </div>
@@ -757,12 +747,12 @@ export default function RedisView({ user: propUser, onNavigate }) {
                     title: 'Bersihkan Seluruh Cache (FLUSHALL)',
                     message: 'Apakah Anda yakin ingin menghapus seluruh cache dan data key-value di instance Redis Anda? Data yang belum disimpan permanen ke disk akan terhapus.',
                     confirmText: 'Bersihkan Cache',
-                    confirmColor: 'bg-amber-700 hover:bg-amber-800',
+                    confirmColor: 'bg-rose-600 hover:bg-rose-700',
                     onConfirm: handleFlush
                   })
                 }}
                 disabled={actionLoading}
-                className="flex-1 py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-xs font-semibold text-emerald-600 hover:text-white transition flex items-center justify-center gap-1.5 cursor-pointer"
+                className="flex-1 py-2 px-3 rounded-xl bg-white hover:bg-rose-50 border border-slate-200 hover:border-rose-200 text-xs font-semibold text-rose-600 hover:text-rose-700 transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
               >
                 <Trash2 className="h-3.5 w-3.5" />
                 <span>Flush Cache</span>
@@ -774,7 +764,7 @@ export default function RedisView({ user: propUser, onNavigate }) {
                   setActiveTab('explorer')
                   fetchKeys()
                 }}
-                className="flex-1 py-2 px-3 rounded-xl bg-white hover:bg-slate-200 border border-slate-200 text-xs font-semibold text-slate-700 hover:text-white transition flex items-center justify-center gap-1.5 cursor-pointer"
+                className="flex-1 py-2 px-3 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 hover:border-slate-300 text-xs font-semibold text-slate-700 hover:text-slate-900 transition flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <Key className="h-3.5 w-3.5 text-emerald-600" />
                 <span>Kelola Key</span>
@@ -1054,7 +1044,7 @@ redis-cli -s ${status?.socket_path || `/home/${currentUser?.username}/.redis/red
                           <button
                             type="button"
                             onClick={() => handleDeleteKey(item.key)}
-                            className="p-1.5 rounded-lg bg-red-950/60 hover:bg-red-900/80 text-red-300 transition cursor-pointer"
+                            className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 hover:text-rose-700 border border-rose-200 transition cursor-pointer"
                             title="Hapus Key"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
@@ -1106,13 +1096,11 @@ redis-cli -s ${status?.socket_path || `/home/${currentUser?.username}/.redis/red
                       <td className="p-3 font-sans text-slate-600">{inst.user_name}</td>
                       <td className="p-3 font-sans">
                         {inst.is_running ? (
-                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-950/60 text-emerald-400 border border-emerald-800/50 text-[10px]">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-semibold">
                             <span>Running</span>
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-zinc-900/60 text-zinc-400 border border-zinc-700/50 text-[10px]">
-                            <span className="w-1.5 h-1.5 rounded-full bg-zinc-500"></span>
+                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200 text-[10px] font-semibold">
                             <span>Stopped</span>
                           </span>
                         )}
@@ -1175,7 +1163,7 @@ redis-cli -s ${status?.socket_path || `/home/${currentUser?.username}/.redis/red
                         onClick={() => setConfigMem(size)}
                         className={`py-2 rounded-xl text-xs font-mono font-bold transition border cursor-pointer ${
                           configMem === size
-                            ? 'bg-emerald-600 text-slate-900 border-emerald-500'
+                            ? 'bg-emerald-600 text-white border-emerald-600'
                             : disabled
                             ? 'opacity-30 bg-slate-50 border-slate-200 cursor-not-allowed'
                             : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-200'

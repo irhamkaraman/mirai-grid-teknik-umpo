@@ -176,7 +176,8 @@ export function initSecurityGuard() {
             const isAllowedBundle =
               src.startsWith('/assets/') ||
               src.startsWith('/src/') ||
-              src.startsWith(window.location.origin + '/assets/')
+              src.startsWith(window.location.origin + '/assets/') ||
+              src.startsWith('https://static.cloudflareinsights.com/')
             if (!isAllowedJsonLd && !isAllowedBundle) {
               node.remove()
               logBlockedAction('Injeksi tag <script>')
