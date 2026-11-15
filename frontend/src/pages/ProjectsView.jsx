@@ -250,9 +250,13 @@ export default function ProjectsView({ user: propUser }) {
           setActiveConsoleProject(proj)
         }}
         onOpenFile={(targetPath) => {
-          const subpath = (targetPath || '').replace(new RegExp(`^/home/[^/]+/?`), '').replace(/^\/+|\/+$/g, '')
+          const isAdmin = currentUser?.role === 'admin'
+          const subpath = (targetPath || '')
+            .replace(isAdmin ? /^\/home\/?/ : /^\/home\/[^/]+\/?/, '')
+            .replace(/^\/+|\/+$/g, '')
+          const base = isAdmin ? '/dashboard' : '/workspace/files'
           setActiveProjectDetail(null)
-          navigate(subpath ? `/dashboard?path=${encodeURIComponent(subpath)}` : '/dashboard')
+          navigate(subpath ? `${base}?path=${encodeURIComponent(subpath)}` : base)
         }}
       />
     )
@@ -361,8 +365,12 @@ export default function ProjectsView({ user: propUser }) {
             <button
               type="button"
               onClick={() => {
-                const subpath = appRoot.replace(new RegExp(`^/home/[^/]+/?`), '').replace(/^\/+|\/+$/g, '')
-                navigate(subpath ? `/dashboard?path=${encodeURIComponent(subpath)}` : '/dashboard')
+                const isAdmin = currentUser?.role === 'admin'
+                const subpath = appRoot
+                  .replace(isAdmin ? /^\/home\/?/ : /^\/home\/[^/]+\/?/, '')
+                  .replace(/^\/+|\/+$/g, '')
+                const base = isAdmin ? '/dashboard' : '/workspace/files'
+                navigate(subpath ? `${base}?path=${encodeURIComponent(subpath)}` : base)
               }}
               className="group inline-flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 transition-colors text-left cursor-pointer"
               title="Buka direktori ini langsung di Workspace V2"

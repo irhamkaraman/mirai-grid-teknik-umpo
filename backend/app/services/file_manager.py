@@ -65,9 +65,11 @@ def get_mime_type_description(entry: os.DirEntry) -> str:
 
 def list_directory_contents(dir_path: str, project_root: str) -> List[Dict[str, Any]]:
     items = []
-    username = os.path.basename(project_root)
-    data_base = os.path.dirname(os.path.dirname(project_root))
-    user_repo_dir = os.path.realpath(os.path.join(data_base, "repositories", username))
+    root_name = os.path.basename(project_root)
+    is_admin_home_root = (root_name == "home")
+    data_base = os.path.dirname(project_root) if is_admin_home_root else os.path.dirname(os.path.dirname(project_root))
+    repos_base = os.path.realpath(os.path.join(data_base, "repositories"))
+    user_repo_dir = repos_base if is_admin_home_root else os.path.realpath(os.path.join(repos_base, root_name))
     allowed_roots = [project_root]
     if os.path.exists(user_repo_dir):
         allowed_roots.append(user_repo_dir)
@@ -88,7 +90,26 @@ def list_directory_contents(dir_path: str, project_root: str) -> List[Dict[str, 
             if not is_valid:
                 continue
 
-            rel_path = os.path.relpath(entry.path, project_root).replace("\\", "/")
+            try:
+                in_repos = (
+                    os.path.exists(repos_base)
+                    and os.path.commonpath([repos_base, real_entry_path]) == repos_base
+                    and real_entry_path != repos_base
+                )
+            except ValueError:
+                in_repos = False
+
+            if in_repos:
+                repo_rel = os.path.relpath(real_entry_path, repos_base).replace("\\", "/")
+                parts = repo_rel.split("/", 1)
+                owner_seg = parts[0]
+                rest_seg = parts[1] if len(parts) > 1 else ""
+                if is_admin_home_root:
+                    rel_path = f"{owner_seg}/repositories/{rest_seg}".rstrip("/")
+                else:
+                    rel_path = f"repositories/{rest_seg}".rstrip("/")
+            else:
+                rel_path = os.path.relpath(entry.path, project_root).replace("\\", "/")
             try:
                 stat_res = entry.stat(follow_symlinks=True)
             except Exception:

@@ -212,11 +212,24 @@ def resolve_admin_home_path(base_home_root: str, admin_username: str, subpath: s
         return base_root
 
     resolved = os.path.abspath(os.path.realpath(os.path.join(base_root, clean_sub)))
-    try:
-        if os.path.commonpath([base_root, resolved]) != base_root:
-            raise HTTPException(status_code=403, detail="Akses Ditolak: Path keluar dari direktori /home.")
-    except ValueError:
-        raise HTTPException(status_code=403, detail="Akses Ditolak: Path tidak valid.")
+    repos_root = os.path.abspath(os.path.realpath(os.path.join(os.path.dirname(base_root), "repositories")))
+    allowed_roots = [base_root]
+    if os.path.exists(repos_root):
+        allowed_roots.append(repos_root)
+
+    is_safe = False
+    for root in allowed_roots:
+        try:
+            if os.path.commonpath([root, resolved]) == root and (
+                resolved == root or resolved.startswith(root + os.sep)
+            ):
+                is_safe = True
+                break
+        except ValueError:
+            pass
+
+    if not is_safe:
+        raise HTTPException(status_code=403, detail="Akses Ditolak: Path keluar dari direktori /home.")
     return resolved
 
 
@@ -278,6 +291,15 @@ def _format_owner_meta(target_username: str, users_map: dict) -> dict:
 
 
 def _extract_target_username_from_admin_path(resolved_path: str, base_home_root: str) -> Optional[str]:
+    repos_root = os.path.abspath(os.path.realpath(os.path.join(os.path.dirname(base_home_root), "repositories")))
+    try:
+        if os.path.commonpath([repos_root, resolved_path]) == repos_root and resolved_path != repos_root:
+            rel_repo = os.path.relpath(resolved_path, repos_root).replace("\\", "/")
+            first_seg = rel_repo.split("/", 1)[0]
+            if first_seg and first_seg not in (".", ".."):
+                return first_seg
+    except ValueError:
+        pass
     rel = os.path.relpath(resolved_path, base_home_root).replace("\\", "/")
     if rel in (".", ""):
         return None
@@ -381,9 +403,28 @@ async def get_user_files(
             meta = _format_owner_meta(first_seg, users_map)
             item.update(meta)
 
-    rel_path = os.path.relpath(target_dir, ws_root).replace("\\", "/")
-    if rel_path == ".":
-        rel_path = ""
+    repos_base = os.path.abspath(os.path.realpath(
+        os.path.join(os.path.dirname(ws_root) if is_admin_mode else os.path.dirname(os.path.dirname(ws_root)), "repositories")
+    ))
+    try:
+        in_repos = (
+            os.path.exists(repos_base)
+            and os.path.commonpath([repos_base, target_dir]) == repos_base
+            and target_dir != repos_base
+        )
+    except ValueError:
+        in_repos = False
+
+    if in_repos:
+        repo_rel = os.path.relpath(target_dir, repos_base).replace("\\", "/")
+        parts = repo_rel.split("/", 1)
+        owner_seg = parts[0]
+        rest_seg = parts[1] if len(parts) > 1 else ""
+        rel_path = f"{owner_seg}/repositories/{rest_seg}".rstrip("/") if is_admin_mode else f"repositories/{rest_seg}".rstrip("/")
+    else:
+        rel_path = os.path.relpath(target_dir, ws_root).replace("\\", "/")
+        if rel_path == ".":
+            rel_path = ""
 
     root_label = "/home" if is_admin_mode else f"/home/{username}"
     return {

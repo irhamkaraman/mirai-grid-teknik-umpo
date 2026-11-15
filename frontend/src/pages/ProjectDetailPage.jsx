@@ -105,8 +105,11 @@ export default function ProjectDetailPage({ project: propProject, onBack, onUpda
   }, [project?.id])
 
   const handleOpenInFileManager = (targetPath) => {
-    const subpath = (targetPath || '').replace(new RegExp('^/home/[^/]+/?'), '').replace(/^\/+|\/+$/g, '')
-      navigate(subpath ? `/dashboard?path=${encodeURIComponent(subpath)}` : '/dashboard')
+    const subpath = (targetPath || '')
+      .replace(isAdmin ? /^\/home\/?/ : /^\/home\/[^/]+\/?/, '')
+      .replace(/^\/+|\/+$/g, '')
+    const base = isAdmin ? '/dashboard' : '/workspace/files'
+    navigate(subpath ? `${base}?path=${encodeURIComponent(subpath)}` : base)
   }
 
   useEffect(() => {

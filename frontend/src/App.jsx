@@ -446,6 +446,10 @@ export default function App() {
               element={<GitVersionControlView user={user} onNavigate={(path) => navigate(path.startsWith('/') ? path : '/' + path)} />}
             />
             <Route
+              path="/tools/git/*"
+              element={<GitVersionControlView user={user} onNavigate={(path) => navigate(path.startsWith('/') ? path : '/' + path)} />}
+            />
+            <Route
               path="/terminal"
               element={<TerminalPage user={user} onNavigate={(path) => navigate(path.startsWith('/') ? path : '/' + path)} />}
             />

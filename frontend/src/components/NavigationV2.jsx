@@ -22,7 +22,9 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   LayoutDashboard,
-  Workflow
+  Workflow,
+  Rocket,
+  GitBranch
 } from 'lucide-react'
 import { launchJupyterLab } from '../api/jupyter'
 import { useUpload } from '../context/UploadContext'
@@ -53,6 +55,7 @@ export default function NavigationV2({
   const { requestGuardedNavigation } = useUpload()
   const [showPlatformMenu, setShowPlatformMenu] = useState(false)
   const [showWorkspaceMenu, setShowWorkspaceMenu] = useState(true)
+  const [showToolsMenu, setShowToolsMenu] = useState(true)
   const [logoFailed, setLogoFailed] = useState(false)
 
   const isQuotaLoaded = Boolean(
@@ -87,7 +90,9 @@ export default function NavigationV2({
       label: 'Tools & Deployment',
       path: '/deploy',
       icon: Wrench,
-      activeCheck: (p) => p.startsWith('/deploy'),
+      isDropdown: true,
+      dropdownKey: 'tools',
+      activeCheck: (p) => p.startsWith('/deploy') || p.startsWith('/tools/git') || p.startsWith('/git'),
     },
     {
       id: 'databases',
@@ -129,6 +134,8 @@ export default function NavigationV2({
     if (item.isDropdown) {
       if (item.dropdownKey === 'workspace') {
         setShowWorkspaceMenu(!showWorkspaceMenu)
+      } else if (item.dropdownKey === 'tools') {
+        setShowToolsMenu(!showToolsMenu)
       } else {
         setShowPlatformMenu(!showPlatformMenu)
       }
@@ -307,13 +314,53 @@ export default function NavigationV2({
                     {!effectiveCollapsed && item.isDropdown && (
                       <ChevronRight
                         className={`h-3.5 w-3.5 text-gray-400 transition-transform ${
-                          (item.dropdownKey === 'workspace' ? showWorkspaceMenu : showPlatformMenu)
+                          (item.dropdownKey === 'workspace'
+                            ? showWorkspaceMenu
+                            : item.dropdownKey === 'tools'
+                              ? showToolsMenu
+                              : showPlatformMenu)
                             ? 'rotate-90 text-emerald-600'
                             : ''
                         }`}
                       />
                     )}
                   </button>
+
+                  {/* Submenu Tools & Deployment (Deploy & Git Version Control) */}
+                  {!effectiveCollapsed && item.isDropdown && item.dropdownKey === 'tools' && showToolsMenu && (
+                    <div className="ml-4 mt-1 pl-3 border-l-2 border-emerald-100 space-y-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMobileOpen(false)
+                          requestGuardedNavigation('/deploy', navigate)
+                        }}
+                        className={`w-full flex items-center space-x-2 px-2.5 py-1.5 rounded-xl text-[11px] font-medium transition text-left ${
+                          location.pathname.startsWith('/deploy')
+                            ? 'bg-emerald-50 text-emerald-700 font-bold'
+                            : 'text-gray-600 hover:text-emerald-700 hover:bg-emerald-50/50'
+                        }`}
+                      >
+                        <Rocket className="h-3.5 w-3.5 shrink-0" />
+                        <span>Deploy</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMobileOpen(false)
+                          requestGuardedNavigation('/tools/git', navigate)
+                        }}
+                        className={`w-full flex items-center space-x-2 px-2.5 py-1.5 rounded-xl text-[11px] font-medium transition text-left ${
+                          location.pathname.startsWith('/tools/git') || location.pathname.startsWith('/git')
+                            ? 'bg-emerald-50 text-emerald-700 font-bold'
+                            : 'text-gray-600 hover:text-emerald-700 hover:bg-emerald-50/50'
+                        }`}
+                      >
+                        <GitBranch className="h-3.5 w-3.5 shrink-0" />
+                        <span>Git Version Control</span>
+                      </button>
+                    </div>
+                  )}
 
                   {/* Submenu Workspace (Dashboard & File Manager) */}
                   {!effectiveCollapsed && item.isDropdown && item.dropdownKey === 'workspace' && showWorkspaceMenu && (
