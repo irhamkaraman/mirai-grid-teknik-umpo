@@ -311,4 +311,25 @@ async def init_db():
         except Exception as e:
             print(f"[Warning] Admin home provisioning: {e}")
 
+        # WAF & Brute-Force Protection Table
+        await db.execute("""
+        CREATE TABLE IF NOT EXISTS waf_records (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ip_address TEXT NOT NULL,
+            device_id TEXT DEFAULT '',
+            user_agent TEXT DEFAULT '',
+            fail_count INTEGER DEFAULT 0,
+            status TEXT DEFAULT 'active',
+            blocked_until DATETIME,
+            expires_at DATETIME,
+            last_attempt_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            reason TEXT DEFAULT '',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+        """)
+        await db.execute("CREATE INDEX IF NOT EXISTS idx_waf_ip ON waf_records(ip_address);")
+        await db.execute("CREATE INDEX IF NOT EXISTS idx_waf_device ON waf_records(device_id);")
+        await db.execute("CREATE INDEX IF NOT EXISTS idx_waf_status ON waf_records(status);")
+
         await db.commit()

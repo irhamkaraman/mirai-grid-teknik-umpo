@@ -1,8 +1,18 @@
+import asyncio
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from app.core.config import settings
 from app.core.database import init_db
+from app.services.waf_service import (
+    _open_db,
+    check_waf_access,
+    cleanup_expired_waf_entries,
+    extract_client_ip,
+    extract_device_id,
+    sync_nginx_blacklist,
+)
 from app.api.auth import router as auth_router
 from app.api.admin import router as admin_router
 from app.api.databases import router as db_router
@@ -22,13 +32,34 @@ from app.api.n8n_router import router as n8n_router, platform_n8n_router
 from app.api.ssh_router import router as ssh_router
 from app.api.resources import router as resources_router
 from app.api.user_dashboard import router as user_dashboard_router
+from app.api.waf import router as waf_router
+
+
+async def _waf_cleanup_loop():
+    while True:
+        try:
+            await asyncio.sleep(3600)
+            await cleanup_expired_waf_entries()
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            print(f"[WAF Cron] Error during 7-day cleanup: {e}")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup: Initialize DB and seeds
     await init_db()
+    try:
+        await cleanup_expired_waf_entries()
+        async with _open_db() as db:
+            await sync_nginx_blacklist(db)
+    except Exception as e:
+        print(f"[WAF Startup] Sync warning: {e}")
+    waf_task = asyncio.create_task(_waf_cleanup_loop())
     print("🚀 [MiraiGrid API] Database and services initialized.")
     yield
+    waf_task.cancel()
     print("🛑 [MiraiGrid API] Shutting down.")
 
 app = FastAPI(
@@ -47,6 +78,22 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def waf_blacklist_middleware(request: Request, call_next):
+    path = request.url.path
+    if request.method != "OPTIONS" and not path.startswith("/api/health") and not path.endswith("/resolve"):
+        if not (path.startswith("/api/admin/waf") and request.headers.get("Authorization")):
+            ip = extract_client_ip(request)
+            device_id = extract_device_id(request)
+            waf_res = await check_waf_access(ip, device_id)
+            if not waf_res["allowed"] and waf_res["status"] == "blacklisted":
+                return JSONResponse(
+                    status_code=403,
+                    content={"detail": waf_res["reason"]},
+                )
+    return await call_next(request)
 
 # Healthcheck
 @app.get("/api/health")
@@ -79,6 +126,7 @@ app.include_router(platform_n8n_router, prefix="/api")
 app.include_router(ssh_router, prefix="/api")
 app.include_router(resources_router, prefix="/api")
 app.include_router(user_dashboard_router, prefix="/api")
+app.include_router(waf_router, prefix="/api")
 
 if __name__ == "__main__":
     import uvicorn

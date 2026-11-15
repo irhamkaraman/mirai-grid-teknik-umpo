@@ -2,12 +2,51 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request, Response
 import aiosqlite
 from app.core.database import get_db
 from app.core.security import verify_password, hash_password, create_access_token, decode_access_token
-from app.models.schemas import LoginRequest, ChangePasswordRequest, Token, UserResponse
+from app.models.schemas import LoginRequest, ChangePasswordRequest, UpdateProfileRequest, Token, UserResponse
 from app.api.deps import get_current_user, get_client_ip
 from app.services.simtik import verify_simtik
 from app.services.user_home import ensure_user_home
+from app.services.waf_service import (
+    check_waf_access,
+    extract_client_ip,
+    extract_device_id,
+    generate_login_signature,
+    record_failed_attempt,
+    reset_attempts_on_success,
+    verify_login_signature,
+)
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
+
+
+def _raise_waf_or_auth_error(base_detail: str, fail_info: dict, status_code: int = status.HTTP_401_UNAUTHORIZED):
+    if fail_info.get("blacklisted"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Akses ditolak. Terlalu banyak aksi mencurigakan.",
+        )
+    retry_after = int(fail_info.get("retry_after") or 0)
+    if retry_after > 0:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Terlalu banyak aksi, mohon coba lagi beberapa saat.",
+            headers={"Retry-After": str(retry_after)},
+        )
+    raise HTTPException(
+        status_code=status_code,
+        detail=f"{base_detail}.",
+    )
+
+
+@router.get("/login-signature")
+async def get_login_signature(request: Request):
+    ip = extract_client_ip(request)
+    device_id = extract_device_id(request)
+    waf_check = await check_waf_access(ip, device_id)
+    if not waf_check["allowed"] and waf_check["status"] == "blacklisted":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=waf_check["reason"])
+    return generate_login_signature()
+
 
 @router.post("/login", response_model=Token)
 async def login(
@@ -16,7 +55,25 @@ async def login(
     response: Response,
     db: aiosqlite.Connection = Depends(get_db)
 ):
-    ip = get_client_ip(request)
+    ip = extract_client_ip(request)
+    device_id = extract_device_id(request, credentials.device_id)
+    user_agent = request.headers.get("User-Agent", "")
+
+    waf_check = await check_waf_access(ip, device_id)
+    if not waf_check["allowed"]:
+        if waf_check["status"] == "blacklisted":
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=waf_check["reason"])
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=waf_check["reason"],
+            headers={"Retry-After": str(waf_check["retry_after"])},
+        )
+
+    sig_ok, sig_msg = verify_login_signature(credentials.login_t, credentials.login_n, credentials.login_sig)
+    if not sig_ok:
+        fail_info = await record_failed_attempt(ip, device_id, user_agent, reason=f"Signature login ditolak: {sig_msg}")
+        _raise_waf_or_auth_error(sig_msg, fail_info, status_code=status.HTTP_403_FORBIDDEN)
+
     username = credentials.username.strip()
     password = credentials.password
 
@@ -60,6 +117,7 @@ async def login(
         except Exception as e:
             print(f"[Warn] Cookie set failed: {e}")
 
+        await reset_attempts_on_success(ip, device_id)
         return {
             "access_token": access_token,
             "token_type": "bearer",
@@ -73,19 +131,16 @@ async def login(
 
     # If it is an admin account but local password was incorrect, fail immediately
     if user and user["role"] == "admin":
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Password administrator salah."
-        )
+        fail_info = await record_failed_attempt(ip, device_id, user_agent, reason=f"Password admin salah untuk '{username}'")
+        _raise_waf_or_auth_error("Password administrator salah", fail_info, status_code=status.HTTP_401_UNAUTHORIZED)
 
     # 2. Unified SIMTIK UMPO Handshake (Mahasiswa & Dosen via https://simtik.umpo.ac.id/)
     simtik_result = await verify_simtik(username, password)
 
     if not simtik_result["success"]:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=simtik_result.get("message", "NIM / Username / NIDN atau Password SIMTIK salah.")
-        )
+        base_msg = simtik_result.get("message", "NIM / Username / NIDN atau Password SIMTIK salah")
+        fail_info = await record_failed_attempt(ip, device_id, user_agent, reason=f"Login gagal akun '{username}'")
+        _raise_waf_or_auth_error(base_msg, fail_info, status_code=status.HTTP_401_UNAUTHORIZED)
 
     # 3. Smart Auto-Detect Role:
     # Mahasiswa UMPO: murni digit angka dengan panjang <= 8 (contoh: 26533xxx)
@@ -173,6 +228,7 @@ async def login(
     except Exception as e:
         print(f"[Warn] User home provisioning failed: {e}")
 
+    await reset_attempts_on_success(ip, device_id)
     access_token = create_access_token(data={"sub": user["id"], "role": user["role"]})
     try:
         response.set_cookie(
@@ -248,7 +304,43 @@ async def get_my_profile(
         WHERE u.id = ?
     """, (current_user["id"],))
     row = await cursor.fetchone()
-    return dict(row)
+    res = dict(row)
+    if res.get("created_at") is not None:
+        res["created_at"] = str(res["created_at"])
+    return res
+
+
+@router.put("/profile", response_model=UserResponse)
+async def update_my_profile(
+    req: UpdateProfileRequest,
+    request: Request,
+    current_user: dict = Depends(get_current_user),
+    db: aiosqlite.Connection = Depends(get_db)
+):
+    new_name = req.name.strip()
+    if len(new_name) < 2:
+        raise HTTPException(status_code=400, detail="Nama minimal 2 karakter.")
+
+    await db.execute("UPDATE users SET name = ? WHERE id = ?", (new_name, current_user["id"]))
+    ip = extract_client_ip(request)
+    await db.execute("""
+        INSERT INTO audit_logs (actor_id, action, target_resource, ip_address, details)
+        VALUES (?, 'UPDATE_PROFILE', 'user_profile', ?, ?)
+    """, (current_user["id"], ip, f"Updated profile name to '{new_name}'"))
+    await db.commit()
+
+    cursor = await db.execute("""
+        SELECT u.*, c.name as class_name, co.year as cohort_year
+        FROM users u
+        LEFT JOIN classes c ON u.class_id = c.id
+        LEFT JOIN cohorts co ON c.cohort_id = co.id
+        WHERE u.id = ?
+    """, (current_user["id"],))
+    row = await cursor.fetchone()
+    res = dict(row)
+    if res.get("created_at") is not None:
+        res["created_at"] = str(res["created_at"])
+    return res
 
 @router.get("/cb-verify")
 async def cb_verify(

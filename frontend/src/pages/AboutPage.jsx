@@ -18,6 +18,7 @@ import {
   FileSearch,
   Sparkles,
   Building2,
+  Users,
 } from 'lucide-react'
 import Button from '../components/Button'
 import Card from '../components/Card'
@@ -452,6 +453,36 @@ export default function AboutPage({ user, onNavigate }) {
               <p className="text-xs font-bold text-emerald-700">miraigrid.web.id</p>
               <p className="text-[10px] text-emerald-600">Zero-Port HTTPS Ingress (Cloudflare Tunnel)</p>
             </div>
+          </div>
+        </Card>
+
+        {/* 5.5 TIM PENGEMBANG */}
+        <Card className="p-6 sm:p-8 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center space-x-3">
+              <div className="h-10 w-10 rounded-xl bg-emerald-50 border border-emerald-200/80 flex items-center justify-center text-emerald-700 shrink-0">
+                <Users className="h-5 w-5" />
+              </div>
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="text-base font-bold text-slate-900">
+                    Tim Pengembang — Rombongan Split
+                  </h3>
+                  <span className="text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                    3 Developer
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Mahasiswa Magang Semester 7 • Program Studi Teknik Informatika Angkatan 2023
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/80">
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Platform MiraiGrid dirancang dan dibangun oleh tim <span className="font-semibold text-slate-800">Rombongan Split</span> yang beranggotakan <span className="font-semibold text-slate-800">3 developer mahasiswa Teknik Informatika</span> angkatan 2023 dalam program magang semester 7 di Laboratorium Komputer Teknik Informatika Universitas Muhammadiyah Ponorogo.
+            </p>
           </div>
         </Card>
 

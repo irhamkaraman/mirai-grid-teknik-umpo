@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { Key, LogOut } from 'lucide-react'
+import { User, LogOut } from 'lucide-react'
 
-export default function ProfileAvatar({ user, onLogout, onChangePassword }) {
+export default function ProfileAvatar({ user, onLogout, onOpenProfile }) {
   const [open, setOpen] = useState(false)
   const dropdownRef = useRef(null)
 
@@ -50,12 +50,12 @@ export default function ProfileAvatar({ user, onLogout, onChangePassword }) {
             <button
               onClick={() => {
                 setOpen(false)
-                onChangePassword()
+                if (onOpenProfile) onOpenProfile()
               }}
               className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 transition"
             >
-              <Key className="h-4 w-4 text-slate-500" />
-              <span>Ganti Password</span>
+              <User className="h-4 w-4 text-slate-500" />
+              <span>Profil Anda</span>
             </button>
 
             <button

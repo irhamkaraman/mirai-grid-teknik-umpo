@@ -48,6 +48,51 @@ const SHOWCASE_STEPS = [
   }
 ]
 
+async function computeDeviceFingerprint() {
+  const parts = [
+    navigator.userAgent || '',
+    navigator.platform || '',
+    navigator.language || '',
+    `${window.screen?.width || 0}x${window.screen?.height || 0}x${window.screen?.colorDepth || 0}`,
+    String(navigator.hardwareConcurrency || ''),
+    Intl.DateTimeFormat().resolvedOptions().timeZone || ''
+  ]
+  try {
+    const canvas = document.createElement('canvas')
+    canvas.width = 180
+    canvas.height = 40
+    const ctx = canvas.getContext('2d')
+    if (ctx) {
+      ctx.textBaseline = 'top'
+      ctx.font = '14px Arial'
+      ctx.fillStyle = '#069'
+      ctx.fillText('MiraiGrid-WAF-FP', 2, 2)
+      parts.push(canvas.toDataURL().slice(-64))
+    }
+  } catch {
+    // ignore canvas errors in headless/restricted environments
+  }
+  const raw = parts.join('|')
+  try {
+    if (window.crypto?.subtle) {
+      const buf = new TextEncoder().encode(raw)
+      const digest = await window.crypto.subtle.digest('SHA-256', buf)
+      const hex = Array.from(new Uint8Array(digest))
+        .map((b) => b.toString(16).padStart(2, '0'))
+        .join('')
+      return `dev_${hex.slice(0, 32)}`
+    }
+  } catch {
+    // fallback below
+  }
+  let h = 2166136261
+  for (let i = 0; i < raw.length; i++) {
+    h ^= raw.charCodeAt(i)
+    h = Math.imul(h, 16777619)
+  }
+  return `dev_${(h >>> 0).toString(16).padStart(8, '0')}`
+}
+
 export default function LoginPage({ onLoginSuccess }) {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -55,6 +100,53 @@ export default function LoginPage({ onLoginSuccess }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [activeStep, setActiveStep] = useState(0)
+  const [loginSig, setLoginSig] = useState(null)
+  const [deviceId, setDeviceId] = useState('')
+  const [cooldownSeconds, setCooldownSeconds] = useState(0)
+
+  const refreshLoginSignature = async (fp) => {
+    try {
+      const res = await api.get('/auth/login-signature', {
+        headers: fp ? { 'X-Device-ID': fp } : undefined
+      })
+      const sigData = res.data
+      setLoginSig(sigData)
+      if (sigData?.t && sigData?.n && sigData?.sig) {
+        const params = new URLSearchParams({
+          t: String(sigData.t),
+          n: String(sigData.n),
+          sig: String(sigData.sig)
+        })
+        window.history.replaceState(null, '', `/login?${params.toString()}`)
+      }
+      return sigData
+    } catch (err) {
+      if (err.response?.status === 403 && err.response?.data?.detail) {
+        setError(err.response.data.detail)
+      }
+      return null
+    }
+  }
+
+  useEffect(() => {
+    let mounted = true
+    computeDeviceFingerprint().then((fp) => {
+      if (!mounted) return
+      setDeviceId(fp)
+      refreshLoginSignature(fp)
+    })
+    return () => {
+      mounted = false
+    }
+  }, [])
+
+  useEffect(() => {
+    if (cooldownSeconds <= 0) return
+    const t = setInterval(() => {
+      setCooldownSeconds((prev) => (prev > 1 ? prev - 1 : 0))
+    }, 1000)
+    return () => clearInterval(t)
+  }, [cooldownSeconds])
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -65,16 +157,33 @@ export default function LoginPage({ onLoginSuccess }) {
 
   const handleLogin = async (e) => {
     e.preventDefault()
+    if (cooldownSeconds > 0) return
     setError('')
     setLoading(true)
 
     const cleanUsername = username.trim()
+    const fp = deviceId || (await computeDeviceFingerprint())
+    if (!deviceId) setDeviceId(fp)
+    let sigObj = loginSig
+    if (!sigObj?.t || !sigObj?.sig) {
+      sigObj = await refreshLoginSignature(fp)
+    }
 
     try {
-      const response = await api.post('/auth/login', {
-        username: cleanUsername,
-        password
-      })
+      const response = await api.post(
+        '/auth/login',
+        {
+          username: cleanUsername,
+          password,
+          login_t: sigObj?.t || null,
+          login_n: sigObj?.n || null,
+          login_sig: sigObj?.sig || null,
+          device_id: fp
+        },
+        {
+          headers: { 'X-Device-ID': fp }
+        }
+      )
       const data = response.data
       localStorage.setItem('miraigrid_token', data.access_token)
       try {
@@ -115,6 +224,13 @@ export default function LoginPage({ onLoginSuccess }) {
         errMsg = 'Koneksi ke server timeout. Silakan periksa koneksi jaringan kampus Anda dan coba lagi.'
       } else if (err.message === 'Network Error' || !err.response) {
         errMsg = 'Gagal terhubung ke server API MiraiGrid. Pastikan koneksi jaringan aktif.'
+      }
+
+      if (err.response?.status === 429) {
+        const retryHdr = parseInt(err.response.headers?.['retry-after'] || '0', 10)
+        if (retryHdr > 0) setCooldownSeconds(retryHdr)
+      } else if (err.response?.status === 403 && String(err.response?.data?.detail || '').toLowerCase().includes('signature')) {
+        refreshLoginSignature(fp)
       }
 
       setError(errMsg)
@@ -327,7 +443,7 @@ export default function LoginPage({ onLoginSuccess }) {
               {/* Submit Button */}
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || cooldownSeconds > 0}
                 className="w-full mt-2 bg-slate-900 hover:bg-slate-800 text-white rounded-lg py-3 font-medium transition text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? (
@@ -335,6 +451,8 @@ export default function LoginPage({ onLoginSuccess }) {
                     <Spinner size="xs" />
                     <span>Memvalidasi Akun...</span>
                   </>
+                ) : cooldownSeconds > 0 ? (
+                  <span>Terlalu banyak aksi, coba lagi nanti</span>
                 ) : (
                   <>
                     <span>Masuk ke Workspace</span>

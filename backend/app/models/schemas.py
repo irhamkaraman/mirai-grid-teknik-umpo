@@ -15,10 +15,18 @@ class Token(BaseModel):
 class LoginRequest(BaseModel):
     username: str
     password: str
+    login_t: Optional[int] = None
+    login_n: Optional[str] = None
+    login_sig: Optional[str] = None
+    device_id: Optional[str] = None
 
 class ChangePasswordRequest(BaseModel):
     old_password: Optional[str] = None
     new_password: str = Field(min_length=8)
+
+
+class UpdateProfileRequest(BaseModel):
+    name: str = Field(min_length=2, max_length=120)
 
 # User & Cohorts
 class CohortCreate(BaseModel):
@@ -96,6 +104,7 @@ class UserResponse(BaseModel):
     is_active: bool
     onboarding_step: Optional[int] = 1
     onboarding_completed: Optional[bool] = False
+    created_at: Optional[str] = None
     max_disk_mb: Optional[int] = None
     max_memory_mb: Optional[int] = None
     max_cpu_cores: Optional[float] = None

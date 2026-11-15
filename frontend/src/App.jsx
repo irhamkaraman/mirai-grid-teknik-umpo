@@ -18,6 +18,8 @@ import DatabasesView from './pages/DatabasesView'
 import AdminView from './pages/AdminView'
 import AdminDashboardPage from './pages/AdminDashboardPage'
 import AdminContainerDetailPage from './pages/AdminContainerDetailPage'
+import AdminWafPage from './pages/AdminWafPage'
+import ProfilePage from './pages/ProfilePage'
 import DiskUsagePage from './pages/DiskUsagePage'
 import RemoteDatabasePage from './pages/RemoteDatabasePage'
 import DatabaseWizardPage from './pages/DatabaseWizardPage'
@@ -372,10 +374,7 @@ export default function App() {
           <ProfileAvatar
             user={user}
             onLogout={handleLogout}
-            onChangePassword={() => {
-              setIsMandatoryPasswordChange(false)
-              setShowPasswordModal(true)
-            }}
+            onOpenProfile={() => navigate('/profile')}
           />
         </div>
       </header>
@@ -504,6 +503,24 @@ export default function App() {
               element={user.role === 'admin' ? (
                 <ErrorBoundary>
                   <AdminDashboardPage user={user} />
+                </ErrorBoundary>
+              ) : (
+                <Navigate to="/dashboard" replace />
+              )}
+            />
+            <Route
+              path="/profile"
+              element={
+                <ErrorBoundary>
+                  <ProfilePage user={user} onUserUpdated={(u) => setUser(u)} />
+                </ErrorBoundary>
+              }
+            />
+            <Route
+              path="/admin/waf"
+              element={user.role === 'admin' ? (
+                <ErrorBoundary>
+                  <AdminWafPage />
                 </ErrorBoundary>
               ) : (
                 <Navigate to="/dashboard" replace />

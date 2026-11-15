@@ -23,7 +23,8 @@ import {
   LayoutDashboard,
   Workflow,
   Rocket,
-  GitBranch
+  GitBranch,
+  ShieldAlert
 } from 'lucide-react'
 import { launchJupyterLab } from '../api/jupyter'
 import { useUpload } from '../context/UploadContext'
@@ -118,6 +119,13 @@ export default function NavigationV2({
             activeCheck: (p) =>
               (p === '/admin' || p.startsWith('/admin/users') || p.startsWith('/admin/accounts')) &&
               !p.includes('dashboard'),
+          },
+          {
+            id: 'admin-waf',
+            label: 'WAF & Keamanan',
+            path: '/admin/waf',
+            icon: ShieldAlert,
+            activeCheck: (p) => p.startsWith('/admin/waf'),
           },
         ]
       : []),
