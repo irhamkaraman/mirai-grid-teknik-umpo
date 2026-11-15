@@ -96,7 +96,7 @@ export default function AdminDashboardPage({ user }) {
   const summary = hostMetrics?.containers_summary
 
   return (
-    <div className="flex-1 min-h-0 h-full overflow-y-auto p-6 space-y-6 pb-12">
+    <div className="space-y-6 w-full pb-6">
       {/* A. Header langsung di atas kanvas putih (Zero Double-Box) */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 pb-4 border-b border-slate-100">
         <div>

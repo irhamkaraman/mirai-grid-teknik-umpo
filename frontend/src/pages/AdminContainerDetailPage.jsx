@@ -77,7 +77,7 @@ export default function AdminContainerDetailPage() {
   const containers = account?.containers || []
 
   return (
-    <div className="flex-1 min-h-0 h-full overflow-y-auto p-6 sm:p-8 space-y-6 pb-12">
+    <div className="space-y-6 w-full pb-6">
       {/* Header & Breadcrumb */}
       <div className="bg-white border border-slate-200/80 rounded-xl p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="space-y-1">
