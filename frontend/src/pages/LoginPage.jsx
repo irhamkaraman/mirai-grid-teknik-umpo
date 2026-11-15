@@ -162,8 +162,8 @@ export default function LoginPage({ onLoginSuccess }) {
     setLoading(true)
 
     const cleanUsername = username.trim()
-    if (/^\d{1,8}$/.test(cleanUsername) && !/^23533\d{3}$/.test(cleanUsername)) {
-      setError('Akses dibatasi: hanya NIM Mahasiswa Teknik Informatika (8 digit diawali 23533xxx) yang diizinkan masuk.')
+    if (/^\d{1,8}$/.test(cleanUsername) && !/^(2[3-9]|[3-9]\d)533\d{3}$/.test(cleanUsername)) {
+      setError('Akses dibatasi: hanya NIM Mahasiswa Teknik Informatika (8 digit angkatan 23 ke atas dengan kode ..533...) yang diizinkan masuk.')
       setLoading(false)
       return
     }

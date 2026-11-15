@@ -82,13 +82,13 @@ async def login(
     cursor = await db.execute("SELECT * FROM users WHERE LOWER(username) = LOWER(?)", (username,))
     user = await cursor.fetchone()
 
-    # Enforce strict NIM whitelist for student accounts: exactly 8 digits starting with 23533
+    # Enforce strict NIM whitelist for student accounts: 8 digits, batch >= 23, faculty/prodi code 533 (..533...)
     is_privileged_existing = bool(user and user["role"] in ("admin", "dosen"))
     if not is_privileged_existing and username.isdigit() and len(username) <= 8:
-        if not re.fullmatch(r"23533\d{3}", username):
+        if not re.fullmatch(r"(2[3-9]|[3-9]\d)533\d{3}", username):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Akses dibatasi: hanya NIM Mahasiswa Teknik Informatika (8 digit diawali 23533xxx) yang diizinkan masuk.",
+                detail="Akses dibatasi: hanya NIM Mahasiswa Teknik Informatika (8 digit angkatan 23 ke atas dengan kode ..533...) yang diizinkan masuk.",
             )
 
     # If user exists and local password matches

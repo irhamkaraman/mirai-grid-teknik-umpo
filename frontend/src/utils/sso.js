@@ -13,6 +13,14 @@ export async function launchDatabaseSSO(engine, dbId = null) {
   const targetLabel = isPg ? 'phpPgAdmin' : 'phpMyAdmin'
   const windowName = `miraigrid_sso_${isPg ? 'ppa' : 'pma'}_${Date.now()}`
 
+  // Ensure cross-subdomain SSO cookie is set for pma/ppa.miraigrid.web.id auth_request
+  try {
+    const token = localStorage.getItem('miraigrid_token')
+    if (token && window.location.hostname.includes('miraigrid.web.id')) {
+      document.cookie = `miraigrid_token=${token}; path=/; domain=.miraigrid.web.id; max-age=86400; SameSite=Lax; Secure`
+    }
+  } catch (e) {}
+
   // Synchronously open blank window to bypass popup blockers
   let targetWindow = null
   try {
@@ -66,6 +74,7 @@ export async function launchDatabaseSSO(engine, dbId = null) {
   <p>Membuka sesi terisolasi terenkripsi untuk akun Anda</p>
 </body>
 </html>`)
+      targetWindow.document.close()
     }
   } catch (e) {
     console.warn('Could not open preview window synchronously:', e)
@@ -100,28 +109,48 @@ export async function launchDatabaseSSO(engine, dbId = null) {
       }
     }
 
-    // Create form and submit into the opened window
-    const form = document.createElement('form')
-    form.method = 'POST'
-    form.action = actionUrl
-    form.target = targetWindow ? windowName : '_blank'
-    form.style.display = 'none'
+    // Submit form directly inside the opened popup window document so navigation
+    // never stalls on cross-window target resolution or about:blank stream state
+    if (targetWindow && !targetWindow.closed && targetWindow.document && targetWindow.document.body) {
+      const targetDoc = targetWindow.document
+      const form = targetDoc.createElement('form')
+      form.method = 'POST'
+      form.action = actionUrl
+      form.style.display = 'none'
 
-    Object.entries(fields).forEach(([key, val]) => {
-      const input = document.createElement('input')
-      input.type = 'hidden'
-      input.name = key
-      input.value = val
-      form.appendChild(input)
-    })
+      Object.entries(fields).forEach(([key, val]) => {
+        const input = targetDoc.createElement('input')
+        input.type = 'hidden'
+        input.name = key
+        input.value = val
+        form.appendChild(input)
+      })
 
-    document.body.appendChild(form)
-    form.submit()
-    setTimeout(() => {
-      try {
-        document.body.removeChild(form)
-      } catch (e) {}
-    }, 1000)
+      targetDoc.body.appendChild(form)
+      form.submit()
+    } else {
+      const form = document.createElement('form')
+      form.method = 'POST'
+      form.action = actionUrl
+      form.target = '_blank'
+      form.style.display = 'none'
+
+      Object.entries(fields).forEach(([key, val]) => {
+        const input = document.createElement('input')
+        input.type = 'hidden'
+        input.name = key
+        input.value = val
+        form.appendChild(input)
+      })
+
+      document.body.appendChild(form)
+      form.submit()
+      setTimeout(() => {
+        try {
+          document.body.removeChild(form)
+        } catch (e) {}
+      }, 1000)
+    }
 
     toast.success(`Berhasil login ke ${targetLabel} sebagai '${db_username}'!`, { id: toastId })
   } catch (err) {

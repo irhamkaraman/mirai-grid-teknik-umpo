@@ -33,6 +33,7 @@ from app.api.ssh_router import router as ssh_router
 from app.api.resources import router as resources_router
 from app.api.user_dashboard import router as user_dashboard_router
 from app.api.waf import router as waf_router
+from app.api.reports import router as reports_router
 
 
 async def _waf_cleanup_loop():
@@ -127,6 +128,7 @@ app.include_router(ssh_router, prefix="/api")
 app.include_router(resources_router, prefix="/api")
 app.include_router(user_dashboard_router, prefix="/api")
 app.include_router(waf_router, prefix="/api")
+app.include_router(reports_router, prefix="/api")
 
 if __name__ == "__main__":
     import uvicorn

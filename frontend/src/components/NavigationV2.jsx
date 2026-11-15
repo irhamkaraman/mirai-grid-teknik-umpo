@@ -24,7 +24,8 @@ import {
   Workflow,
   Rocket,
   GitBranch,
-  ShieldAlert
+  ShieldAlert,
+  MessageSquareWarning
 } from 'lucide-react'
 import { launchJupyterLab } from '../api/jupyter'
 import { useUpload } from '../context/UploadContext'
@@ -127,6 +128,13 @@ export default function NavigationV2({
             icon: ShieldAlert,
             activeCheck: (p) => p.startsWith('/admin/waf'),
           },
+          {
+            id: 'admin-reports',
+            label: 'Laporan',
+            path: '/admin/reports',
+            icon: MessageSquareWarning,
+            activeCheck: (p) => p.startsWith('/admin/reports'),
+          },
         ]
       : []),
   ]
@@ -212,7 +220,7 @@ export default function NavigationV2({
     const effectiveCollapsed = isMobile ? false : isCollapsed
 
     return (
-      <div className="flex flex-col h-full justify-between select-none">
+      <div className="flex flex-col h-full overflow-hidden select-none">
         {/* Top Header */}
         <div className="flex flex-col shrink-0">
           {!effectiveCollapsed ? (
@@ -283,9 +291,10 @@ export default function NavigationV2({
               </button>
             </div>
           )}
+        </div>
 
-          {/* Menu Navigation */}
-          <nav className="p-3 space-y-1.5 w-full overflow-y-auto">
+        {/* Menu Navigation (Scrollable area, keeps top header & bottom storage card static) */}
+        <nav className="flex-1 min-h-0 overflow-y-auto p-3 space-y-1.5 w-full">
             {menuItems.map((item) => {
               const Icon = item.icon
               const isActive = item.activeCheck(location.pathname)
@@ -465,10 +474,9 @@ export default function NavigationV2({
                 </div>
               )
             })}
-          </nav>
-        </div>
+        </nav>
 
-        {/* Bottom Storage & Resource Widget */}
+        {/* Bottom Storage & Resource Widget (Always pinned at bottom) */}
         <div className="p-3 shrink-0 space-y-3">
           {!effectiveCollapsed ? (
             <div className="bg-white border border-slate-200/80 rounded-xl p-3.5 space-y-2.5">
@@ -568,7 +576,7 @@ export default function NavigationV2({
             className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm animate-in fade-in duration-200"
             onClick={() => setMobileOpen(false)}
           />
-          <div className="relative w-72 max-w-[85vw] bg-white h-full border-r border-slate-200 flex flex-col z-10 animate-in slide-in-from-left duration-200">
+          <div className="relative w-72 max-w-[85vw] bg-white h-full max-h-screen overflow-hidden border-r border-slate-200 flex flex-col z-10 animate-in slide-in-from-left duration-200">
             {renderSidebarContent(true)}
           </div>
         </div>

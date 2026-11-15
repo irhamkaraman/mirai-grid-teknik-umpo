@@ -1,9 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { User, LogOut } from 'lucide-react'
+import { useNavigate, useLocation } from 'react-router-dom'
+import { User, LogOut, LifeBuoy } from 'lucide-react'
 
 export default function ProfileAvatar({ user, onLogout, onOpenProfile }) {
   const [open, setOpen] = useState(false)
   const dropdownRef = useRef(null)
+  const navigate = useNavigate()
+  const location = useLocation()
+  const isOnReport = location.pathname.startsWith('/report')
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -19,15 +23,30 @@ export default function ProfileAvatar({ user, onLogout, onOpenProfile }) {
   const isAdmin = user?.role === 'admin'
 
   return (
-    <div className="relative inline-block text-left" ref={dropdownRef}>
-      {/* Circular Avatar Button */}
+    <div className="flex items-center gap-2.5">
       <button
-        onClick={() => setOpen(!open)}
-        title={user?.name}
-        className="h-9 w-9 rounded-full bg-slate-900 hover:bg-slate-800 text-white font-sans font-bold text-sm flex items-center justify-center border border-slate-700 transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-slate-400"
+        type="button"
+        onClick={() => navigate('/report')}
+        title="Laporkan kendala ke tim pengembang"
+        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition-colors ${
+          isOnReport
+            ? 'bg-slate-900 text-white border-slate-900'
+            : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200/80'
+        }`}
       >
-        <span>{initial}</span>
+        <LifeBuoy className="h-3.5 w-3.5 shrink-0" />
+        <span className="hidden sm:inline">Terjadi Masalah?</span>
       </button>
+
+      <div className="relative inline-block text-left" ref={dropdownRef}>
+        {/* Circular Avatar Button */}
+        <button
+          onClick={() => setOpen(!open)}
+          title={user?.name}
+          className="h-9 w-9 rounded-full bg-slate-900 hover:bg-slate-800 text-white font-sans font-bold text-sm flex items-center justify-center border border-slate-700 transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-slate-400"
+        >
+          <span>{initial}</span>
+        </button>
 
       {/* Dropdown Menu */}
       {open && (
@@ -71,6 +90,7 @@ export default function ProfileAvatar({ user, onLogout, onOpenProfile }) {
           </div>
         </div>
       )}
+      </div>
     </div>
   )
 }

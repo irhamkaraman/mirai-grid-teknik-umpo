@@ -19,6 +19,8 @@ import AdminView from './pages/AdminView'
 import AdminDashboardPage from './pages/AdminDashboardPage'
 import AdminContainerDetailPage from './pages/AdminContainerDetailPage'
 import AdminWafPage from './pages/AdminWafPage'
+import AdminReportsPage from './pages/AdminReportsPage'
+import ReportIssuePage from './pages/ReportIssuePage'
 import ProfilePage from './pages/ProfilePage'
 import DiskUsagePage from './pages/DiskUsagePage'
 import RemoteDatabasePage from './pages/RemoteDatabasePage'
@@ -517,10 +519,28 @@ export default function App() {
               }
             />
             <Route
+              path="/report"
+              element={
+                <ErrorBoundary>
+                  <ReportIssuePage user={user} />
+                </ErrorBoundary>
+              }
+            />
+            <Route
               path="/admin/waf"
               element={user.role === 'admin' ? (
                 <ErrorBoundary>
                   <AdminWafPage />
+                </ErrorBoundary>
+              ) : (
+                <Navigate to="/dashboard" replace />
+              )}
+            />
+            <Route
+              path="/admin/reports"
+              element={user.role === 'admin' ? (
+                <ErrorBoundary>
+                  <AdminReportsPage />
                 </ErrorBoundary>
               ) : (
                 <Navigate to="/dashboard" replace />

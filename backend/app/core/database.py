@@ -332,4 +332,27 @@ async def init_db():
         await db.execute("CREATE INDEX IF NOT EXISTS idx_waf_device ON waf_records(device_id);")
         await db.execute("CREATE INDEX IF NOT EXISTS idx_waf_status ON waf_records(status);")
 
+        # User Issue Reports Table
+        await db.execute("""
+        CREATE TABLE IF NOT EXISTS issue_reports (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            username TEXT NOT NULL,
+            reporter_name TEXT NOT NULL,
+            category TEXT NOT NULL,
+            description TEXT NOT NULL,
+            whatsapp TEXT NOT NULL,
+            contact_email TEXT DEFAULT '',
+            status TEXT DEFAULT 'open',
+            admin_note TEXT DEFAULT '',
+            resolved_by TEXT DEFAULT '',
+            resolved_at DATETIME,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        );
+        """)
+        await db.execute("CREATE INDEX IF NOT EXISTS idx_issue_reports_user ON issue_reports(user_id);")
+        await db.execute("CREATE INDEX IF NOT EXISTS idx_issue_reports_status ON issue_reports(status);")
+
         await db.commit()
