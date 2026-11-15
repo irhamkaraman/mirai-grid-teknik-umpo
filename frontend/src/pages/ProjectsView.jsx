@@ -381,8 +381,8 @@ export default function ProjectsView({ user: propUser }) {
               </span>
               <ExternalLink className="h-3 w-3 text-slate-400 group-hover:text-slate-700 transition-opacity ml-1 shrink-0" />
               {isGitRepo && (
-                <span className="px-1.5 py-0.2 rounded text-[9px] bg-slate-200 text-slate-800 font-sans font-medium ml-1">
-                  Git™ Repo
+                <span className="px-1.5 py-0.5 rounded text-[10px] bg-slate-200/80 text-slate-700 font-sans font-medium ml-1 whitespace-nowrap shrink-0">
+                  Git Repo
                 </span>
               )}
             </button>
