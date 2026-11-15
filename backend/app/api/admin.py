@@ -987,7 +987,7 @@ def _extract_container_owner(name: str, labels: Dict[str, Any], known_usernames:
             for uname in known_usernames:
                 if rest.startswith(f"{uname}_") or rest == uname:
                     return uname
-    for prefix in ("vscode_", "tb_", "n8n_"):
+    for prefix in ("vscode_", "tb_", "n8n_", "redis_"):
         if name.startswith(prefix):
             cand = name[len(prefix):]
             if cand in known_usernames:

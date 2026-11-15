@@ -149,7 +149,8 @@ async def fetch_student_metrics(user: dict, db: aiosqlite.Connection) -> dict:
     vscode_container = f"vscode_{username}"
     n8n_container = f"n8n_{username}"
     tb_container = f"tb_{username}"
-    candidate_containers.extend([n8n_container, vscode_container, tb_container])
+    redis_container = f"redis_{username}"
+    candidate_containers.extend([n8n_container, vscode_container, tb_container, redis_container])
 
     # Query Docker stats asynchronously for strictly tenant-isolated containers
     live_ram_mb = 0.0
@@ -159,8 +160,8 @@ async def fetch_student_metrics(user: dict, db: aiosqlite.Connection) -> dict:
 
     def _is_owned_container(cname: str) -> bool:
         if is_admin:
-            return cname.startswith("app_admin_") or cname in (vscode_container, n8n_container, tb_container)
-        return cname.startswith(f"app_{username}_") or cname in (vscode_container, n8n_container, tb_container)
+            return cname.startswith("app_admin_") or cname in (vscode_container, n8n_container, tb_container, redis_container)
+        return cname.startswith(f"app_{username}_") or cname in (vscode_container, n8n_container, tb_container, redis_container)
 
     # Query all tenant containers (web apps, n8n automation, vscode, thingsboard)
     for c_name in sorted(set(candidate_containers)):

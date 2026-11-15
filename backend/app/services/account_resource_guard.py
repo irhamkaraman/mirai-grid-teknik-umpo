@@ -59,7 +59,7 @@ async def list_user_running_containers(username: str) -> List[Dict[str, Any]]:
     clean = (username or "").strip().lower()
     if not clean or not os.path.exists(DOCKER_UDS):
         return []
-    service_names = {f"n8n_{clean}", f"vscode_{clean}", f"tb_{clean}"}
+    service_names = {f"n8n_{clean}", f"vscode_{clean}", f"tb_{clean}", f"redis_{clean}"}
     app_prefix = f"app_{clean}_"
     matched: List[str] = []
     try:

@@ -1,3 +1,6 @@
+import { initSecurityGuard } from './utils/securityGuard.js'
+initSecurityGuard()
+
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'

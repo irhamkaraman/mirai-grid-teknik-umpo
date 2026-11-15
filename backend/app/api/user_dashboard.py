@@ -72,6 +72,17 @@ def _detect_container_meta(
             "manage_route": "/vscode",
         }
 
+    if low == f"redis_{username.lower()}" or low.startswith(f"redis_{username.lower()}_"):
+        return {
+            "display_name": "Redis Cache & Queue",
+            "type": "redis",
+            "type_label": "Redis Cache",
+            "subdomain": None,
+            "service_url": None,
+            "project_id": None,
+            "manage_route": "/redis",
+        }
+
     if "db" in low or "mariadb" in low or "postgres" in low or "redis" in low:
         return {
             "display_name": f"Database ({cname})",

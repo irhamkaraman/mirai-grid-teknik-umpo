@@ -92,7 +92,7 @@ export default function NavigationV2({
       icon: Wrench,
       isDropdown: true,
       dropdownKey: 'tools',
-      activeCheck: (p) => p.startsWith('/deploy') || p.startsWith('/tools/git') || p.startsWith('/git'),
+      activeCheck: (p) => p.startsWith('/deploy') || p.startsWith('/tools/git') || p.startsWith('/git') || p.startsWith('/redis'),
     },
     {
       id: 'databases',
@@ -107,7 +107,7 @@ export default function NavigationV2({
       icon: Globe,
       isDropdown: true,
       dropdownKey: 'platform',
-      activeCheck: (p) => p.startsWith('/thingsboard') || p.startsWith('/n8n') || p.startsWith('/vscode') || p.startsWith('/terminal') || p.startsWith('/redis'),
+      activeCheck: (p) => p.startsWith('/thingsboard') || p.startsWith('/n8n') || p.startsWith('/vscode') || p.startsWith('/terminal'),
     },
     ...(userRole === 'admin'
       ? [
@@ -327,7 +327,7 @@ export default function NavigationV2({
                     )}
                   </button>
 
-                  {/* Submenu Tools & Deployment (Deploy & Git Version Control) */}
+                  {/* Submenu Tools & Deployment (Deploy, Git Version Control, Redis) */}
                   {!effectiveCollapsed && item.isDropdown && item.dropdownKey === 'tools' && showToolsMenu && (
                     <div className="ml-4 mt-1 pl-3 border-l-2 border-emerald-100 space-y-1">
                       <button
@@ -359,6 +359,21 @@ export default function NavigationV2({
                       >
                         <GitBranch className="h-3.5 w-3.5 shrink-0" />
                         <span>Git Version Control</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMobileOpen(false)
+                          requestGuardedNavigation('/redis', navigate)
+                        }}
+                        className={`w-full flex items-center space-x-2 px-2.5 py-1.5 rounded-xl text-[11px] font-medium transition text-left ${
+                          location.pathname.startsWith('/redis')
+                            ? 'bg-emerald-50 text-emerald-700 font-bold'
+                            : 'text-gray-600 hover:text-emerald-700 hover:bg-emerald-50/50'
+                        }`}
+                      >
+                        <img src="/logos/redis.png" alt="Redis" className="h-3.5 w-3.5 object-contain shrink-0" />
+                        <span>Redis</span>
                       </button>
                     </div>
                   )}
