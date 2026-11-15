@@ -58,6 +58,13 @@ export default function N8nView({ user }) {
             if (cancelled) return
             const st = await getN8nStatus()
             setStatus(st)
+            if (st?.ram_limit_exceeded) {
+              setAutoLaunching(false)
+              toast.error('Kapasitas RAM Akun Tercapai', {
+                description: st.ram_warning || 'Hentikan layanan/project lain terlebih dahulu.'
+              })
+              return
+            }
             if (st?.ready) {
               window.location.replace(buildN8nSsoRedirectUrl())
               return
@@ -173,7 +180,18 @@ export default function N8nView({ user }) {
   const isReady = Boolean(status?.ready)
 
   return (
-    <div className="p-6 space-y-6 max-w-6xl mx-auto">
+    <div className="space-y-6 w-full pb-6">
+      {status?.ram_limit_exceeded && (
+        <div className="bg-rose-50 border border-rose-200/80 rounded-xl p-4 flex items-start justify-between gap-4">
+          <div className="text-xs text-rose-800 space-y-1">
+            <p className="font-bold text-sm text-rose-900">Batas Kapasitas RAM Akun Tercapai</p>
+            <p>{status.ram_warning || 'Total penggunaan RAM kontainer akun Anda menyentuh batas. Sistem menghentikan layanan untuk menjaga stabilitas.'}</p>
+          </div>
+          <span className="px-2.5 py-1 rounded-lg bg-white border border-rose-200/80 text-[11px] font-mono font-semibold text-rose-700 shrink-0">
+            RAM LIMIT
+          </span>
+        </div>
+      )}
       {autoLaunching && (
         <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-xl p-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">

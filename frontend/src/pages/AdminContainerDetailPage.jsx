@@ -235,30 +235,33 @@ export default function AdminContainerDetailPage() {
                         <Button
                           variant="secondary"
                           size="sm"
+                          title="Restart Container"
+                          aria-label="Restart Container"
                           onClick={() => handleControl(c.name, 'restart')}
                           disabled={busyAction !== null}
                         >
-                          <RotateCw className="h-3.5 w-3.5 mr-1" />
-                          <span>{busyAction === `${c.name}:restart` ? 'Restarting...' : 'Restart'}</span>
+                          <RotateCw className={`h-4 w-4 ${busyAction === `${c.name}:restart` ? 'animate-spin' : ''}`} />
                         </Button>
                         {c.state === 'running' && (
                           <Button
                             variant="secondary"
                             size="sm"
+                            title="Stop Container"
+                            aria-label="Stop Container"
                             onClick={() => handleControl(c.name, 'stop')}
                             disabled={busyAction !== null}
                           >
-                            <Square className="h-3.5 w-3.5 mr-1" />
-                            <span>{busyAction === `${c.name}:stop` ? 'Stopping...' : 'Stop'}</span>
+                            <Square className="h-4 w-4" />
                           </Button>
                         )}
                         <Button
                           variant="secondary"
                           size="sm"
+                          title="Inspect Log"
+                          aria-label="Inspect Log"
                           onClick={() => handleInspectLog(c.name)}
                         >
-                          <Terminal className="h-3.5 w-3.5 mr-1" />
-                          <span>Inspect Log</span>
+                          <Terminal className="h-4 w-4" />
                         </Button>
                       </div>
                     </td>

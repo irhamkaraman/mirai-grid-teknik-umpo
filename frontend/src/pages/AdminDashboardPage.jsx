@@ -452,10 +452,11 @@ export default function AdminDashboardPage({ user }) {
                       <Button
                         variant="secondary"
                         size="sm"
+                        title="Lihat Detail Kontainer"
+                        aria-label="Lihat Detail Kontainer"
                         onClick={() => navigate(`/admin/dashboard/containers/${encodeURIComponent(a.username)}`)}
                       >
-                        <Eye className="h-3.5 w-3.5 mr-1.5" />
-                        <span>Lihat Detail Kontainer</span>
+                        <Eye className="h-4 w-4" />
                       </Button>
                     </td>
                   </tr>

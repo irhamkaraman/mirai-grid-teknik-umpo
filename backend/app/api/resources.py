@@ -12,6 +12,7 @@ from app.core.database import get_db
 from app.core.security import decode_access_token
 from app.api.deps import get_current_user_flexible
 from app.services.disk_usage import calculate_account_disk_usage
+from app.services.account_resource_guard import enforce_account_ram_limit
 
 router = APIRouter(tags=["Resources"])
 
@@ -173,6 +174,19 @@ async def fetch_student_metrics(user: dict, db: aiosqlite.Connection) -> dict:
             live_pids += stats["pids"]
 
     live_ram_mb = round(live_ram_mb, 1)
+    ram_guard = await enforce_account_ram_limit(
+        user_id,
+        username,
+        user.get("role", "student"),
+        db=db,
+    )
+    if ram_guard.get("exceeded"):
+        # Re-read remaining running containers after auto-stop
+        live_ram_mb = round(sum(
+            (await query_docker_container_stats(c) or {}).get("ram_used_mb", 0.0)
+            for c in containers_inspected
+            if c not in ram_guard.get("stopped_containers", [])
+        ), 1)
     ram_percent = min(100.0, round((live_ram_mb / max_mem_mb) * 100, 1)) if max_mem_mb > 0 else 0.0
     process_percent = min(100.0, round((live_pids / max_processes) * 100, 1)) if max_processes > 0 else 0.0
 
@@ -200,7 +214,9 @@ async def fetch_student_metrics(user: dict, db: aiosqlite.Connection) -> dict:
         "nim": username,
         "name": user.get("name") or username,
         "role": user.get("role", "student"),
-        "sandbox_status": "active",
+        "sandbox_status": "warning" if ram_guard.get("exceeded") else "active",
+        "ram_limit_exceeded": bool(ram_guard.get("exceeded")),
+        "ram_warning": ram_guard.get("warning"),
         "sandbox_badge": "Terisolasi cgroup v2 Linux - OOM Protected",
         "telemetry_source": "docker_cgroup_v2",
         "containers_inspected": containers_inspected,

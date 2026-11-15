@@ -1,6 +1,6 @@
 import re
 from typing import Optional
-from fastapi import APIRouter, Depends, Header, Query, Request, Response
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response
 from fastapi.responses import RedirectResponse
 import aiosqlite
 
@@ -8,6 +8,7 @@ from app.core.database import get_db
 from app.core.subdomain_auth import verify_subdomain_access
 from app.api.deps import get_current_user, get_current_user_flexible
 from app.services.n8n_manager import N8nManager
+from app.services.account_resource_guard import enforce_account_ram_limit
 
 router = APIRouter(prefix="/n8n", tags=["n8n Workflow Automation"])
 
@@ -26,17 +27,42 @@ def _attach_n8n_cookie(response: Response, cookie_val: Optional[str]) -> None:
         )
 
 
+async def _check_ram_guard(current_user: dict, db: aiosqlite.Connection) -> dict:
+    return await enforce_account_ram_limit(
+        current_user["id"],
+        current_user["username"],
+        current_user.get("role", "student"),
+        db=db,
+        preferred_stop_name=N8nManager.container_name(current_user["username"]),
+    )
+
+
 @router.get("/status")
-async def get_status(current_user: dict = Depends(get_current_user)):
-    return await N8nManager.get_status(
+async def get_status(
+    current_user: dict = Depends(get_current_user),
+    db: aiosqlite.Connection = Depends(get_db),
+):
+    guard = await _check_ram_guard(current_user, db)
+    status_info = await N8nManager.get_status(
         current_user["id"],
         current_user["username"],
         current_user.get("role", "student"),
     )
+    status_info["ram_limit_exceeded"] = not guard["allowed"]
+    status_info["ram_warning"] = guard["warning"]
+    status_info["account_ram_used_mb"] = guard["total_ram_mb"]
+    status_info["account_ram_limit_mb"] = guard["ram_limit_mb"]
+    return status_info
 
 
 @router.post("/start")
-async def start_n8n(current_user: dict = Depends(get_current_user)):
+async def start_n8n(
+    current_user: dict = Depends(get_current_user),
+    db: aiosqlite.Connection = Depends(get_db),
+):
+    guard = await _check_ram_guard(current_user, db)
+    if not guard["allowed"]:
+        raise HTTPException(status_code=429, detail=guard["warning"])
     return await N8nManager.start(
         current_user["id"],
         current_user["username"],
@@ -46,7 +72,13 @@ async def start_n8n(current_user: dict = Depends(get_current_user)):
 
 
 @router.post("/start-async")
-async def start_n8n_async(current_user: dict = Depends(get_current_user)):
+async def start_n8n_async(
+    current_user: dict = Depends(get_current_user),
+    db: aiosqlite.Connection = Depends(get_db),
+):
+    guard = await _check_ram_guard(current_user, db)
+    if not guard["allowed"]:
+        raise HTTPException(status_code=429, detail=guard["warning"])
     return await N8nManager.ensure_starting(
         current_user["id"],
         current_user["username"],
@@ -62,7 +94,13 @@ async def stop_n8n(current_user: dict = Depends(get_current_user)):
 
 
 @router.post("/restart")
-async def restart_n8n(current_user: dict = Depends(get_current_user)):
+async def restart_n8n(
+    current_user: dict = Depends(get_current_user),
+    db: aiosqlite.Connection = Depends(get_db),
+):
+    guard = await _check_ram_guard(current_user, db)
+    if not guard["allowed"]:
+        raise HTTPException(status_code=429, detail=guard["warning"])
     return await N8nManager.restart(
         current_user["id"],
         current_user["username"],
@@ -72,7 +110,14 @@ async def restart_n8n(current_user: dict = Depends(get_current_user)):
 
 
 @router.get("/sso")
-async def get_sso(response: Response, current_user: dict = Depends(get_current_user)):
+async def get_sso(
+    response: Response,
+    current_user: dict = Depends(get_current_user),
+    db: aiosqlite.Connection = Depends(get_db),
+):
+    guard = await _check_ram_guard(current_user, db)
+    if not guard["allowed"]:
+        raise HTTPException(status_code=429, detail=guard["warning"])
     data = await N8nManager.get_sso_session(
         current_user["id"],
         current_user["username"],
@@ -89,7 +134,11 @@ async def sso_redirect(
     request: Request,
     token: Optional[str] = Query(None),
     current_user: dict = Depends(get_current_user_flexible),
+    db: aiosqlite.Connection = Depends(get_db),
 ):
+    guard = await _check_ram_guard(current_user, db)
+    if not guard["allowed"]:
+        return RedirectResponse(url="https://miraigrid.web.id/n8n?ram_limit=1", status_code=302)
     data = await N8nManager.get_sso_session(
         current_user["id"],
         current_user["username"],
@@ -97,6 +146,8 @@ async def sso_redirect(
         current_user.get("role", "student"),
     )
     cookie_val = data.pop("n8n_auth_cookie", None)
+    if not cookie_val:
+        return RedirectResponse(url="https://miraigrid.web.id/n8n?autolaunch=1", status_code=302)
     redirect_resp = RedirectResponse(url=data["sso_url"], status_code=302)
     redirect_resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     _attach_n8n_cookie(redirect_resp, cookie_val)
@@ -183,6 +234,18 @@ async def resolve_n8n_subdomain(
         )
         if not is_authorized:
             resp = Response(status_code=status_code, content=err_msg)
+            resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            return resp
+
+        guard = await enforce_account_ram_limit(
+            user_id,
+            username,
+            user_role,
+            db=db,
+            preferred_stop_name=N8nManager.container_name(username),
+        )
+        if not guard["allowed"]:
+            resp = Response(status_code=403, content=guard["warning"])
             resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
             return resp
 

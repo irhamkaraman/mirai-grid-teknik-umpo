@@ -13,10 +13,10 @@ DATA_BASE_DIR = "/app/data/home"
 HOST_DATA_BASE_DIR = "/var/lib/docker/volumes/miraigrid_miraigrid_data/_data/home"
 N8N_IMAGE = "n8nio/n8n:1.76.1"
 BASE_PORT = 15000
-STUDENT_MEMORY_BYTES = 200 * 1024 * 1024  # 200 MB cgroup v2 limit for students
-STUDENT_NANO_CPUS = 300_000_000  # 0.3 Cores for students
-STAFF_MEMORY_BYTES = 350 * 1024 * 1024  # 350 MB cgroup v2 limit for dosen/admin
-STAFF_NANO_CPUS = 500_000_000  # 0.5 Cores for dosen/admin
+STUDENT_MEMORY_BYTES = 384 * 1024 * 1024  # 384 MB cgroup v2 limit for students (pool 512 MB)
+STUDENT_NANO_CPUS = 500_000_000  # 0.5 Cores for students
+STAFF_MEMORY_BYTES = 512 * 1024 * 1024  # 512 MB cgroup v2 limit for dosen/admin (pool 1024 MB+)
+STAFF_NANO_CPUS = 800_000_000  # 0.8 Cores for dosen/admin
 
 # In-memory cache of n8n-auth session cookies per username: {username: {"cookie": str, "expires_at": float}}
 _N8N_AUTH_CACHE: Dict[str, Dict[str, Any]] = {}
@@ -38,8 +38,8 @@ class N8nManager:
     def _role_limits(role: str = "student") -> tuple[int, int, int, float]:
         r = (role or "student").strip().lower()
         if r in ("dosen", "lecturer", "admin", "staff"):
-            return STAFF_MEMORY_BYTES, STAFF_NANO_CPUS, 350, 0.5
-        return STUDENT_MEMORY_BYTES, STUDENT_NANO_CPUS, 200, 0.3
+            return STAFF_MEMORY_BYTES, STAFF_NANO_CPUS, 512, 0.8
+        return STUDENT_MEMORY_BYTES, STUDENT_NANO_CPUS, 384, 0.5
 
     @classmethod
     def container_name(cls, username: str) -> str:
@@ -88,16 +88,22 @@ class N8nManager:
         return f"{HOST_DATA_BASE_DIR}/{clean}/.n8n"
 
     @staticmethod
-    async def _find_n8n_host(port: int) -> Optional[str]:
+    async def _find_n8n_settings(port: int) -> tuple[Optional[str], Optional[Dict[str, Any]]]:
         for target_host in ["10.10.10.10", "127.0.0.1", "172.17.0.1"]:
             try:
-                async with httpx.AsyncClient(timeout=2.0) as client:
+                async with httpx.AsyncClient(timeout=2.5) as client:
                     res = await client.get(f"http://{target_host}:{port}/rest/settings")
                     if res.status_code == 200:
-                        return target_host
+                        um = ((res.json() or {}).get("data") or {}).get("userManagement") or {}
+                        return target_host, um
             except Exception:
                 continue
-        return None
+        return None, None
+
+    @classmethod
+    async def _find_n8n_host(cls, port: int) -> Optional[str]:
+        host, _ = await cls._find_n8n_settings(port)
+        return host
 
     @classmethod
     async def inspect_container(cls, username: str) -> Optional[Dict[str, Any]]:
@@ -119,7 +125,9 @@ class N8nManager:
         info = await cls.inspect_container(clean)
         exists = info is not None
         running = bool(info and info.get("State", {}).get("Running", False))
-        ready = bool(running and (await cls._find_n8n_host(port)) is not None)
+        host, um = (await cls._find_n8n_settings(port)) if running else (None, None)
+        setup_pending = bool(um and um.get("showSetupOnFirstLoad"))
+        ready = bool(running and host is not None and not setup_pending)
         _, _, default_ram_mb, default_cpu = cls._role_limits(role)
         hc = (info or {}).get("HostConfig") or {}
         mem_bytes = hc.get("Memory") or 0
@@ -145,10 +153,24 @@ class N8nManager:
         cname = cls.container_name(clean)
         host_n8n_dir = cls._ensure_data_dir(clean)
         mem_bytes, nano_cpus, _, _ = cls._role_limits(role)
-        node_heap_mb = 256 if mem_bytes >= STAFF_MEMORY_BYTES else 140
+        node_heap_mb = 384 if mem_bytes >= STAFF_MEMORY_BYTES else 256
 
         info = await cls.inspect_container(clean)
         async with cls._get_docker_client() as client:
+            if info is not None:
+                hc_now = info.get("HostConfig") or {}
+                if (hc_now.get("Memory") or 0) != mem_bytes or (hc_now.get("NanoCpus") or 0) != nano_cpus:
+                    try:
+                        await client.post(
+                            f"http://docker/containers/{cname}/update",
+                            json={
+                                "Memory": mem_bytes,
+                                "MemorySwap": mem_bytes * 2,
+                                "NanoCpus": nano_cpus,
+                            },
+                        )
+                    except Exception:
+                        pass
             if info is None:
                 payload = {
                     "Image": N8N_IMAGE,
@@ -264,15 +286,34 @@ class N8nManager:
         except Exception:
             return False
 
+    @staticmethod
+    def _extract_n8n_auth_cookie(res: httpx.Response) -> Optional[str]:
+        val = res.cookies.get("n8n-auth")
+        if val:
+            return val
+        for raw_cookie in res.headers.get_list("set-cookie"):
+            for part in raw_cookie.split(";"):
+                part = part.strip()
+                if part.startswith("n8n-auth="):
+                    return part.split("=", 1)[1].strip()
+        return None
+
     @classmethod
     async def get_sso_session(cls, user_id: int, username: str, full_name: str = "", role: str = "student") -> Dict[str, Any]:
         clean = cls._clean_user(username)
         status_info = await cls.get_status(user_id, clean, role)
-        if not status_info["running"] or not status_info["ready"]:
+        if not status_info["running"]:
             status_info = await cls.start(user_id, clean, full_name, role)
 
         port = cls.container_port(user_id)
         host = await cls._find_n8n_host(port)
+        if not host:
+            # Wait briefly if container just started
+            for _ in range(30):
+                host = await cls._find_n8n_host(port)
+                if host:
+                    break
+                await asyncio.sleep(1.0)
         if not host:
             return {
                 **status_info,
@@ -283,18 +324,20 @@ class N8nManager:
 
         cached = _N8N_AUTH_CACHE.get(clean)
         if cached and cached.get("expires_at", 0) > time.time() and cached.get("cookie"):
-            return {
-                **status_info,
-                "ready": True,
-                "n8n_auth_cookie": cached["cookie"],
-                "sso_url": cls.public_url(clean),
-            }
+            status_info = await cls.get_status(user_id, clean, role)
+            if status_info.get("ready"):
+                return {
+                    **status_info,
+                    "ready": True,
+                    "n8n_auth_cookie": cached["cookie"],
+                    "sso_url": cls.public_url(clean),
+                }
 
         creds = cls._owner_credentials(user_id, clean, full_name)
         base_url = f"http://{host}:{port}"
         auth_cookie: Optional[str] = None
 
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=25.0) as client:
             # 1. Check if first-load owner setup is required
             try:
                 settings_res = await client.get(f"{base_url}/rest/settings")
@@ -311,7 +354,7 @@ class N8nManager:
                             },
                         )
                         if setup_res.status_code == 200:
-                            auth_cookie = setup_res.cookies.get("n8n-auth")
+                            auth_cookie = cls._extract_n8n_auth_cookie(setup_res)
             except Exception:
                 pass
 
@@ -334,7 +377,7 @@ class N8nManager:
                             },
                         )
                     if login_res.status_code == 200:
-                        auth_cookie = login_res.cookies.get("n8n-auth")
+                        auth_cookie = cls._extract_n8n_auth_cookie(login_res)
                 except Exception:
                     pass
 
