@@ -76,10 +76,16 @@ export default function CreateProjectPage({ onBack, onCreated, user: propUser })
           })
         })
         .catch((err) => {
+          const d = err.response?.data?.detail
+          const msg = typeof d === 'string'
+            ? d
+            : Array.isArray(d)
+              ? d.map((x) => (typeof x === 'string' ? x : x?.msg || JSON.stringify(x))).join('; ')
+              : (d && typeof d === 'object' ? (d.msg || JSON.stringify(d)) : 'Gagal memeriksa ketersediaan subdomain.')
           setSubdomainStatus({
             checking: false,
             available: false,
-            reason: err.response?.data?.detail || 'Gagal memeriksa ketersediaan subdomain.',
+            reason: msg,
             fqdn: ''
           })
         })

@@ -651,6 +651,27 @@ async def list_my_projects(
         })
     return results
 
+
+@router.get("/check-subdomain")
+async def check_subdomain_availability(
+    subdomain: str = Query(..., min_length=1, max_length=64),
+    exclude_project_id: Optional[int] = Query(None),
+    current_user: dict = Depends(get_current_user),
+    db: aiosqlite.Connection = Depends(get_db),
+):
+    """Validate format, reserved blacklist, and uniqueness for a custom subdomain."""
+    label = normalize_subdomain_label(subdomain)
+    available, err = await is_subdomain_available(
+        db, label, exclude_project_id=exclude_project_id
+    )
+    return {
+        "available": available,
+        "subdomain": label,
+        "fqdn": build_fqdn(label) if label else None,
+        "reason": err,
+    }
+
+
 @router.get("/{project_id}", response_model=ProjectResponse)
 async def get_project_by_id(
     project_id: int,
@@ -729,25 +750,6 @@ async def get_project_by_id(
         "is_published": is_published,
         "deployment_id": deployment_id,
         "deployment_status": deployment_status
-    }
-
-@router.get("/check-subdomain")
-async def check_subdomain_availability(
-    subdomain: str = Query(..., min_length=1, max_length=64),
-    exclude_project_id: Optional[int] = Query(None),
-    current_user: dict = Depends(get_current_user),
-    db: aiosqlite.Connection = Depends(get_db),
-):
-    """Validate format, reserved blacklist, and uniqueness for a custom subdomain."""
-    label = normalize_subdomain_label(subdomain)
-    available, err = await is_subdomain_available(
-        db, label, exclude_project_id=exclude_project_id
-    )
-    return {
-        "available": available,
-        "subdomain": label,
-        "fqdn": build_fqdn(label) if label else None,
-        "reason": err,
     }
 
 

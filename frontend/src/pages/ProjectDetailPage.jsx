@@ -57,6 +57,18 @@ export default function ProjectDetailPage({ project: propProject, onBack, onUpda
     }
   }
 
+  const formatApiError = (err, fallback) => {
+    const detail = err?.response?.data?.detail
+    if (typeof detail === 'string') return detail
+    if (Array.isArray(detail)) {
+      return detail.map((d) => (typeof d === 'string' ? d : d?.msg || JSON.stringify(d))).join('; ')
+    }
+    if (detail && typeof detail === 'object') {
+      return detail.msg || JSON.stringify(detail)
+    }
+    return err?.message || fallback
+  }
+
   useEffect(() => {
     if (!editingSubdomain) return
     const clean = newSubdomain.trim().toLowerCase()
@@ -73,7 +85,7 @@ export default function ProjectDetailPage({ project: propProject, onBack, onUpda
           setSubdomainCheck({
             checking: false,
             available: Boolean(res.data?.available),
-            reason: res.data?.reason || '',
+            reason: typeof res.data?.reason === 'string' ? res.data.reason : '',
             fqdn: res.data?.fqdn || `${clean}.miraigrid.web.id`
           })
         })
@@ -81,7 +93,7 @@ export default function ProjectDetailPage({ project: propProject, onBack, onUpda
           setSubdomainCheck({
             checking: false,
             available: false,
-            reason: err.response?.data?.detail || 'Gagal memeriksa subdomain.',
+            reason: formatApiError(err, 'Gagal memeriksa subdomain.'),
             fqdn: ''
           })
         })
@@ -90,7 +102,9 @@ export default function ProjectDetailPage({ project: propProject, onBack, onUpda
   }, [newSubdomain, editingSubdomain, project?.id])
 
   const handleOpenEditSubdomain = () => {
-    const currentLabel = (project?.subdomain || '')
+    const rawHost = project?.public_url || project?.subdomain || ''
+    const currentLabel = rawHost
+      .replace(/^https?:\/\//i, '')
       .replace(/\.miraigrid\.web\.id$/i, '')
       .trim()
       .toLowerCase()
@@ -119,7 +133,7 @@ export default function ProjectDetailPage({ project: propProject, onBack, onUpda
       onUpdated?.(updated)
       toast.success(res.data?.message || 'Subdomain berhasil diperbarui!', { id: toastId })
     } catch (err) {
-      toast.error(err.response?.data?.detail || 'Gagal memperbarui subdomain.', { id: toastId })
+      toast.error(formatApiError(err, 'Gagal memperbarui subdomain.'), { id: toastId })
     } finally {
       setSavingSubdomain(false)
     }
