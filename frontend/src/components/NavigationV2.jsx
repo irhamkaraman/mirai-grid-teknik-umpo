@@ -183,36 +183,11 @@ export default function NavigationV2({
       return
     }
     if (type === 'n8n') {
-      requestGuardedNavigation('/n8n', async () => {
-        const popup = window.open('', '_blank')
-        if (popup) {
-          try {
-            popup.opener = null
-            popup.document.write('<!DOCTYPE html><html><body style="font-family:system-ui,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#F8FAFC;color:#334155;"><div style="text-align:center"><p style="font-size:14px;font-weight:600">Menyiapkan Engine Otomasi n8n...</p><p style="font-size:12px;color:#64748B">Auto-login sedang diproses.</p></div></body></html>')
-          } catch (e) {}
+      requestGuardedNavigation('/n8n', () => {
+        const win = window.open('/n8n?autolaunch=1', '_blank', 'noopener,noreferrer')
+        if (!win) {
+          navigate('/n8n?autolaunch=1')
         }
-        try {
-          const localMgToken = localStorage.getItem('miraigrid_token') || localStorage.getItem('token') || ''
-          if (localMgToken) {
-            try {
-              document.cookie = `miraigrid_token=${localMgToken}; path=/; domain=.miraigrid.web.id; max-age=604800; SameSite=Lax; Secure`
-            } catch (e) {}
-          }
-          const { getN8nSSO } = await import('../api/n8n')
-          const ssoData = await getN8nSSO()
-          if (ssoData && ssoData.ready && ssoData.sso_url) {
-            if (popup && !popup.closed) {
-              popup.location.href = ssoData.sso_url
-            } else {
-              window.location.href = ssoData.sso_url
-            }
-            return
-          }
-        } catch (e) {
-          console.error('[n8n SSO] Fast launch fallback to /n8n:', e)
-        }
-        if (popup && !popup.closed) popup.close()
-        navigate('/n8n')
       })
       return
     }

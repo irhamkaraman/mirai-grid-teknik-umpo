@@ -146,6 +146,9 @@ async def fetch_student_metrics(user: dict, db: aiosqlite.Connection) -> dict:
 
     # Student dedicated service containers
     vscode_container = f"vscode_{username}"
+    n8n_container = f"n8n_{username}"
+    tb_container = f"tb_{username}"
+    candidate_containers.extend([n8n_container, vscode_container, tb_container])
 
     # Query Docker stats asynchronously for strictly tenant-isolated containers
     live_ram_mb = 0.0
@@ -155,10 +158,10 @@ async def fetch_student_metrics(user: dict, db: aiosqlite.Connection) -> dict:
 
     def _is_owned_container(cname: str) -> bool:
         if is_admin:
-            return True
-        return cname.startswith(f"app_{username}_") or cname == vscode_container
+            return cname.startswith("app_admin_") or cname in (vscode_container, n8n_container, tb_container)
+        return cname.startswith(f"app_{username}_") or cname in (vscode_container, n8n_container, tb_container)
 
-    # Query web workspace containers first
+    # Query all tenant containers (web apps, n8n automation, vscode, thingsboard)
     for c_name in sorted(set(candidate_containers)):
         if not _is_owned_container(c_name):
             continue
@@ -168,15 +171,6 @@ async def fetch_student_metrics(user: dict, db: aiosqlite.Connection) -> dict:
             containers_inspected.append(c_name)
             live_ram_mb += stats["ram_used_mb"]
             live_pids += stats["pids"]
-
-    # If no web workspace container active, check student's VS Code container
-    if containers_found == 0:
-        vs_stats = await query_docker_container_stats(vscode_container)
-        if vs_stats is not None:
-            containers_found += 1
-            containers_inspected.append(vscode_container)
-            live_ram_mb += vs_stats["ram_used_mb"]
-            live_pids += vs_stats["pids"]
 
     live_ram_mb = round(live_ram_mb, 1)
     ram_percent = min(100.0, round((live_ram_mb / max_mem_mb) * 100, 1)) if max_mem_mb > 0 else 0.0

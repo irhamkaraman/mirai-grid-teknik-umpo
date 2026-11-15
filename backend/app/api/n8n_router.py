@@ -1,11 +1,12 @@
 import re
 from typing import Optional
-from fastapi import APIRouter, Depends, Header, Request, Response
+from fastapi import APIRouter, Depends, Header, Query, Request, Response
+from fastapi.responses import RedirectResponse
 import aiosqlite
 
 from app.core.database import get_db
 from app.core.subdomain_auth import verify_subdomain_access
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, get_current_user_flexible
 from app.services.n8n_manager import N8nManager
 
 router = APIRouter(prefix="/n8n", tags=["n8n Workflow Automation"])
@@ -44,6 +45,16 @@ async def start_n8n(current_user: dict = Depends(get_current_user)):
     )
 
 
+@router.post("/start-async")
+async def start_n8n_async(current_user: dict = Depends(get_current_user)):
+    return await N8nManager.ensure_starting(
+        current_user["id"],
+        current_user["username"],
+        current_user.get("name", ""),
+        current_user.get("role", "student"),
+    )
+
+
 @router.post("/stop")
 async def stop_n8n(current_user: dict = Depends(get_current_user)):
     success = await N8nManager.stop(current_user["id"], current_user["username"])
@@ -71,6 +82,37 @@ async def get_sso(response: Response, current_user: dict = Depends(get_current_u
     cookie_val = data.pop("n8n_auth_cookie", None)
     _attach_n8n_cookie(response, cookie_val)
     return data
+
+
+@router.get("/sso-redirect")
+async def sso_redirect(
+    request: Request,
+    token: Optional[str] = Query(None),
+    current_user: dict = Depends(get_current_user_flexible),
+):
+    data = await N8nManager.get_sso_session(
+        current_user["id"],
+        current_user["username"],
+        current_user.get("name", ""),
+        current_user.get("role", "student"),
+    )
+    cookie_val = data.pop("n8n_auth_cookie", None)
+    redirect_resp = RedirectResponse(url=data["sso_url"], status_code=302)
+    redirect_resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    _attach_n8n_cookie(redirect_resp, cookie_val)
+    raw_token = token or request.cookies.get("miraigrid_token")
+    if raw_token:
+        redirect_resp.set_cookie(
+            key="miraigrid_token",
+            value=raw_token,
+            domain=".miraigrid.web.id",
+            path="/",
+            max_age=7 * 24 * 3600,
+            httponly=True,
+            secure=True,
+            samesite="lax",
+        )
+    return redirect_resp
 
 
 @router.get("/resolve")
@@ -131,6 +173,7 @@ async def resolve_n8n_subdomain(
         or bool(re.search(r"\.(js|css|png|jpg|jpeg|gif|ico|svg|woff2?|ttf|eot|otf|json|webp|wasm|map)(\?.*)?$", x_orig_uri, re.IGNORECASE))
     )
 
+    n8n_set_cookie_hdr = ""
     if not is_webhook and not is_asset:
         is_authorized, status_code, err_msg, _ = await verify_subdomain_access(
             request=request,
@@ -143,12 +186,23 @@ async def resolve_n8n_subdomain(
             resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
             return resp
 
-        # Auto-boot & ensure n8n-auth cookie if browser doesn't have one yet
-        status_info = await N8nManager.get_status(user_id, username, user_role)
-        if not status_info.get("running"):
-            await N8nManager.start(user_id, username, full_name, user_role)
+        # Auto-boot & inject n8n-auth cookie if browser doesn't have one yet (fixes direct access / refresh on /signin)
+        if not request.cookies.get("n8n-auth"):
+            sso_data = await N8nManager.get_sso_session(user_id, username, full_name, user_role)
+            cookie_val = sso_data.get("n8n_auth_cookie")
+            if cookie_val:
+                n8n_set_cookie_hdr = (
+                    f"n8n-auth={cookie_val}; Domain=.miraigrid.web.id; Path=/; "
+                    f"Max-Age=21600; HttpOnly; Secure; SameSite=Lax"
+                )
+        else:
+            status_info = await N8nManager.get_status(user_id, username, user_role)
+            if not status_info.get("running"):
+                await N8nManager.start(user_id, username, full_name, user_role)
 
     resp = Response(status_code=200)
     resp.headers["X-Target-Port"] = str(target_port)
     resp.headers["X-Target-User"] = username
+    if n8n_set_cookie_hdr:
+        resp.headers["X-N8n-Set-Cookie"] = n8n_set_cookie_hdr
     return resp

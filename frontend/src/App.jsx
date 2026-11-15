@@ -40,7 +40,19 @@ import { api } from './api/client'
 export default function App() {
   const navigate = useNavigate()
   const location = useLocation()
-  const [user, setUser] = useState(null)
+  const [user, setUser] = useState(() => {
+    const savedUser = localStorage.getItem('miraigrid_user')
+    const token = localStorage.getItem('miraigrid_token')
+    if (savedUser && token) {
+      try {
+        return JSON.parse(savedUser)
+      } catch (e) {
+        localStorage.removeItem('miraigrid_user')
+        localStorage.removeItem('miraigrid_token')
+      }
+    }
+    return null
+  })
   const [searchQuery, setSearchQuery] = useState('')
   const [showPasswordModal, setShowPasswordModal] = useState(false)
   const [isMandatoryPasswordChange, setIsMandatoryPasswordChange] = useState(false)

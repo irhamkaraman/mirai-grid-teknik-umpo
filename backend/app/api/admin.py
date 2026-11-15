@@ -1085,6 +1085,9 @@ async def get_containers_tracking(
     users_map: Dict[str, Dict[str, Any]] = {r["username"]: dict(r) for r in user_rows}
     known_usernames = set(users_map.keys())
 
+    db_cur = await db.execute("SELECT user_id, COUNT(*) as cnt FROM student_databases GROUP BY user_id")
+    db_counts_map: Dict[int, int] = {r["user_id"]: r["cnt"] for r in await db_cur.fetchall()}
+
     containers = portainer.list_containers_socket(all_containers=True)
     if containers is None:
         containers = await portainer.list_containers(all_containers=True)
@@ -1352,6 +1355,9 @@ async def _build_fleet_summary(db: aiosqlite.Connection) -> List[Dict[str, Any]]
     users_map: Dict[str, Dict[str, Any]] = {r["username"]: dict(r) for r in user_rows}
     known_usernames = set(users_map.keys())
 
+    db_cur = await db.execute("SELECT user_id, COUNT(*) as cnt FROM student_databases GROUP BY user_id")
+    db_counts_map: Dict[int, int] = {r["user_id"]: r["cnt"] for r in await db_cur.fetchall()}
+
     containers = portainer.list_containers_socket(all_containers=True)
     if containers is None:
         containers = await portainer.list_containers(all_containers=True)
@@ -1458,9 +1464,12 @@ async def _build_fleet_summary(db: aiosqlite.Connection) -> List[Dict[str, Any]]
         ram_limit_mb = float(u_info.get("max_memory_mb") or (1024 if raw_role in ("dosen", "admin") else 512))
         ram_pct = round((total_ram_used_mb / ram_limit_mb) * 100.0, 1) if ram_limit_mb > 0 else 0.0
 
-        disk_used_mb = await asyncio.to_thread(_get_du_sm_mb, key)
+        db_count = db_counts_map.get(u_info["id"], 0)
+        disk_used_mb, _ = await asyncio.to_thread(calculate_account_disk_usage, key, db_count)
         is_uncapped_disk = (raw_role == "admin")
         disk_limit_mb = host_disk_mb if is_uncapped_disk else float(u_info.get("max_disk_mb") or (20480 if raw_role == "dosen" else 10240))
+        if not is_uncapped_disk:
+            disk_used_mb = min(disk_limit_mb, disk_used_mb)
         disk_pct = round((disk_used_mb / disk_limit_mb) * 100.0, 1) if disk_limit_mb > 0 else 0.0
 
         is_high_ram = ram_pct >= 85.0

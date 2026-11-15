@@ -20,6 +20,7 @@ STAFF_NANO_CPUS = 500_000_000  # 0.5 Cores for dosen/admin
 
 # In-memory cache of n8n-auth session cookies per username: {username: {"cookie": str, "expires_at": float}}
 _N8N_AUTH_CACHE: Dict[str, Dict[str, Any]] = {}
+_STARTING_TASKS: Dict[str, asyncio.Task] = {}
 
 
 class N8nManager:
@@ -202,6 +203,25 @@ class N8nManager:
             await asyncio.sleep(1.0)
 
         return await cls.get_status(user_id, clean, role)
+
+    @classmethod
+    async def ensure_starting(cls, user_id: int, username: str, full_name: str = "", role: str = "student") -> Dict[str, Any]:
+        """Trigger non-blocking container boot + SSO pre-warm if not already ready."""
+        clean = cls._clean_user(username)
+        status_info = await cls.get_status(user_id, clean, role)
+        if status_info.get("ready"):
+            return status_info
+
+        existing = _STARTING_TASKS.get(clean)
+        if existing is None or existing.done():
+            async def _boot():
+                try:
+                    await cls.get_sso_session(user_id, clean, full_name, role)
+                except Exception:
+                    pass
+
+            _STARTING_TASKS[clean] = asyncio.create_task(_boot())
+        return status_info
 
     @classmethod
     async def stop(cls, user_id: int, username: str) -> bool:

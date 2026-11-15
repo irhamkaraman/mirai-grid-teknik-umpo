@@ -15,7 +15,7 @@ import {
   Maximize2
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { getN8nStatus, startN8n, stopN8n, restartN8n, getN8nSSO } from '../api/n8n'
+import { getN8nStatus, startN8n, startN8nAsync, stopN8n, restartN8n, getN8nSSO, buildN8nSsoRedirectUrl } from '../api/n8n'
 import { syncPageRoute } from '../utils/securityRoute'
 
 export default function N8nView({ user }) {
@@ -26,13 +26,62 @@ export default function N8nView({ user }) {
   const [copied, setCopied] = useState(false)
   const [showEmbedded, setShowEmbedded] = useState(false)
   const [iframeKey, setIframeKey] = useState(Date.now())
+  const [autoLaunching, setAutoLaunching] = useState(() => {
+    try {
+      return new URLSearchParams(window.location.search).get('autolaunch') === '1'
+    } catch {
+      return false
+    }
+  })
 
   const username = (user?.username || 'admin').toLowerCase()
   const publicUrl = status?.public_url || `https://n8n-${username}.miraigrid.web.id`
 
   useEffect(() => {
     syncPageRoute('/n8n', {})
-    fetchStatus()
+    if (autoLaunching) {
+      let cancelled = false
+      const runAutoLaunch = async () => {
+        try {
+          syncDomainTokenCookie()
+          const initial = await startN8nAsync()
+          if (cancelled) return
+          setStatus(initial)
+          setLoading(false)
+          if (initial?.ready) {
+            window.location.replace(buildN8nSsoRedirectUrl())
+            return
+          }
+          // Poll every 2s until cold boot finishes (up to 90s)
+          for (let i = 0; i < 45; i++) {
+            await new Promise((r) => setTimeout(r, 2000))
+            if (cancelled) return
+            const st = await getN8nStatus()
+            setStatus(st)
+            if (st?.ready) {
+              window.location.replace(buildN8nSsoRedirectUrl())
+              return
+            }
+          }
+          setAutoLaunching(false)
+          toast.error('Waktu tunggu engine n8n habis. Silakan coba klik Start / Buka Studio lagi.')
+        } catch (err) {
+          if (!cancelled) {
+            setAutoLaunching(false)
+            setLoading(false)
+            toast.error('Gagal menyiapkan engine n8n', {
+              description: err.response?.data?.detail || err.message
+            })
+          }
+        }
+      }
+      runAutoLaunch()
+      return () => {
+        cancelled = true
+      }
+    } else {
+      fetchStatus()
+    }
   }, [])
 
   const fetchStatus = async () => {
@@ -62,15 +111,19 @@ export default function N8nView({ user }) {
     setLaunching(true)
     try {
       syncDomainTokenCookie()
+      if (!embed) {
+        if (status?.ready) {
+          window.open(buildN8nSsoRedirectUrl(), '_blank', 'noopener,noreferrer')
+          return
+        }
+        window.open('/n8n?autolaunch=1', '_blank', 'noopener,noreferrer')
+        return
+      }
       const sso = await getN8nSSO()
       setStatus(sso)
       const targetUrl = sso?.sso_url || publicUrl
-      if (embed) {
-        setIframeKey(Date.now())
-        setShowEmbedded(true)
-      } else {
-        window.open(targetUrl, '_blank', 'noopener,noreferrer')
-      }
+      setIframeKey(Date.now())
+      setShowEmbedded(true)
       toast.success('Sesi Auto-Login n8n aktif', {
         description: `Terhubung ke ${targetUrl}`
       })
@@ -121,6 +174,27 @@ export default function N8nView({ user }) {
 
   return (
     <div className="p-6 space-y-6 max-w-6xl mx-auto">
+      {autoLaunching && (
+        <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-xl p-4 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <RefreshCw className="h-4 w-4 text-emerald-600 animate-spin shrink-0" />
+            <div>
+              <p className="text-sm font-semibold text-slate-900">
+                Menyiapkan Engine Otomasi n8n &amp; Auto-Login SSO...
+              </p>
+              <p className="text-xs text-slate-600 mt-0.5">
+                {isRunning
+                  ? 'Container aktif, menunggu layanan REST API & SQLite siap lalu mengarahkan otomatis.'
+                  : 'Membuat dan menyalakan container terisolasi Anda. Inisialisasi pertama memerlukan ~30–45 detik.'}
+              </p>
+            </div>
+          </div>
+          <span className="px-2.5 py-1 rounded-lg bg-white border border-emerald-200/80 text-[11px] font-mono font-semibold text-emerald-700 shrink-0">
+            {isRunning ? 'INITIALIZING' : 'BOOTING'}
+          </span>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
