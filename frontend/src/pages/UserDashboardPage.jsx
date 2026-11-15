@@ -7,7 +7,6 @@ import {
   ChevronRight,
   Cpu,
   ExternalLink,
-  Folder,
   Globe,
   HardDrive,
   Play,
@@ -179,14 +178,6 @@ export default function UserDashboardPage({ user: propUser }) {
         </div>
 
         <div className="flex items-center gap-2">
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => navigate('/workspace/files')}
-            icon={Folder}
-          >
-            Buka File Manager
-          </Button>
           <Button
             variant="secondary"
             size="sm"
