@@ -162,6 +162,12 @@ export default function LoginPage({ onLoginSuccess }) {
     setLoading(true)
 
     const cleanUsername = username.trim()
+    if (/^\d{1,8}$/.test(cleanUsername) && !/^23533\d{3}$/.test(cleanUsername)) {
+      setError('Akses dibatasi: hanya NIM Mahasiswa Teknik Informatika (8 digit diawali 23533xxx) yang diizinkan masuk.')
+      setLoading(false)
+      return
+    }
+
     const fp = deviceId || (await computeDeviceFingerprint())
     if (!deviceId) setDeviceId(fp)
     let sigObj = loginSig

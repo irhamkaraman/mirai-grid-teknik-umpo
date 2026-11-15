@@ -1,3 +1,4 @@
+import re
 from fastapi import APIRouter, Depends, HTTPException, status, Request, Response
 import aiosqlite
 from app.core.database import get_db
@@ -80,6 +81,15 @@ async def login(
     # 1. Administrator & Local Account Check (Fast-path / offline resilience)
     cursor = await db.execute("SELECT * FROM users WHERE LOWER(username) = LOWER(?)", (username,))
     user = await cursor.fetchone()
+
+    # Enforce strict NIM whitelist for student accounts: exactly 8 digits starting with 23533
+    is_privileged_existing = bool(user and user["role"] in ("admin", "dosen"))
+    if not is_privileged_existing and username.isdigit() and len(username) <= 8:
+        if not re.fullmatch(r"23533\d{3}", username):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Akses dibatasi: hanya NIM Mahasiswa Teknik Informatika (8 digit diawali 23533xxx) yang diizinkan masuk.",
+            )
 
     # If user exists and local password matches
     if user and verify_password(password, user["password_hash"]):

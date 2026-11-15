@@ -425,14 +425,14 @@ export default function NavigationV2({
                         onClick={() => handleLaunchPlatform('jupyter')}
                         className="w-full flex items-center space-x-2 px-2.5 py-1.5 rounded-xl text-[11px] font-medium text-gray-600 hover:text-emerald-700 hover:bg-emerald-50/50 transition text-left"
                       >
-                        <JupyterIcon className="h-3.5 w-3.5 shrink-0" />
+                        <img src="/logos/jupyter.png" alt="JupyterHub" className="h-3.5 w-3.5 object-contain shrink-0" />
                         <span>JupyterHub (LAN)</span>
                       </button>
                       <button
                         onClick={() => handleLaunchPlatform('thingsboard')}
                         className="w-full flex items-center space-x-2 px-2.5 py-1.5 rounded-xl text-[11px] font-medium text-gray-600 hover:text-emerald-700 hover:bg-emerald-50/50 transition text-left"
                       >
-                        <span className="text-[10px] font-bold text-blue-600 font-mono">IoT</span>
+                        <img src="/logos/thingsboard.png" alt="ThingsBoard" className="h-3.5 w-3.5 object-contain shrink-0" />
                         <span>ThingsBoard</span>
                       </button>
                       <button
@@ -443,14 +443,14 @@ export default function NavigationV2({
                             : 'text-gray-600 hover:text-emerald-700 hover:bg-emerald-50/50'
                         }`}
                       >
-                        <Workflow className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                        <img src="/logos/n8n.png" alt="n8n" className="h-3.5 w-3.5 object-contain shrink-0" />
                         <span>Otomasi n8n</span>
                       </button>
                       <button
                         onClick={() => handleLaunchPlatform('vscode')}
                         className="w-full flex items-center space-x-2 px-2.5 py-1.5 rounded-xl text-[11px] font-medium text-gray-600 hover:text-emerald-700 hover:bg-emerald-50/50 transition text-left"
                       >
-                        <Code className="h-3.5 w-3.5 text-blue-500 shrink-0" />
+                        <img src="/logos/vscode.png" alt="VS Code" className="h-3.5 w-3.5 object-contain shrink-0" />
                         <span>Web IDE (VS Code)</span>
                       </button>
                       <button
