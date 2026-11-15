@@ -5,7 +5,6 @@ import {
   Wrench,
   Database,
   Globe,
-  Info,
   ChevronLeft,
   ChevronRight,
   HardDrive,
@@ -108,13 +107,6 @@ export default function NavigationV2({
       isDropdown: true,
       dropdownKey: 'platform',
       activeCheck: (p) => p.startsWith('/thingsboard') || p.startsWith('/n8n') || p.startsWith('/vscode') || p.startsWith('/terminal') || p.startsWith('/redis'),
-    },
-    {
-      id: 'about',
-      label: 'Tentang Sistem',
-      path: '/about',
-      icon: Info,
-      activeCheck: (p) => p.startsWith('/about'),
     },
     ...(userRole === 'admin'
       ? [
@@ -515,7 +507,7 @@ export default function NavigationV2({
                 className="hover:text-gray-700 transition flex items-center space-x-1"
               >
                 <HelpCircle className="h-3.5 w-3.5" />
-                <span>Panduan</span>
+                <span>Tentang</span>
               </button>
               <span className="font-mono text-[10px] text-gray-300">v2.0</span>
             </div>
@@ -523,7 +515,7 @@ export default function NavigationV2({
             <div className="flex flex-col items-center pt-1">
               <button
                 onClick={() => navigate('/about')}
-                title="Panduan Sistem (v2.0)"
+                title="Tentang (v2.0)"
                 className="p-2 rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition flex items-center justify-center"
               >
                 <HelpCircle className="h-4 w-4" />
