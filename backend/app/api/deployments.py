@@ -240,6 +240,24 @@ async def publish_deployment(
     """
     is_admin = current_user.get("role") == "admin"
 
+    # Global 500-subdomain Cloudflare Free Tier guard
+    global_cnt_row = await (
+        await db.execute(
+            """
+            SELECT COUNT(DISTINCT LOWER(sub)) AS cnt FROM (
+                SELECT subdomain AS sub FROM web_deployments WHERE subdomain IS NOT NULL AND TRIM(subdomain) != ''
+                UNION
+                SELECT subdomain AS sub FROM projects WHERE subdomain IS NOT NULL AND TRIM(subdomain) != '' AND COALESCE(status, 'running') != 'deleted'
+            )
+            """
+        )
+    ).fetchone()
+    if (global_cnt_row["cnt"] if global_cnt_row else 0) >= 500:
+        raise HTTPException(
+            status_code=429,
+            detail="Batas maksimum 500 subdomain (Cloudflare Free Tier) telah tercapai. Hubungi admin untuk membersihkan subdomain tidak terpakai.",
+        )
+
     # 1. Verify project ownership & existence (admin can publish any project)
     if is_admin:
         cursor = await db.execute(

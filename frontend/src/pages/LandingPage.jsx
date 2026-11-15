@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence, useInView, useReducedMotion } from 'motion/react'
 import { Menu, X, Plus, ArrowLeft, ArrowUpRight, FolderOpen } from 'lucide-react'
+import { getAuthLoginUrl, getMainAppUrl, getSharedAuthCookie } from '../utils/authHost'
 
 const PROJECTS = [
   {
@@ -184,6 +185,13 @@ export default function LandingPage({ onLogin }) {
 
   const activeProject = PROJECTS.find((p) => p.id === selectedId) || PROJECTS[0]
 
+  // Full browser reload navigation (non-SPA) for all MiraiGrid ecosystem buttons
+  const handleEcosystemAccess = (targetPath = '/dashboard') => {
+    const hasSession = Boolean(localStorage.getItem('miraigrid_token') || getSharedAuthCookie())
+    const destination = hasSession ? getMainAppUrl(targetPath) : getAuthLoginUrl(targetPath)
+    window.location.assign(destination)
+  }
+
   // One-time 2.4s typing animation for the initial project log when mockup enters viewport
   const initialFullText = PROJECTS[0].logs.join('\n')
   const [typedCount, setTypedCount] = useState(0)
@@ -304,7 +312,7 @@ export default function LandingPage({ onLogin }) {
           <div className="flex items-center gap-3">
             <button
               type="button"
-              onClick={onLogin}
+              onClick={() => handleEcosystemAccess('/dashboard')}
               className="hidden rounded-[2px] bg-[#D4FF3A] px-4 py-2 text-[14px] font-medium text-[#0A0B0D] transition-opacity hover:opacity-90 md:inline-flex"
             >
               Masuk dengan SIMTIK
@@ -356,7 +364,7 @@ export default function LandingPage({ onLogin }) {
                 type="button"
                 onClick={() => {
                   setMobileMenuOpen(false)
-                  onLogin()
+                  handleEcosystemAccess('/dashboard')
                 }}
                 className="mt-2 w-full rounded-[2px] bg-[#D4FF3A] px-4 py-2.5 text-[14px] font-medium text-[#0A0B0D]"
               >
@@ -391,7 +399,7 @@ export default function LandingPage({ onLogin }) {
               <div className="mt-8 flex flex-wrap items-center gap-3">
                 <button
                   type="button"
-                  onClick={onLogin}
+                  onClick={() => handleEcosystemAccess('/dashboard')}
                   className="rounded-[2px] bg-[#D4FF3A] px-5 py-3 text-[15px] font-medium text-[#0A0B0D] transition-opacity hover:opacity-90"
                 >
                   Masuk dengan SIMTIK
@@ -614,7 +622,7 @@ export default function LandingPage({ onLogin }) {
                     <div className="flex items-center gap-2.5">
                       <button
                         type="button"
-                        onClick={onLogin}
+                        onClick={() => handleEcosystemAccess('/files')}
                         className="inline-flex items-center gap-1.5 rounded-[2px] border border-[#26282E] bg-[#1C1E23] px-3.5 py-2 text-[14px] text-[#EDEDEA] transition-colors hover:border-[#8E9096]"
                       >
                         <FolderOpen className="h-4 w-4" />
@@ -622,7 +630,7 @@ export default function LandingPage({ onLogin }) {
                       </button>
                       <button
                         type="button"
-                        onClick={onLogin}
+                        onClick={() => handleEcosystemAccess('/projects')}
                         className="inline-flex items-center gap-1.5 rounded-[2px] border border-[#26282E] bg-[#1C1E23] px-3.5 py-2 text-[14px] text-[#EDEDEA] transition-colors hover:border-[#8E9096]"
                       >
                         <span>Buka Situs</span>
@@ -883,7 +891,7 @@ export default function LandingPage({ onLogin }) {
             <div className="mt-8">
               <button
                 type="button"
-                onClick={onLogin}
+                onClick={() => handleEcosystemAccess('/dashboard')}
                 className="rounded-[2px] bg-[#D4FF3A] px-5 py-3 text-[15px] font-medium text-[#0A0B0D] transition-opacity hover:opacity-90"
               >
                 Masuk dengan SIMTIK

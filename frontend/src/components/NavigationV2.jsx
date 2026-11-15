@@ -84,7 +84,7 @@ export default function NavigationV2({
         p === '/dashboard' ||
         p.startsWith('/workspace/files') ||
         p.startsWith('/files') ||
-        (userRole === 'admin' && (p === '/admin/dashboard' || p.startsWith('/admin/dashboard/'))),
+        (userRole === 'admin' && (p === '/admin/dashboard' || p.startsWith('/admin/dashboard/') || p.startsWith('/admin/subdomains'))),
     },
     {
       id: 'tools',
@@ -424,6 +424,23 @@ export default function NavigationV2({
                         <Folder className="h-3.5 w-3.5 shrink-0" />
                         <span>File Manager</span>
                       </button>
+                      {userRole === 'admin' && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMobileOpen(false)
+                            requestGuardedNavigation('/admin/subdomains', navigate)
+                          }}
+                          className={`w-full flex items-center space-x-2 px-2.5 py-1.5 rounded-xl text-[11px] font-medium transition text-left ${
+                            location.pathname.startsWith('/admin/subdomains')
+                              ? 'bg-emerald-50 text-emerald-700 font-bold'
+                              : 'text-gray-600 hover:text-emerald-700 hover:bg-emerald-50/50'
+                          }`}
+                        >
+                          <Globe className="h-3.5 w-3.5 shrink-0" />
+                          <span>List Sub Domain</span>
+                        </button>
+                      )}
                     </div>
                   )}
 

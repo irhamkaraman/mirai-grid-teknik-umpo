@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { clearSharedAuthCookie, getAuthLoginUrl, isAuthSubdomain } from '../utils/authHost'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api'
 
@@ -25,8 +26,9 @@ api.interceptors.response.use(
     if (error.response && error.response.status === 401) {
       localStorage.removeItem('miraigrid_token')
       localStorage.removeItem('miraigrid_user')
-      if (window.location.pathname !== '/login') {
-        window.location.href = '/'
+      clearSharedAuthCookie()
+      if (!isAuthSubdomain() && window.location.pathname !== '/login') {
+        window.location.replace(getAuthLoginUrl())
       }
     }
     return Promise.reject(error)

@@ -290,5 +290,13 @@ export function triggerRouteSecurityAlarm(reason = 'Upaya manipulasi parameter U
   )
 
   // 4. Force reload back to clean login
-  window.location.href = '/login'
+  try {
+    localStorage.removeItem('miraigrid_token')
+    localStorage.removeItem('miraigrid_user')
+    document.cookie = 'miraigrid_token=; domain=.miraigrid.web.id; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax; Secure'
+    document.cookie = 'miraigrid_token=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax'
+  } catch (e) {}
+  const host = window.location.hostname.toLowerCase()
+  const isProdDomain = host === 'miraigrid.web.id' || host.endsWith('.miraigrid.web.id')
+  window.location.href = isProdDomain ? 'https://auth.miraigrid.web.id/login' : '/login'
 }

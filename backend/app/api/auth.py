@@ -489,3 +489,12 @@ async def verify_general_session(
     res.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     return res
 
+
+@router.post("/logout")
+async def logout_session(response: Response):
+    """Clear shared .miraigrid.web.id session cookie server-side."""
+    response.delete_cookie(key="miraigrid_token", path="/", domain=".miraigrid.web.id", samesite="lax", secure=True)
+    response.delete_cookie(key="miraigrid_token", path="/", samesite="lax")
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    return {"status": "logged_out"}
+

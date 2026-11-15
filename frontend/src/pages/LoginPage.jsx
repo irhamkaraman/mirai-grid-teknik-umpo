@@ -12,6 +12,7 @@ import {
   Globe
 } from 'lucide-react'
 import { api } from '../api/client'
+import { setSharedAuthCookie } from '../utils/authHost'
 import { Spinner } from '../components/Skeletons'
 import LoginIsometricShowcase from '../components/LoginIsometricShowcase'
 
@@ -112,11 +113,16 @@ export default function LoginPage({ onLoginSuccess }) {
       const sigData = res.data
       setLoginSig(sigData)
       if (sigData?.t && sigData?.n && sigData?.sig) {
+        const currentParams = new URLSearchParams(window.location.search)
+        const existingRedirect = currentParams.get('redirect')
         const params = new URLSearchParams({
           t: String(sigData.t),
           n: String(sigData.n),
           sig: String(sigData.sig)
         })
+        if (existingRedirect) {
+          params.set('redirect', existingRedirect)
+        }
         window.history.replaceState(null, '', `/login?${params.toString()}`)
       }
       return sigData
@@ -193,11 +199,7 @@ export default function LoginPage({ onLoginSuccess }) {
       const data = response.data
       localStorage.setItem('miraigrid_token', data.access_token)
       try {
-        if (window.location.hostname.includes('miraigrid.web.id')) {
-          document.cookie = `miraigrid_token=${data.access_token}; path=/; domain=.miraigrid.web.id; max-age=86400; SameSite=Lax; Secure`
-        } else {
-          document.cookie = `miraigrid_token=${data.access_token}; path=/; max-age=86400; SameSite=Lax`
-        }
+        setSharedAuthCookie(data.access_token)
       } catch (e) {
         console.error('Cookie set error:', e)
       }

@@ -589,7 +589,7 @@ export default function DatabasesView({ user: propUser }) {
                                     className="inline-flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg bg-white hover:bg-slate-50 border border-slate-200 text-xs text-slate-700 hover:text-slate-900 transition-colors font-medium"
                                     title="Auto-Login ke phpPgAdmin"
                                   >
-                                    {!isAdmin && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>}
+                                    <img src="/logos/postgresql.png" alt="PostgreSQL" className="h-3.5 w-3.5 object-contain shrink-0" />
                                     <span>phpPgAdmin</span>
                                     <ExternalLink className="h-3 w-3 text-slate-400" />
                                   </button>
@@ -600,8 +600,7 @@ export default function DatabasesView({ user: propUser }) {
                                     className="inline-flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg bg-white hover:bg-slate-50 border border-slate-200 text-xs text-slate-700 hover:text-slate-900 transition-colors font-medium"
                                     title="Auto-Login ke phpMyAdmin"
                                   >
-                                    {!isAdmin && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>}
-                                    <Server className="h-3.5 w-3.5 text-slate-500" />
+                                    <img src="/logos/mysql.png" alt="MySQL" className="h-3.5 w-3.5 object-contain shrink-0" />
                                     <span>phpMyAdmin</span>
                                     <ExternalLink className="h-3 w-3 text-slate-400" />
                                   </button>

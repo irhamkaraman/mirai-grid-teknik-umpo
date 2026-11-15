@@ -20,6 +20,7 @@ import AdminDashboardPage from './pages/AdminDashboardPage'
 import AdminContainerDetailPage from './pages/AdminContainerDetailPage'
 import AdminWafPage from './pages/AdminWafPage'
 import AdminReportsPage from './pages/AdminReportsPage'
+import AdminSubdomainsPage from './pages/AdminSubdomainsPage'
 import ReportIssuePage from './pages/ReportIssuePage'
 import ProfilePage from './pages/ProfilePage'
 import DiskUsagePage from './pages/DiskUsagePage'
@@ -41,11 +42,83 @@ import ErrorBoundary from './components/ErrorBoundary'
 import { syncPageRoute, checkUrlTampering, triggerRouteSecurityAlarm } from './utils/securityRoute'
 import SecurityLockModal from './components/SecurityLockModal'
 import { api } from './api/client'
+import {
+  isAuthSubdomain,
+  isMiraiGridProductionHost,
+  getAuthLoginUrl,
+  getAuthLogoutUrl,
+  sanitizeRedirectUrl,
+  setSharedAuthCookie,
+  getSharedAuthCookie,
+  clearSharedAuthCookie,
+} from './utils/authHost'
+
+function ExternalRedirect({ to }) {
+  const [loopBlocked, setLoopBlocked] = useState(false)
+
+  useEffect(() => {
+    try {
+      const now = Date.now()
+      const raw = sessionStorage.getItem('miraigrid_redir_log')
+      const recent = (raw ? JSON.parse(raw) : []).filter((ts) => now - ts < 6000)
+      if (recent.length >= 3) {
+        localStorage.removeItem('miraigrid_token')
+        localStorage.removeItem('miraigrid_user')
+        clearSharedAuthCookie()
+        sessionStorage.removeItem('miraigrid_redir_log')
+        setLoopBlocked(true)
+        return
+      }
+      recent.push(now)
+      sessionStorage.setItem('miraigrid_redir_log', JSON.stringify(recent))
+    } catch {}
+    window.location.replace(to)
+  }, [to])
+
+  if (loopBlocked) {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-4">
+        <div className="max-w-sm w-full rounded-xl border border-slate-200/80 bg-white p-6 text-center space-y-3">
+          <h2 className="text-sm font-bold text-slate-900">Sesi Dialihkan Ulang</h2>
+          <p className="text-xs text-slate-500">
+            Sesi lama telah dibersihkan demi mencegah pengalihan berulang. Silakan masuk kembali.
+          </p>
+          <a
+            href={getAuthLogoutUrl()}
+            className="inline-block rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
+          >
+            Ke Halaman Login
+          </a>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
+      <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-200 border-t-emerald-600" />
+    </div>
+  )
+}
 
 export default function App() {
   const navigate = useNavigate()
   const location = useLocation()
   const [user, setUser] = useState(() => {
+    const isLoggingOut =
+      window.location.pathname === '/logout' ||
+      new URLSearchParams(window.location.search).get('logged_out') === '1'
+    if (isLoggingOut) {
+      localStorage.removeItem('miraigrid_user')
+      localStorage.removeItem('miraigrid_token')
+      clearSharedAuthCookie()
+      return null
+    }
+    if (isAuthSubdomain() && !getSharedAuthCookie()) {
+      localStorage.removeItem('miraigrid_user')
+      localStorage.removeItem('miraigrid_token')
+      return null
+    }
     const savedUser = localStorage.getItem('miraigrid_user')
     const token = localStorage.getItem('miraigrid_token')
     if (savedUser && token) {
@@ -68,6 +141,10 @@ export default function App() {
   const [showResourceModal, setShowResourceModal] = useState(false)
   const [userQuota, setUserQuota] = useState(null)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
+  const [authBootstrapping, setAuthBootstrapping] = useState(() => {
+    const hasLocal = Boolean(localStorage.getItem('miraigrid_token') && localStorage.getItem('miraigrid_user'))
+    return !hasLocal && Boolean(getSharedAuthCookie())
+  })
 
   useEffect(() => {
     try {
@@ -129,6 +206,35 @@ export default function App() {
   }, [])
 
   useEffect(() => {
+    const isLoggingOut =
+      location.pathname === '/logout' ||
+      new URLSearchParams(location.search).get('logged_out') === '1'
+
+    if (isLoggingOut) {
+      localStorage.removeItem('miraigrid_token')
+      localStorage.removeItem('miraigrid_user')
+      clearSharedAuthCookie()
+      setUser(null)
+      setAuthBootstrapping(false)
+      api.post('/auth/logout').catch(() => {})
+      if (isAuthSubdomain()) {
+        if (location.pathname === '/logout') {
+          window.history.replaceState(null, '', '/login?logged_out=1')
+        }
+      } else if (isMiraiGridProductionHost()) {
+        window.location.replace(getAuthLogoutUrl())
+      }
+      return
+    }
+
+    if (isAuthSubdomain() && !getSharedAuthCookie()) {
+      localStorage.removeItem('miraigrid_token')
+      localStorage.removeItem('miraigrid_user')
+      setUser(null)
+      setAuthBootstrapping(false)
+      return
+    }
+
     const savedUser = localStorage.getItem('miraigrid_user')
     const token = localStorage.getItem('miraigrid_token')
     if (savedUser && token) {
@@ -142,8 +248,44 @@ export default function App() {
       } catch (e) {
         localStorage.clear()
       }
+      setAuthBootstrapping(false)
+      return
     }
-  }, [])
+
+    const cookieToken = getSharedAuthCookie()
+    if (cookieToken) {
+      localStorage.setItem('miraigrid_token', cookieToken)
+      api.get('/auth/me')
+        .then((res) => {
+          const data = res.data
+          const userData = {
+            username: data.username,
+            name: data.name,
+            role: data.role,
+            must_change_password: Boolean(data.must_change_password),
+            onboarding_step: data.onboarding_step ?? 1,
+            onboarding_completed: Boolean(data.onboarding_completed),
+          }
+          localStorage.setItem('miraigrid_user', JSON.stringify(userData))
+          setUser(userData)
+          if (userData.must_change_password) {
+            setIsMandatoryPasswordChange(true)
+            setShowPasswordModal(true)
+          }
+        })
+        .catch(() => {
+          localStorage.removeItem('miraigrid_token')
+          localStorage.removeItem('miraigrid_user')
+          clearSharedAuthCookie()
+          setUser(null)
+        })
+        .finally(() => {
+          setAuthBootstrapping(false)
+        })
+    } else {
+      setAuthBootstrapping(false)
+    }
+  }, [location.pathname, location.search])
 
   const handleToggleCollapse = (collapsed) => {
     setIsCollapsed(collapsed)
@@ -161,14 +303,20 @@ export default function App() {
     }
     setUser(userData)
     localStorage.setItem('miraigrid_user', JSON.stringify(userData))
+    if (data.access_token) {
+      setSharedAuthCookie(data.access_token)
+    }
     if (data.must_change_password) {
       setIsMandatoryPasswordChange(true)
       setShowPasswordModal(true)
     }
-    if (userData.role !== 'admin' && !userData.onboarding_completed) {
-      navigate('/onboarding')
+    const defaultPath = (userData.role !== 'admin' && !userData.onboarding_completed) ? '/onboarding' : '/dashboard'
+    const redirectParam = new URLSearchParams(window.location.search).get('redirect')
+    const targetUrl = sanitizeRedirectUrl(redirectParam, defaultPath)
+    if (isAuthSubdomain() || isMiraiGridProductionHost()) {
+      window.location.replace(targetUrl)
     } else {
-      navigate('/dashboard')
+      navigate(defaultPath)
     }
   }
 
@@ -187,8 +335,13 @@ export default function App() {
   const handleLogout = () => {
     localStorage.removeItem('miraigrid_token')
     localStorage.removeItem('miraigrid_user')
+    clearSharedAuthCookie()
     setUser(null)
-    navigate('/login')
+    if (isMiraiGridProductionHost()) {
+      window.location.replace(getAuthLogoutUrl())
+    } else {
+      navigate('/login')
+    }
   }
 
   const handlePasswordChanged = () => {
@@ -201,10 +354,37 @@ export default function App() {
   }
 
   if (securityBreach) {
-    return <SecurityLockModal reason={securityBreach} onReset={() => window.location.href = '/login'} />
+    return (
+      <SecurityLockModal
+        reason={securityBreach}
+        onReset={() => {
+          localStorage.removeItem('miraigrid_token')
+          localStorage.removeItem('miraigrid_user')
+          clearSharedAuthCookie()
+          window.location.href = getAuthLoginUrl()
+        }}
+      />
+    )
   }
 
-  if (!user) {
+  if (authBootstrapping) {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-200 border-t-emerald-600" />
+      </div>
+    )
+  }
+
+  if (isAuthSubdomain()) {
+    const isLogoutFlow =
+      location.pathname === '/logout' ||
+      new URLSearchParams(location.search).get('logged_out') === '1'
+    if (user && !isLogoutFlow && Boolean(getSharedAuthCookie())) {
+      const defaultPath = (user.role !== 'admin' && !user.onboarding_completed) ? '/onboarding' : '/dashboard'
+      const redirectParam = new URLSearchParams(window.location.search).get('redirect')
+      const targetUrl = sanitizeRedirectUrl(redirectParam, defaultPath)
+      return <ExternalRedirect to={targetUrl} />
+    }
     return (
       <div className="bg-[#F8FAFC] min-h-screen">
         <Toaster
@@ -221,17 +401,72 @@ export default function App() {
           }}
         />
         <Routes>
-          <Route path="/" element={<LandingPage onLogin={() => navigate('/login')} />} />
-          <Route path="/welcome" element={<LandingPage onLogin={() => navigate('/login')} />} />
+          <Route path="/" element={<LoginPage onLoginSuccess={handleLoginSuccess} />} />
           <Route path="/login" element={<LoginPage onLoginSuccess={handleLoginSuccess} />} />
+          <Route path="/logout" element={<LoginPage onLoginSuccess={handleLoginSuccess} />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </div>
     )
   }
 
+  if (!user) {
+    const redirectParam = new URLSearchParams(window.location.search).get('redirect')
+    const prodAuthUrl = getAuthLoginUrl(redirectParam)
+    return (
+      <div className="bg-[#F8FAFC] min-h-screen">
+        <Toaster
+          richColors
+          position="top-right"
+          toastOptions={{
+            style: {
+              background: '#FFFFFF',
+              border: '1px solid #E2E8F0',
+              color: '#0F172A',
+              borderRadius: '12px',
+              fontFamily: 'Plus Jakarta Sans, sans-serif',
+            },
+          }}
+        />
+        <Routes>
+          <Route path="/" element={<LandingPage onLogin={() => window.location.assign(getAuthLoginUrl('/dashboard'))} />} />
+          <Route path="/welcome" element={<LandingPage onLogin={() => window.location.assign(getAuthLoginUrl('/dashboard'))} />} />
+          <Route
+            path="/login"
+            element={
+              isMiraiGridProductionHost()
+                ? <ExternalRedirect to={prodAuthUrl} />
+                : <LoginPage onLoginSuccess={handleLoginSuccess} />
+            }
+          />
+          <Route
+            path="/logout"
+            element={
+              isMiraiGridProductionHost()
+                ? <ExternalRedirect to={getAuthLogoutUrl()} />
+                : <Navigate to="/login" replace />
+            }
+          />
+          <Route
+            path="*"
+            element={
+              isMiraiGridProductionHost()
+                ? <ExternalRedirect to={getAuthLoginUrl(window.location.pathname + window.location.search)} />
+                : <Navigate to="/login" replace />
+            }
+          />
+        </Routes>
+      </div>
+    )
+  }
+
+  if (isMiraiGridProductionHost() && location.pathname === '/login') {
+    const redirectParam = new URLSearchParams(window.location.search).get('redirect')
+    return <ExternalRedirect to={getAuthLoginUrl(redirectParam)} />
+  }
+
   if (location.pathname === '/welcome') {
-    return <LandingPage onLogin={() => navigate('/dashboard')} />
+    return <LandingPage onLogin={() => window.location.assign('/dashboard')} />
   }
 
   // 0. GATED ONBOARDING WIZARD (Pengguna baru wajib menyelesaikan onboarding sebelum bisa mengakses Dashboard & Fitur)
@@ -541,6 +776,16 @@ export default function App() {
               element={user.role === 'admin' ? (
                 <ErrorBoundary>
                   <AdminReportsPage />
+                </ErrorBoundary>
+              ) : (
+                <Navigate to="/dashboard" replace />
+              )}
+            />
+            <Route
+              path="/admin/subdomains"
+              element={user.role === 'admin' ? (
+                <ErrorBoundary>
+                  <AdminSubdomainsPage />
                 </ErrorBoundary>
               ) : (
                 <Navigate to="/dashboard" replace />

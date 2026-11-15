@@ -355,4 +355,13 @@ async def init_db():
         await db.execute("CREATE INDEX IF NOT EXISTS idx_issue_reports_user ON issue_reports(user_id);")
         await db.execute("CREATE INDEX IF NOT EXISTS idx_issue_reports_status ON issue_reports(status);")
 
+        # System Settings Table (Encrypted integration configs such as Cloudflare)
+        await db.execute("""
+        CREATE TABLE IF NOT EXISTS system_settings (
+            setting_key TEXT PRIMARY KEY,
+            setting_value TEXT NOT NULL,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+        """)
+
         await db.commit()

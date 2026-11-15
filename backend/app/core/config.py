@@ -14,6 +14,9 @@ class Settings(BaseSettings):
     # Subdomain base
     BASE_DOMAIN: str = "76.76.76.189"
     PUBLIC_BASE_DOMAIN: str = "miraigrid.web.id"
+    CLOUDFLARE_API_TOKEN: str = ""
+    CLOUDFLARE_ZONE_ID: str = ""
+    MAX_CLOUDFLARE_SUBDOMAINS: int = 500
 
     # AES-256-GCM key (32 bytes base64 encoded)
     DATA_ENCRYPTION_KEY: str = "r3k1a9z7P0bQxW+V4sE9dF2gH1jK8lM5nO3pQ7rT6vU="
