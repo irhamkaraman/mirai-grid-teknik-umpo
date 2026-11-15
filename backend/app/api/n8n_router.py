@@ -109,6 +109,27 @@ async def restart_n8n(
     )
 
 
+@router.post("/upgrade")
+async def upgrade_n8n(
+    current_user: dict = Depends(get_current_user),
+    db: aiosqlite.Connection = Depends(get_db),
+):
+    guard = await _check_ram_guard(current_user, db)
+    if not guard["allowed"]:
+        raise HTTPException(status_code=429, detail=guard["warning"])
+    return await N8nManager.upgrade(
+        current_user["id"],
+        current_user["username"],
+        current_user.get("name", ""),
+        current_user.get("role", "student"),
+    )
+
+
+platform_n8n_router = APIRouter(prefix="/platform/n8n", tags=["n8n Platform Alias"])
+platform_n8n_router.add_api_route("/upgrade", upgrade_n8n, methods=["POST"])
+platform_n8n_router.add_api_route("/restart", restart_n8n, methods=["POST"])
+
+
 @router.get("/sso")
 async def get_sso(
     response: Response,

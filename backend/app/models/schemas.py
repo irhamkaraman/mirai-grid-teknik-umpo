@@ -143,9 +143,14 @@ class ProjectCreate(BaseModel):
     name: str = Field(min_length=3, max_length=30, pattern="^[a-z0-9-]+$")
     language: str = Field(default="php", pattern="^(php|python|node)$")
     version: str = Field(default="8.2")
+    custom_subdomain: Optional[str] = None
     app_config: Optional[Dict[str, Any]] = None
     env_vars: Optional[Dict[str, str]] = None
     git_url: Optional[str] = None
+
+
+class ProjectSubdomainUpdate(BaseModel):
+    new_subdomain: str = Field(min_length=3, max_length=64)
 
 class ProjectResponse(BaseModel):
     id: int

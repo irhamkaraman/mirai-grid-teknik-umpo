@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
-import { ArrowLeft, Check, AlertCircle, Folder, Rocket, ChevronDown } from 'lucide-react'
+import { ArrowLeft, Check, AlertCircle, Folder, Rocket, ChevronDown, Globe, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { api } from '../api/client'
 import { Spinner } from '../components/Skeletons'
@@ -20,6 +20,18 @@ export default function CreateProjectPage({ onBack, onCreated, user: propUser })
   }, [location.search])
 
   const [projectName, setProjectName] = useState('')
+  const [customSubdomain, setCustomSubdomain] = useState('')
+  const [subdomainStatus, setSubdomainStatus] = useState({
+    checking: false,
+    available: null,
+    reason: '',
+    fqdn: ''
+  })
+  const [domainQuota, setDomainQuota] = useState({
+    active_deployments: 0,
+    max_deployments: isAdmin ? 99 : 2,
+    can_deploy: true
+  })
   const [appRoot, setAppRoot] = useState('')
   const [gitRepos, setGitRepos] = useState([])
   const [loadingRepos, setLoadingRepos] = useState(false)
@@ -31,6 +43,49 @@ export default function CreateProjectPage({ onBack, onCreated, user: propUser })
   })
   const [actionLoading, setActionLoading] = useState(false)
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    api.get('/deployments/quota')
+      .then((res) => {
+        if (res.data) {
+          setDomainQuota({
+            active_deployments: res.data.active_deployments ?? 0,
+            max_deployments: res.data.max_deployments ?? (isAdmin ? 99 : 2),
+            can_deploy: res.data.can_deploy !== false
+          })
+        }
+      })
+      .catch(() => {})
+  }, [isAdmin])
+
+  useEffect(() => {
+    const clean = customSubdomain.trim().toLowerCase()
+    if (!clean) {
+      setSubdomainStatus({ checking: false, available: null, reason: '', fqdn: '' })
+      return
+    }
+    setSubdomainStatus((prev) => ({ ...prev, checking: true }))
+    const timer = setTimeout(() => {
+      api.get('/projects/check-subdomain', { params: { subdomain: clean } })
+        .then((res) => {
+          setSubdomainStatus({
+            checking: false,
+            available: Boolean(res.data?.available),
+            reason: res.data?.reason || '',
+            fqdn: res.data?.fqdn || `${clean}.miraigrid.web.id`
+          })
+        })
+        .catch((err) => {
+          setSubdomainStatus({
+            checking: false,
+            available: false,
+            reason: err.response?.data?.detail || 'Gagal memeriksa ketersediaan subdomain.',
+            fqdn: ''
+          })
+        })
+    }, 350)
+    return () => clearTimeout(timer)
+  }, [customSubdomain])
 
   useEffect(() => {
     if (isAdmin) {
@@ -119,6 +174,7 @@ export default function CreateProjectPage({ onBack, onCreated, user: propUser })
         name: projectName.toLowerCase().replace(/[^a-z0-9-]/g, '-'),
         language: selectedLanguage,
         version: selectedVersion,
+        custom_subdomain: customSubdomain.trim() ? customSubdomain.trim().toLowerCase() : null,
         app_config: {
           app_root: appRoot.trim(),
           startup_file: selectedLanguage === 'python' ? 'app.py' : selectedLanguage === 'node' ? 'server.js' : 'index.php'
@@ -177,6 +233,75 @@ export default function CreateProjectPage({ onBack, onCreated, user: propUser })
               <p className="text-[11px] text-slate-500 mt-1.5 font-mono">
                 Hanya huruf kecil, angka, dan tanda hubung (-).
               </p>
+            </div>
+
+            {/* Custom Subdomain & 2-Domain Quota */}
+            <div className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-4 space-y-2.5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
+                  <Globe className="h-3.5 w-3.5 text-emerald-600" />
+                  <span>Custom Subdomain Bawaan (Opsional)</span>
+                </label>
+                {!isAdmin && (
+                  <span
+                    className={`inline-flex items-center rounded-lg border px-2.5 py-0.5 text-[11px] font-medium ${
+                      domainQuota.active_deployments >= domainQuota.max_deployments
+                        ? 'bg-rose-50 text-rose-700 border-rose-200'
+                        : 'bg-white text-slate-600 border-slate-200/80'
+                    }`}
+                  >
+                    Kuota: {domainQuota.active_deployments} / {domainQuota.max_deployments} domain aktif
+                  </span>
+                )}
+              </div>
+
+              {!isAdmin && domainQuota.active_deployments >= domainQuota.max_deployments && (
+                <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-[11px] text-rose-700 flex items-center gap-2">
+                  <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                  <span>Kuota maksimal 2 domain aktif telah tercapai. Hapus project lama untuk membuat subdomain baru.</span>
+                </div>
+              )}
+
+              <div className="flex items-stretch rounded-lg border border-slate-200 bg-white overflow-hidden focus-within:border-emerald-500 focus-within:ring-1 focus-within:ring-emerald-500">
+                <input
+                  type="text"
+                  placeholder="misal: kasir-umpo"
+                  value={customSubdomain}
+                  onChange={(e) => setCustomSubdomain(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                  disabled={!isAdmin && !domainQuota.can_deploy}
+                  className="flex-1 min-w-0 bg-transparent px-3.5 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none font-mono disabled:bg-slate-50 disabled:text-slate-400"
+                />
+                <span className="inline-flex items-center px-3 bg-slate-50 border-l border-slate-200 text-xs font-mono text-slate-500 select-none">
+                  .miraigrid.web.id
+                </span>
+              </div>
+
+              {customSubdomain.trim() ? (
+                <div className="text-[11px] flex items-center gap-1.5">
+                  {subdomainStatus.checking ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-400" />
+                      <span className="text-slate-500">Memeriksa ketersediaan subdomain...</span>
+                    </>
+                  ) : subdomainStatus.available ? (
+                    <>
+                      <Check className="h-3.5 w-3.5 text-emerald-600" />
+                      <span className="text-emerald-700 font-medium">
+                        Tersedia: <code className="font-mono">{subdomainStatus.fqdn}</code>
+                      </span>
+                    </>
+                  ) : subdomainStatus.available === false ? (
+                    <>
+                      <AlertCircle className="h-3.5 w-3.5 text-rose-600" />
+                      <span className="text-rose-600">{subdomainStatus.reason || 'Subdomain tidak tersedia.'}</span>
+                    </>
+                  ) : null}
+                </div>
+              ) : (
+                <p className="text-[11px] text-slate-500 font-mono">
+                  Kosongkan untuk domain default: {(projectName.toLowerCase().replace(/[^a-z0-9-]/g, '-') || 'project')}-{currentUser?.username || 'nim'}.miraigrid.web.id
+                </p>
+              )}
             </div>
 
             {/* 3 LANGUAGE CARDS WITH PROPORTIONAL LOGOS */}

@@ -10,11 +10,15 @@ from app.core.database import get_db
 from app.core.subdomain_auth import verify_subdomain_access
 from app.api.deps import get_current_user, get_current_user_flexible
 from app.models.schemas import DeploymentPublishRequest, DeploymentResponse
+from app.services.subdomain_service import (
+    get_user_active_subdomains_count,
+    MAX_ACTIVE_SUBDOMAINS_PER_ACCOUNT,
+)
 
 router = APIRouter(prefix="/deployments", tags=["Public Web Deployments"])
 
 PUBLIC_BASE_DOMAIN = "miraigrid.web.id"
-MAX_ACTIVE_DEPLOYMENTS_PER_STUDENT = 2
+MAX_ACTIVE_DEPLOYMENTS_PER_STUDENT = MAX_ACTIVE_SUBDOMAINS_PER_ACCOUNT
 
 
 def format_deployment_dict(row: aiosqlite.Row) -> dict:
@@ -148,8 +152,8 @@ async def resolve_subdomain(
         response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
         return response
 
-    # 3. Only resolve subdomains matching pattern: web-<4hex>-<nim>.miraigrid.web.id
-    if not target_host.endswith(PUBLIC_BASE_DOMAIN) or not target_host.startswith("web-"):
+    # 3. Resolve any valid *.miraigrid.web.id host from web_deployments or projects
+    if not target_host.endswith(f".{PUBLIC_BASE_DOMAIN}"):
         return Response(status_code=403, content="Host Not In Scope")
 
     cursor = await db.execute("""
@@ -160,14 +164,27 @@ async def resolve_subdomain(
     """, (target_host,))
     row = await cursor.fetchone()
 
-    if not row or not row["target_port"] or row["project_status"] == "stopped":
-        response = Response(status_code=403, content="Deployment Not Found or Inactive")
-        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-        return response
+    if row and row["target_port"] and row["project_status"] != "stopped" and row["project_status"] != "deleted":
+        target_port = row["target_port"]
+        deploy_status = row["status"]
+    else:
+        cur_proj = await db.execute("""
+            SELECT allocated_port, status
+            FROM projects
+            WHERE LOWER(subdomain) = ? AND COALESCE(status, 'running') NOT IN ('stopped', 'deleted')
+            LIMIT 1
+        """, (target_host,))
+        proj_row = await cur_proj.fetchone()
+        if not proj_row or not proj_row["allocated_port"]:
+            response = Response(status_code=404, content="Deployment Not Found or Inactive")
+            response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            return response
+        target_port = proj_row["allocated_port"]
+        deploy_status = "active"
 
     response = Response(status_code=200, content="OK")
-    response.headers["X-Target-Port"] = str(row["target_port"])
-    response.headers["X-Deployment-Status"] = str(row["status"])
+    response.headers["X-Target-Port"] = str(target_port)
+    response.headers["X-Deployment-Status"] = str(deploy_status)
     response.headers["Cache-Control"] = "public, max-age=2"
     return response
 
@@ -195,13 +212,9 @@ async def get_deployment_quota(
     db: aiosqlite.Connection = Depends(get_db)
 ):
     """Returns active deployment count and quota limits."""
-    cursor = await db.execute(
-        "SELECT COUNT(*) FROM web_deployments WHERE user_id = ? AND status = 'active'",
-        (current_user["id"],)
-    )
-    active_count = (await cursor.fetchone())[0]
+    active_count = await get_user_active_subdomains_count(db, current_user["id"])
 
-    max_deployments = 99 if current_user.get("role") == "admin" else MAX_ACTIVE_DEPLOYMENTS_PER_STUDENT
+    max_deployments = 99 if current_user.get("role") == "admin" else MAX_ACTIVE_SUBDOMAINS_PER_ACCOUNT
 
     return {
         "active_deployments": active_count,

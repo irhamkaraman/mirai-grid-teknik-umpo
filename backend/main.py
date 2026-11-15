@@ -6,7 +6,7 @@ from app.core.database import init_db
 from app.api.auth import router as auth_router
 from app.api.admin import router as admin_router
 from app.api.databases import router as db_router
-from app.api.projects import router as projects_router
+from app.api.projects import router as projects_router, deploy_router
 from app.api.quotas import router as quotas_router
 from app.api.git import router as git_router
 from app.api.terminal import router as terminal_router
@@ -18,7 +18,7 @@ from app.api.onboarding import router as onboarding_router
 from app.api.file_manager_router import router as files_router
 from app.api.jupyter import router as jupyter_router
 from app.api.thingsboard import router as thingsboard_router
-from app.api.n8n_router import router as n8n_router
+from app.api.n8n_router import router as n8n_router, platform_n8n_router
 from app.api.ssh_router import router as ssh_router
 from app.api.resources import router as resources_router
 
@@ -61,6 +61,7 @@ app.include_router(auth_router, prefix="/api")
 app.include_router(admin_router, prefix="/api")
 app.include_router(db_router, prefix="/api")
 app.include_router(projects_router, prefix="/api")
+app.include_router(deploy_router, prefix="/api")
 app.include_router(quotas_router, prefix="/api")
 app.include_router(git_router, prefix="/api")
 app.include_router(terminal_router, prefix="/api")
@@ -73,6 +74,7 @@ app.include_router(files_router, prefix="/api")
 app.include_router(jupyter_router, prefix="/api")
 app.include_router(thingsboard_router, prefix="/api")
 app.include_router(n8n_router, prefix="/api")
+app.include_router(platform_n8n_router, prefix="/api")
 app.include_router(ssh_router, prefix="/api")
 app.include_router(resources_router, prefix="/api")
 

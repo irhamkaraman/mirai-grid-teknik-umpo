@@ -13,10 +13,17 @@ import aiosqlite
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import encrypt_secret, decrypt_secret
-from app.models.schemas import ProjectCreate, ProjectResponse
+from app.models.schemas import ProjectCreate, ProjectResponse, ProjectSubdomainUpdate
 from app.services.zip_handler import safe_extract_zip
 from app.services.template_composer import TemplateComposer
 from app.services.portainer import portainer
+from app.services.subdomain_service import (
+    normalize_subdomain_label,
+    build_fqdn,
+    is_subdomain_available,
+    get_user_active_subdomains_count,
+    MAX_ACTIVE_SUBDOMAINS_PER_ACCOUNT,
+)
 from app.services.file_manager import (
     get_safe_project_path, list_directory_contents,
     get_directory_tree, compress_items_to_zip, extract_zip_archive
@@ -724,6 +731,26 @@ async def get_project_by_id(
         "deployment_status": deployment_status
     }
 
+@router.get("/check-subdomain")
+async def check_subdomain_availability(
+    subdomain: str = Query(..., min_length=1, max_length=64),
+    exclude_project_id: Optional[int] = Query(None),
+    current_user: dict = Depends(get_current_user),
+    db: aiosqlite.Connection = Depends(get_db),
+):
+    """Validate format, reserved blacklist, and uniqueness for a custom subdomain."""
+    label = normalize_subdomain_label(subdomain)
+    available, err = await is_subdomain_available(
+        db, label, exclude_project_id=exclude_project_id
+    )
+    return {
+        "available": available,
+        "subdomain": label,
+        "fqdn": build_fqdn(label) if label else None,
+        "reason": err,
+    }
+
+
 @router.post("/create", response_model=ProjectResponse)
 async def create_project(
     body: ProjectCreate,
@@ -732,7 +759,23 @@ async def create_project(
     db: aiosqlite.Connection = Depends(get_db)
 ):
     nim = current_user["username"]
-    subdomain = f"{body.name}-{nim}.{settings.BASE_DOMAIN}"
+
+    # Enforce max 2 active subdomains per non-admin account
+    if current_user.get("role") != "admin":
+        active_domains_count = await get_user_active_subdomains_count(db, current_user["id"])
+        if active_domains_count >= MAX_ACTIVE_SUBDOMAINS_PER_ACCOUNT:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Batas kuota domain tercapai: Akun Anda hanya dapat memiliki maksimal {MAX_ACTIVE_SUBDOMAINS_PER_ACCOUNT} domain aktif secara bersamaan."
+            )
+
+    if body.custom_subdomain and body.custom_subdomain.strip():
+        avail, err = await is_subdomain_available(db, body.custom_subdomain)
+        if not avail:
+            raise HTTPException(status_code=400, detail=err)
+        subdomain = build_fqdn(body.custom_subdomain)
+    else:
+        subdomain = f"{body.name}-{nim}.{settings.BASE_DOMAIN}"
 
     # Batasan berbasis kuota storage file manager & slot + real RAM pool akun
     if current_user.get("role") != "admin":
@@ -884,6 +927,13 @@ async def create_project(
     ))
     project_id = cursor.lastrowid
 
+    # Register active public subdomain in web_deployments for Nginx wildcard ingress
+    container_name = f"app_{nim}_{body.name}"
+    await db.execute("""
+        INSERT INTO web_deployments (user_id, project_id, subdomain, target_port, container_name, status, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    """, (current_user["id"], project_id, subdomain, allocated_port, container_name))
+
     ip = get_client_ip(request)
     await db.execute("""
         INSERT INTO audit_logs (actor_id, action, target_resource, ip_address, details)
@@ -908,6 +958,92 @@ async def create_project(
         "access_url": f"http://{settings.BASE_DOMAIN}:{allocated_port}",
         "last_deployed_at": "Baru saja",
         "created_at": "Baru saja"
+    }
+
+
+@router.put("/{project_id}/subdomain")
+async def update_project_subdomain(
+    project_id: int,
+    body: ProjectSubdomainUpdate,
+    request: Request,
+    current_user: dict = Depends(get_current_user),
+    db: aiosqlite.Connection = Depends(get_db),
+):
+    """Replace an existing project's public subdomain without restarting its container."""
+    cur = await db.execute(
+        "SELECT id, user_id, name, subdomain, allocated_port, status FROM projects WHERE id = ?",
+        (project_id,),
+    )
+    project = await cur.fetchone()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project tidak ditemukan.")
+
+    if project["user_id"] != current_user["id"] and current_user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Anda tidak memiliki akses ke project ini.")
+
+    avail, err = await is_subdomain_available(
+        db, body.new_subdomain, exclude_project_id=project_id
+    )
+    if not avail:
+        raise HTTPException(status_code=400, detail=err)
+
+    new_fqdn = build_fqdn(body.new_subdomain)
+    old_fqdn = project["subdomain"]
+
+    await db.execute(
+        "UPDATE projects SET subdomain = ? WHERE id = ?",
+        (new_fqdn, project_id),
+    )
+
+    dep_cur = await db.execute(
+        "SELECT id FROM web_deployments WHERE project_id = ? LIMIT 1",
+        (project_id,),
+    )
+    dep_row = await dep_cur.fetchone()
+    if dep_row:
+        await db.execute(
+            """
+            UPDATE web_deployments
+            SET subdomain = ?, target_port = ?, status = 'active', updated_at = CURRENT_TIMESTAMP
+            WHERE project_id = ?
+            """,
+            (new_fqdn, project["allocated_port"], project_id),
+        )
+    else:
+        owner_cur = await db.execute("SELECT username FROM users WHERE id = ?", (project["user_id"],))
+        owner_row = await owner_cur.fetchone()
+        owner_uname = owner_row["username"] if owner_row else current_user["username"]
+        await db.execute(
+            """
+            INSERT INTO web_deployments (user_id, project_id, subdomain, target_port, container_name, status, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            """,
+            (
+                project["user_id"],
+                project_id,
+                new_fqdn,
+                project["allocated_port"],
+                f"app_{owner_uname}_{project['name']}",
+            ),
+        )
+
+    ip = get_client_ip(request)
+    await db.execute(
+        """
+        INSERT INTO audit_logs (actor_id, action, target_resource, ip_address, details)
+        VALUES (?, 'UPDATE_SUBDOMAIN', ?, ?, ?)
+        """,
+        (current_user["id"], project["name"], ip, f"Changed subdomain {old_fqdn} -> {new_fqdn}"),
+    )
+    await db.commit()
+
+    return {
+        "success": True,
+        "project_id": project_id,
+        "old_subdomain": old_fqdn,
+        "subdomain": new_fqdn,
+        "public_url": f"https://{new_fqdn}",
+        "message": f"Subdomain berhasil diperbarui ke {new_fqdn}",
     }
 
 @router.post("/{project_id}/config")
@@ -1778,3 +1914,9 @@ echo "__MIRAIGRID_PWD__$(pwd)"
         "user": body.user or "root",
         "output": res.get("output", "")
     }
+
+
+deploy_router = APIRouter(prefix="/deploy", tags=["Deploy Alias"])
+deploy_router.add_api_route("/check-subdomain", check_subdomain_availability, methods=["GET"])
+deploy_router.add_api_route("/create", create_project, methods=["POST"], response_model=ProjectResponse)
+deploy_router.add_api_route("/projects/{project_id}/subdomain", update_project_subdomain, methods=["PUT"])

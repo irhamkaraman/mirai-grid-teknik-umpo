@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, ExternalLink, Play, Square, RotateCw, Trash2,
   Save, Sliders, Terminal, FileCode, Check, RefreshCw, AlertCircle, Globe, Copy,
-  Boxes, Hammer, CheckCircle2, X, Folder
+  Boxes, Hammer, CheckCircle2, X, Folder, Pencil, Loader2, Power, Cpu
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { api } from '../api/client'
@@ -21,6 +21,15 @@ export default function ProjectDetailPage({ project: propProject, onBack, onUpda
   const navigate = useNavigate()
   const [project, setProject] = useState(propProject || null)
   const [loading, setLoading] = useState(!propProject)
+  const [editingSubdomain, setEditingSubdomain] = useState(false)
+  const [newSubdomain, setNewSubdomain] = useState('')
+  const [subdomainCheck, setSubdomainCheck] = useState({
+    checking: false,
+    available: null,
+    reason: '',
+    fqdn: ''
+  })
+  const [savingSubdomain, setSavingSubdomain] = useState(false)
 
   const handleOpenInFileManager = (targetPath) => {
     const subpath = (targetPath || '').replace(new RegExp('^/home/[^/]+/?'), '').replace(/^\/+|\/+$/g, '')
@@ -45,6 +54,74 @@ export default function ProjectDetailPage({ project: propProject, onBack, onUpda
       navigate('/deploy')
     } finally {
       setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (!editingSubdomain) return
+    const clean = newSubdomain.trim().toLowerCase()
+    if (!clean) {
+      setSubdomainCheck({ checking: false, available: null, reason: '', fqdn: '' })
+      return
+    }
+    setSubdomainCheck((prev) => ({ ...prev, checking: true }))
+    const timer = setTimeout(() => {
+      api.get('/projects/check-subdomain', {
+        params: { subdomain: clean, exclude_project_id: project?.id }
+      })
+        .then((res) => {
+          setSubdomainCheck({
+            checking: false,
+            available: Boolean(res.data?.available),
+            reason: res.data?.reason || '',
+            fqdn: res.data?.fqdn || `${clean}.miraigrid.web.id`
+          })
+        })
+        .catch((err) => {
+          setSubdomainCheck({
+            checking: false,
+            available: false,
+            reason: err.response?.data?.detail || 'Gagal memeriksa subdomain.',
+            fqdn: ''
+          })
+        })
+    }, 350)
+    return () => clearTimeout(timer)
+  }, [newSubdomain, editingSubdomain, project?.id])
+
+  const handleOpenEditSubdomain = () => {
+    const currentLabel = (project?.subdomain || '')
+      .replace(/\.miraigrid\.web\.id$/i, '')
+      .trim()
+      .toLowerCase()
+    setNewSubdomain(currentLabel)
+    setSubdomainCheck({ checking: false, available: null, reason: '', fqdn: '' })
+    setEditingSubdomain(true)
+  }
+
+  const handleSaveSubdomain = async (e) => {
+    e.preventDefault()
+    if (!newSubdomain.trim() || savingSubdomain) return
+    setSavingSubdomain(true)
+    const toastId = toast.loading('Memperbarui subdomain project...')
+    try {
+      const res = await api.put(`/projects/${project.id}/subdomain`, {
+        new_subdomain: newSubdomain.trim().toLowerCase()
+      })
+      const updated = {
+        ...project,
+        subdomain: res.data.subdomain,
+        public_url: res.data.public_url,
+        is_published: true
+      }
+      setProject(updated)
+      setEditingSubdomain(false)
+      onUpdated?.(updated)
+      toast.success(res.data?.message || 'Subdomain berhasil diperbarui!', { id: toastId })
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Gagal memperbarui subdomain.', { id: toastId })
+    } finally {
+      setSavingSubdomain(false)
     }
   }
 
@@ -371,180 +448,261 @@ export default function ProjectDetailPage({ project: propProject, onBack, onUpda
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            {isRunning ? (
-              <Button
-                variant="danger"
-                size="sm"
-                icon={Square}
-                onClick={() => handleControl('stop')}
-                disabled={controlLoading}
-              >
-                Stop App
-              </Button>
-            ) : (
-              <Button
-                variant="emerald"
-                size="sm"
-                icon={Play}
-                onClick={() => handleControl('start')}
-                disabled={controlLoading}
-              >
-                Start App
-              </Button>
-            )}
-
-            <Button
-              variant="secondary"
-              size="sm"
-              icon={RotateCw}
-              onClick={() => handleControl('restart')}
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => handleControl(isRunning ? 'stop' : 'start')}
               disabled={controlLoading}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition disabled:opacity-50 ${
+                isRunning
+                  ? 'bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100'
+                  : 'bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100'
+              }`}
             >
-              Restart
-            </Button>
+              <Power className="w-3.5 h-3.5" />
+              <span>{isRunning ? 'Stop App' : 'Start App'}</span>
+            </button>
 
-            <Button
-              variant="secondary"
-              size="sm"
-              icon={Terminal}
-              onClick={() => {
-                if (onOpenConsole) {
-                  onOpenConsole(project)
-                } else {
-                  navigate(`/deploy/${project.id}/console`)
-                }
-              }}
-              title="Buka Halaman Console CLI"
-            >
-              Console
-            </Button>
+            <div className="inline-flex items-center rounded-lg border border-slate-200 bg-white p-0.5">
+              <button
+                type="button"
+                onClick={() => handleControl('restart')}
+                disabled={controlLoading}
+                title="Restart Container"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100 rounded-md transition disabled:opacity-50"
+              >
+                <RotateCw className="w-3.5 h-3.5 text-slate-500" />
+                <span>Restart</span>
+              </button>
+              <div className="w-px h-4 bg-slate-200" />
+              <button
+                type="button"
+                onClick={() => {
+                  if (onOpenConsole) {
+                    onOpenConsole(project)
+                  } else {
+                    navigate(`/deploy/${project.id}/console`)
+                  }
+                }}
+                title="Buka Terminal Kontainer"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100 rounded-md transition"
+              >
+                <Terminal className="w-3.5 h-3.5 text-slate-500" />
+                <span>Console</span>
+              </button>
+              <div className="w-px h-4 bg-slate-200" />
+              <button
+                type="button"
+                onClick={handleRunBuildProject}
+                disabled={runningAction}
+                title="Build / Compile Kode"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100 rounded-md transition disabled:opacity-50"
+              >
+                <Cpu className="w-3.5 h-3.5 text-slate-500" />
+                <span>{runningAction ? 'Building...' : 'Build'}</span>
+              </button>
+            </div>
 
-            <Button
-              variant="secondary"
-              size="sm"
-              icon={Boxes}
-              onClick={handleRunBuildProject}
-              disabled={runningAction}
-              title="Kompilasi Dependensi & Build Project (Composer, NPM, Pip)"
-            >
-              {runningAction ? 'Building...' : 'Build / Compile'}
-            </Button>
-
-            <Button
-              variant="danger"
-              size="sm"
-              icon={Trash2}
+            <button
+              type="button"
               onClick={() => setConfirmDelete(true)}
               disabled={controlLoading}
+              title="Hapus Project & Container"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-rose-600 hover:bg-rose-50 rounded-lg border border-rose-200/80 transition disabled:opacity-50"
             >
-              Destroy
-            </Button>
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Destroy</span>
+            </button>
 
-            <Button
-              variant="primary"
-              size="sm"
-              icon={Save}
+            <button
+              type="button"
               onClick={handleSaveConfig}
-              loading={saving}
+              disabled={saving}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-slate-900 hover:bg-slate-800 rounded-lg transition disabled:opacity-50"
             >
-              Simpan
-            </Button>
+              <Save className="w-3.5 h-3.5" />
+              <span>{saving ? 'Menyimpan...' : 'Simpan'}</span>
+            </button>
           </div>
         </div>
 
         {/* 2. Public Web Subdomain Card */}
-        <Card padding="md" className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-start space-x-3.5">
-            <div className="h-11 w-11 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-600 flex items-center justify-center shrink-0">
-              <Globe className="h-5 w-5" />
-            </div>
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <h3 className="text-sm font-bold text-slate-900">
-                  Public Web Subdomain
-                </h3>
-                <span
-                  className={
-                    project.is_published
-                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-md px-2.5 py-0.5 text-xs font-medium'
-                      : 'bg-slate-100 text-slate-600 border border-slate-200 rounded-md px-2.5 py-0.5 text-xs font-medium'
-                  }
-                >
-                  {project.is_published ? 'Online & Terpublikasi' : 'Belum Publik / Stopped'}
-                </span>
+        <Card padding="md" className="space-y-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200/80 text-emerald-600 shrink-0">
+                <Globe className="h-5 w-5" />
               </div>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="text-xs font-semibold text-slate-800">
+                    Public Web Subdomain
+                  </h3>
+                  <span
+                    className={
+                      project.is_published
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/60 rounded px-2 py-0.5 text-[10px] font-medium'
+                        : 'bg-slate-100 text-slate-600 border border-slate-200 rounded px-2 py-0.5 text-[10px] font-medium'
+                    }
+                  >
+                    {project.is_published ? 'Online & Terpublikasi' : 'Belum Publik / Stopped'}
+                  </span>
+                </div>
 
+                {project.public_url ? (
+                  <div className="mt-1 flex items-center gap-1.5 min-w-0">
+                    <a
+                      href={project.public_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-mono text-xs text-emerald-600 hover:text-emerald-700 hover:underline truncate max-w-xs md:max-w-md font-medium"
+                      title={project.public_url}
+                    >
+                      {project.public_url}
+                    </a>
+                    <span className="text-[11px] text-slate-400 font-mono shrink-0">
+                      (Port: {project.allocated_port})
+                    </span>
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-500 mt-1">
+                    Publikasikan aplikasi web ini ke domain resmi{' '}
+                    <code className="text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded font-mono">*.miraigrid.web.id</code>{' '}
+                    agar dapat diakses dari internet via Cloudflare Tunnel.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="flex flex-wrap sm:flex-nowrap items-center gap-1.5 shrink-0 self-end md:self-center">
               {project.public_url ? (
-                <div className="mt-1.5 flex items-center space-x-2 flex-wrap">
+                <>
+                  <button
+                    type="button"
+                    onClick={() => handleCopyLink(project.public_url)}
+                    title="Salin URL"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg border border-slate-200/80 transition whitespace-nowrap"
+                  >
+                    {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                    <span>{copied ? 'Tersalin' : 'Salin'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleOpenEditSubdomain}
+                    title="Ganti Subdomain"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-lg border border-slate-200/80 transition whitespace-nowrap"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                    <span>Ganti Domain</span>
+                  </button>
+
+                  {project.deployment_id && (
+                    <button
+                      type="button"
+                      onClick={() => handleToggleDeployment(project.deployment_id)}
+                      title={project.is_published ? 'Hentikan Publikasi' : 'Aktifkan Kembali'}
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-lg border transition whitespace-nowrap ${
+                        project.is_published
+                          ? 'text-rose-600 hover:bg-rose-50 border-rose-200/80'
+                          : 'text-emerald-600 hover:bg-emerald-50 border-emerald-200/80'
+                      }`}
+                    >
+                      <Globe className="w-3.5 h-3.5" />
+                      <span>{project.is_published ? 'Hentikan' : 'Aktifkan'}</span>
+                    </button>
+                  )}
+
                   <a
                     href={project.public_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="font-mono text-xs sm:text-sm text-emerald-700 hover:text-emerald-800 hover:underline flex items-center space-x-1 font-semibold"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition whitespace-nowrap"
                   >
-                    <span>{project.public_url}</span>
-                    <ExternalLink className="h-3.5 w-3.5 opacity-80" />
+                    <span>Buka Web</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
                   </a>
-                  <span className="text-xs text-slate-500 font-mono">
-                    (Port: {project.allocated_port})
-                  </span>
-                </div>
+                </>
               ) : (
-                <p className="text-xs text-slate-500 mt-1">
-                  Publikasikan aplikasi web ini ke domain resmi{' '}
-                  <code className="text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded font-mono">*.miraigrid.web.id</code>{' '}
-                  agar dapat diakses dari internet via Cloudflare Tunnel.
-                </p>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  icon={Globe}
+                  loading={publishLoading}
+                  onClick={handlePublishWeb}
+                >
+                  {publishLoading ? 'Mengenerate Subdomain...' : 'Deploy / Publish Web Sekarang'}
+                </Button>
               )}
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 self-start md:self-center shrink-0">
-            {project.public_url ? (
-              <>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  icon={copied ? Check : Copy}
-                  onClick={() => handleCopyLink(project.public_url)}
-                >
-                  {copied ? 'Tersalin' : 'Salin Link'}
-                </Button>
-
-                {project.deployment_id && (
+          {editingSubdomain && (
+            <form
+              onSubmit={handleSaveSubdomain}
+              className="pt-4 border-t border-slate-200/80 space-y-3"
+            >
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2.5">
+                <div className="flex-1 flex items-stretch rounded-lg border border-slate-200 bg-white overflow-hidden focus-within:border-emerald-500 focus-within:ring-1 focus-within:ring-emerald-500">
+                  <input
+                    type="text"
+                    required
+                    placeholder="subdomain-baru"
+                    value={newSubdomain}
+                    onChange={(e) => setNewSubdomain(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                    className="flex-1 min-w-0 bg-transparent px-3.5 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none font-mono"
+                  />
+                  <span className="inline-flex items-center px-3 bg-slate-50 border-l border-slate-200 text-xs font-mono text-slate-500 select-none">
+                    .miraigrid.web.id
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
                   <Button
-                    variant={project.is_published ? 'danger' : 'emerald'}
+                    type="submit"
+                    variant="primary"
                     size="sm"
-                    icon={Globe}
-                    onClick={() => handleToggleDeployment(project.deployment_id)}
+                    icon={Save}
+                    loading={savingSubdomain}
+                    disabled={subdomainCheck.checking || subdomainCheck.available === false || !newSubdomain.trim()}
                   >
-                    {project.is_published ? 'Hentikan Publikasi' : 'Aktifkan Kembali'}
+                    Simpan Subdomain
                   </Button>
-                )}
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    icon={X}
+                    onClick={() => setEditingSubdomain(false)}
+                  >
+                    Batal
+                  </Button>
+                </div>
+              </div>
 
-                <Button
-                  variant="primary"
-                  size="sm"
-                  icon={ExternalLink}
-                  iconPosition="right"
-                  onClick={() => window.open(project.public_url, '_blank', 'noopener,noreferrer')}
-                >
-                  Buka Web
-                </Button>
-              </>
-            ) : (
-              <Button
-                variant="primary"
-                size="sm"
-                icon={Globe}
-                loading={publishLoading}
-                onClick={handlePublishWeb}
-              >
-                {publishLoading ? 'Mengenerate Subdomain...' : 'Deploy / Publish Web Sekarang'}
-              </Button>
-            )}
-          </div>
+              {newSubdomain.trim() && (
+                <div className="text-[11px] flex items-center gap-1.5">
+                  {subdomainCheck.checking ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-400" />
+                      <span className="text-slate-500">Memeriksa ketersediaan...</span>
+                    </>
+                  ) : subdomainCheck.available ? (
+                    <>
+                      <Check className="h-3.5 w-3.5 text-emerald-600" />
+                      <span className="text-emerald-700 font-medium">
+                        Siap digunakan: <code className="font-mono">{subdomainCheck.fqdn}</code>
+                      </span>
+                    </>
+                  ) : subdomainCheck.available === false ? (
+                    <>
+                      <AlertCircle className="h-3.5 w-3.5 text-rose-600" />
+                      <span className="text-rose-600">{subdomainCheck.reason}</span>
+                    </>
+                  ) : null}
+                </div>
+              )}
+            </form>
+          )}
         </Card>
 
         {/* 3. Main Configuration Container */}

@@ -55,11 +55,17 @@ export default function NavigationV2({
   const [showWorkspaceMenu, setShowWorkspaceMenu] = useState(userRole === 'admin')
   const [logoFailed, setLogoFailed] = useState(false)
 
-  const diskTotalMb = quota?.max_disk_mb || 500
-  const diskUsedMb = quota?.disk_used_mb !== undefined && quota?.disk_used_mb !== null
-    ? parseFloat(quota.disk_used_mb.toFixed(1))
-    : 157.9
-  const diskPercent = Math.min(100, Math.round((diskUsedMb / diskTotalMb) * 100))
+  const isQuotaLoaded = Boolean(
+    quota && (quota.max_disk_mb !== undefined || quota.disk_used_mb !== undefined)
+  )
+  const diskTotalMb = isQuotaLoaded ? (quota.max_disk_mb || 10240) : 0
+  const diskUsedMb = isQuotaLoaded && quota.disk_used_mb !== undefined && quota.disk_used_mb !== null
+    ? parseFloat(Number(quota.disk_used_mb).toFixed(1))
+    : 0
+  const diskPercentRaw = diskTotalMb > 0 ? Math.min(100, (diskUsedMb / diskTotalMb) * 100) : 0
+  const diskPercent = diskPercentRaw > 0 && diskPercentRaw < 1
+    ? parseFloat(diskPercentRaw.toFixed(1))
+    : Math.round(diskPercentRaw)
 
   const menuItems = [
     {
@@ -404,20 +410,20 @@ export default function NavigationV2({
                   <span>Penyimpanan Cloud</span>
                 </span>
                 <span className="font-mono text-[11px] font-bold text-emerald-700 bg-emerald-100/60 px-1.5 py-0.2 rounded">
-                  {diskPercent}%
+                  {isQuotaLoaded ? `${diskPercent}%` : '...'}
                 </span>
               </div>
 
               <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
                 <div
                   className="bg-emerald-500 h-full rounded-full transition-all duration-500"
-                  style={{ width: `${diskPercent}%` }}
+                  style={{ width: `${isQuotaLoaded ? diskPercent : 0}%` }}
                 />
               </div>
 
               <div className="flex items-center justify-between text-[11px] text-gray-500 font-mono">
-                <span>{formatMBSize(diskUsedMb)}</span>
-                <span>{formatMBSize(diskTotalMb)}</span>
+                <span>{isQuotaLoaded ? formatMBSize(diskUsedMb) : 'Memuat...'}</span>
+                <span>{isQuotaLoaded ? formatMBSize(diskTotalMb) : '...'}</span>
               </div>
 
               <button

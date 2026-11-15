@@ -31,6 +31,11 @@ export const restartN8n = async () => {
   return data
 }
 
+export const upgradeN8n = async () => {
+  const { data } = await api.post('/n8n/upgrade')
+  return data
+}
+
 export const getN8nSSO = async () => {
   const { data } = await api.get('/n8n/sso', { withCredentials: true })
   return data

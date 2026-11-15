@@ -11,9 +11,9 @@ from app.core.config import settings
 DOCKER_UDS = "/var/run/docker.sock"
 DATA_BASE_DIR = "/app/data/home"
 HOST_DATA_BASE_DIR = "/var/lib/docker/volumes/miraigrid_miraigrid_data/_data/home"
-N8N_IMAGE = "n8nio/n8n:1.76.1"
+N8N_IMAGE = "docker.n8n.io/n8nio/n8n:latest"
 BASE_PORT = 15000
-STUDENT_MEMORY_BYTES = 384 * 1024 * 1024  # 384 MB cgroup v2 limit for students (pool 512 MB)
+STUDENT_MEMORY_BYTES = 512 * 1024 * 1024  # 512 MB cgroup v2 limit for n8n v2.x (guarded by account_resource_guard)
 STUDENT_NANO_CPUS = 500_000_000  # 0.5 Cores for students
 STAFF_MEMORY_BYTES = 512 * 1024 * 1024  # 512 MB cgroup v2 limit for dosen/admin (pool 1024 MB+)
 STAFF_NANO_CPUS = 800_000_000  # 0.8 Cores for dosen/admin
@@ -39,7 +39,7 @@ class N8nManager:
         r = (role or "student").strip().lower()
         if r in ("dosen", "lecturer", "admin", "staff"):
             return STAFF_MEMORY_BYTES, STAFF_NANO_CPUS, 512, 0.8
-        return STUDENT_MEMORY_BYTES, STUDENT_NANO_CPUS, 384, 0.5
+        return STUDENT_MEMORY_BYTES, STUDENT_NANO_CPUS, 512, 0.5
 
     @classmethod
     def container_name(cls, username: str) -> str:
@@ -88,21 +88,23 @@ class N8nManager:
         return f"{HOST_DATA_BASE_DIR}/{clean}/.n8n"
 
     @staticmethod
-    async def _find_n8n_settings(port: int) -> tuple[Optional[str], Optional[Dict[str, Any]]]:
+    async def _find_n8n_settings(port: int) -> tuple[Optional[str], Optional[Dict[str, Any]], Optional[str]]:
         for target_host in ["10.10.10.10", "127.0.0.1", "172.17.0.1"]:
             try:
                 async with httpx.AsyncClient(timeout=2.5) as client:
                     res = await client.get(f"http://{target_host}:{port}/rest/settings")
                     if res.status_code == 200:
-                        um = ((res.json() or {}).get("data") or {}).get("userManagement") or {}
-                        return target_host, um
+                        data = (res.json() or {}).get("data") or {}
+                        um = data.get("userManagement") or {}
+                        version_cli = data.get("versionCli")
+                        return target_host, um, version_cli
             except Exception:
                 continue
-        return None, None
+        return None, None, None
 
     @classmethod
     async def _find_n8n_host(cls, port: int) -> Optional[str]:
-        host, _ = await cls._find_n8n_settings(port)
+        host, _, _ = await cls._find_n8n_settings(port)
         return host
 
     @classmethod
@@ -125,7 +127,7 @@ class N8nManager:
         info = await cls.inspect_container(clean)
         exists = info is not None
         running = bool(info and info.get("State", {}).get("Running", False))
-        host, um = (await cls._find_n8n_settings(port)) if running else (None, None)
+        host, um, version_cli = (await cls._find_n8n_settings(port)) if running else (None, None, None)
         setup_pending = bool(um and um.get("showSetupOnFirstLoad"))
         ready = bool(running and host is not None and not setup_pending)
         _, _, default_ram_mb, default_cpu = cls._role_limits(role)
@@ -134,6 +136,8 @@ class N8nManager:
         nano_cpus = hc.get("NanoCpus") or 0
         ram_limit_mb = int(mem_bytes // (1024 * 1024)) if mem_bytes > 0 else default_ram_mb
         cpu_limit = round(nano_cpus / 1_000_000_000, 2) if nano_cpus > 0 else default_cpu
+        image = ((info or {}).get("Config") or {}).get("Image") or ""
+        needs_update = bool(exists and (image != N8N_IMAGE or (version_cli and version_cli.startswith("1."))))
         return {
             "exists": exists,
             "running": running,
@@ -144,6 +148,9 @@ class N8nManager:
             "public_url": cls.public_url(clean),
             "ram_limit_mb": ram_limit_mb,
             "cpu_limit": cpu_limit,
+            "image": image,
+            "version": version_cli or ("1.76.1" if "1.76.1" in image else None),
+            "needs_update": needs_update,
         }
 
     @classmethod
@@ -153,7 +160,7 @@ class N8nManager:
         cname = cls.container_name(clean)
         host_n8n_dir = cls._ensure_data_dir(clean)
         mem_bytes, nano_cpus, _, _ = cls._role_limits(role)
-        node_heap_mb = 384 if mem_bytes >= STAFF_MEMORY_BYTES else 256
+        node_heap_mb = 384
 
         info = await cls.inspect_container(clean)
         async with cls._get_docker_client() as client:
@@ -185,11 +192,13 @@ class N8nManager:
                         "N8N_DIAGNOSTICS_ENABLED=false",
                         "N8N_PERSONALIZATION_ENABLED=false",
                         "N8N_HIRING_BANNER_ENABLED=false",
+                        "N8N_VERSION_NOTIFICATIONS_ENABLED=false",
+                        "EXECUTIONS_DATA_PRUNE=true",
+                        "EXECUTIONS_DATA_MAX_AGE=168",
                         "N8N_TEMPLATES_ENABLED=true",
                         "GENERIC_TIMEZONE=Asia/Jakarta",
                         "TZ=Asia/Jakarta",
                         "DB_SQLITE_POOL_SIZE=2",
-                        "N8N_RUNNERS_ENABLED=false",
                         f"NODE_OPTIONS=--max-old-space-size={node_heap_mb}",
                     ],
                     "ExposedPorts": {"5678/tcp": {}},
@@ -285,6 +294,28 @@ class N8nManager:
                 return res.status_code in (204, 404)
         except Exception:
             return False
+
+    @classmethod
+    async def pull_latest_image(cls) -> bool:
+        """Pull latest n8n image on the Docker host (non-fatal if already cached)."""
+        try:
+            repo, _, tag = N8N_IMAGE.partition(":")
+            tag = tag or "latest"
+            transport = httpx.AsyncHTTPTransport(uds=DOCKER_UDS)
+            async with httpx.AsyncClient(transport=transport, timeout=300.0) as client:
+                res = await client.post(f"http://docker/images/create?fromImage={repo}&tag={tag}")
+                return res.status_code == 200
+        except Exception:
+            return False
+
+    @classmethod
+    async def upgrade(cls, user_id: int, username: str, full_name: str = "", role: str = "student") -> Dict[str, Any]:
+        """Recreate the user's n8n container with the latest image while preserving /home/{username}/.n8n."""
+        clean = cls._clean_user(username)
+        _N8N_AUTH_CACHE.pop(clean, None)
+        await cls.pull_latest_image()
+        await cls.remove_container(clean)
+        return await cls.start(user_id, clean, full_name, role)
 
     @staticmethod
     def _extract_n8n_auth_cookie(res: httpx.Response) -> Optional[str]:

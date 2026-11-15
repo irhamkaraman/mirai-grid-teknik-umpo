@@ -12,10 +12,11 @@ import {
   ShieldCheck,
   Globe,
   RefreshCw,
-  Maximize2
+  Maximize2,
+  ArrowUpCircle
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { getN8nStatus, startN8n, startN8nAsync, stopN8n, restartN8n, getN8nSSO, buildN8nSsoRedirectUrl } from '../api/n8n'
+import { getN8nStatus, startN8n, startN8nAsync, stopN8n, restartN8n, upgradeN8n, getN8nSSO, buildN8nSsoRedirectUrl } from '../api/n8n'
 import { syncPageRoute } from '../utils/securityRoute'
 
 export default function N8nView({ user }) {
@@ -160,6 +161,12 @@ export default function N8nView({ user }) {
         setStatus(res)
         setIframeKey(Date.now())
         toast.success('Engine n8n berhasil direstart')
+      } else if (type === 'upgrade') {
+        const toastId = toast.loading('Memperbarui & menyinkronkan image n8n terbaru...')
+        const res = await upgradeN8n()
+        setStatus(res)
+        setIframeKey(Date.now())
+        toast.success('Engine n8n berhasil diperbarui ke versi terbaru!', { id: toastId })
       }
     } catch (err) {
       toast.error(`Gagal melakukan ${type} pada n8n`, {
@@ -268,10 +275,23 @@ export default function N8nView({ user }) {
               {loading ? 'CHECKING' : isReady ? 'ONLINE' : isRunning ? 'STARTING' : 'STOPPED'}
             </span>
           </div>
-          <div className="text-sm font-mono text-slate-800">
-            {status?.container_name || `n8n_${username}`}
+          <div className="flex items-center justify-between gap-2">
+            <div className="text-sm font-mono text-slate-800">
+              {status?.container_name || `n8n_${username}`}
+            </div>
+            {status?.version && (
+              <span
+                className={`px-2 py-0.5 rounded-md text-[11px] font-mono font-medium border ${
+                  status?.needs_update
+                    ? 'bg-amber-50 text-amber-700 border-amber-200/80'
+                    : 'bg-slate-50 text-slate-600 border-slate-200/80'
+                }`}
+              >
+                v{status.version}
+              </span>
+            )}
           </div>
-          <div className="flex items-center gap-2 pt-1">
+          <div className="flex flex-wrap items-center gap-2 pt-1">
             {!isRunning ? (
               <button
                 type="button"
@@ -304,6 +324,19 @@ export default function N8nView({ user }) {
                 </button>
               </>
             )}
+            <button
+              type="button"
+              onClick={() => handleAction('upgrade')}
+              disabled={actionBusy}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition disabled:opacity-50 ${
+                status?.needs_update
+                  ? 'border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-700'
+                  : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
+              }`}
+            >
+              <ArrowUpCircle className="h-3.5 w-3.5" />
+              <span>Perbarui / Sinkronkan Engine</span>
+            </button>
           </div>
         </div>
 
