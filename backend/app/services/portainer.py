@@ -299,6 +299,7 @@ class PortainerClient:
             payload["MemorySwap"] = mem_bytes
         if cpu_cores is not None:
             payload["NanoCPUs"] = int(float(cpu_cores) * 1e9)
+        payload["BlkioWeight"] = 300
 
         status_code, _ = self._docker_socket_request(
             "POST",

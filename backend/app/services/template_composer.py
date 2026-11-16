@@ -55,6 +55,13 @@ class TemplateComposer:
         security_config = {
             "restart": "unless-stopped",
             "security_opt": ["no-new-privileges:true"],
+            "blkio_config": {
+                "weight": 300,
+                "device_read_bps": [{"path": "/dev/sda", "rate": "30mb"}],
+                "device_write_bps": [{"path": "/dev/sda", "rate": "20mb"}],
+                "device_read_iops": [{"path": "/dev/sda", "rate": 500}],
+                "device_write_iops": [{"path": "/dev/sda", "rate": 300}],
+            },
             "cap_drop": [
                 "SYS_ADMIN",
                 "NET_ADMIN",
