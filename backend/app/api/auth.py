@@ -441,6 +441,22 @@ async def verify_general_session(
     if not token:
         token = request.headers.get("x-query-token")
     if not token:
+        orig_uri = request.headers.get("x-original-uri", "")
+        if "?" in orig_uri:
+            try:
+                from urllib.parse import parse_qs, urlparse, unquote
+                decoded_uri = unquote(orig_uri)
+                qs = parse_qs(urlparse(orig_uri).query)
+                if "token" in qs and qs["token"]:
+                    token = qs["token"][0]
+                elif "token=" in decoded_uri:
+                    import re
+                    m = re.search(r'token=([A-Za-z0-9_\-\.]+)', decoded_uri)
+                    if m:
+                        token = m.group(1)
+            except Exception as e:
+                pass
+    if not token:
         cookie_header = request.headers.get("cookie", "")
         if cookie_header:
             for part in cookie_header.split(";"):
@@ -487,6 +503,8 @@ async def verify_general_session(
     res.headers["X-Auth-User"] = str(user["username"])
     res.headers["X-Auth-Role"] = str(user["role"])
     res.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    if token:
+        res.set_cookie(key="miraigrid_token", value=token, domain=".miraigrid.web.id", path="/", max_age=86400, samesite="lax", secure=True)
     return res
 
 

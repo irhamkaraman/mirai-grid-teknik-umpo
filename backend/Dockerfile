@@ -14,6 +14,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     php-xml \
     php-curl \
     php-zip \
+    php-intl \
+    php-bcmath \
+    php-gd \
+    php-mysql \
+    php-pgsql \
+    php-sqlite3 \
     && curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer \
     && chmod +x /usr/local/bin/composer \
     && rm -rf /var/lib/apt/lists/*

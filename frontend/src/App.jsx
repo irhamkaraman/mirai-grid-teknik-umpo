@@ -36,6 +36,7 @@ import CronJobsPage from './pages/CronJobsPage'
 import RedisView from './pages/RedisView'
 import VSCodeView from './pages/VSCodeView'
 import ThingsBoardView from './pages/ThingsBoardView'
+import JupyterView from './pages/JupyterView'
 import N8nView from './pages/N8nView'
 import OnboardingWizardPage from './pages/OnboardingWizardPage'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -188,7 +189,7 @@ export default function App() {
       return
     }
 
-    if (user && !location.pathname.startsWith('/files') && !location.pathname.startsWith('/vscode') && !location.pathname.startsWith('/thingsboard')) {
+    if (user && !location.pathname.startsWith('/files') && !location.pathname.startsWith('/vscode') && !location.pathname.startsWith('/thingsboard') && !location.pathname.startsWith('/jupyter')) {
       syncPageRoute(location.pathname)
     }
   }, [location.pathname, location.search, user])
@@ -700,6 +701,10 @@ export default function App() {
             <Route
               path="/thingsboard"
               element={<ThingsBoardView user={user} onNavigate={(path) => navigate(path.startsWith('/') ? path : '/' + path)} />}
+            />
+            <Route
+              path="/jupyter"
+              element={<JupyterView user={user} onNavigate={(path) => navigate(path.startsWith('/') ? path : '/' + path)} />}
             />
             <Route
               path="/n8n"

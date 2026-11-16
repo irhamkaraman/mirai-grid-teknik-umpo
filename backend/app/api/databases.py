@@ -451,5 +451,8 @@ async def sso_redirect_database(
   </script>
 </body>
 </html>"""
-    return HTMLResponse(content=html, status_code=200)
+    res = HTMLResponse(content=html, status_code=200)
+    if is_domain and jwt_token:
+        res.set_cookie(key="miraigrid_token", value=jwt_token, domain=".miraigrid.web.id", path="/", max_age=86400, samesite="lax", secure=True)
+    return res
 
