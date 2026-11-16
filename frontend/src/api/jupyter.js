@@ -27,7 +27,7 @@ export function launchJupyterLab() {
   const isDomain = window.location.hostname.includes('miraigrid.web.id')
   const jupyterUrl = isDomain
     ? `https://jupyter.miraigrid.web.id/?token=${encodeURIComponent(token)}`
-    : 'http://76.76.76.187:8888'
+    : 'http://76.76.76.188:8090'
 
   window.open(jupyterUrl, '_blank')
 }

@@ -162,14 +162,7 @@ export default function NavigationV2({
     setMobileOpen(false)
     setShowPlatformMenu(false)
     if (type === 'jupyter') {
-      try {
-        toast.info('Menghubungkan ke JupyterHub...')
-        await launchJupyterLab()
-      } catch (err) {
-        console.error('[JupyterHub Launch Error]:', err)
-        const errMsg = err?.response?.data?.detail || err?.message || 'Gagal meluncurkan JupyterHub'
-        toast.error(errMsg)
-      }
+      requestGuardedNavigation('/jupyter', navigate)
       return
     }
     if (type === 'thingsboard') {
@@ -472,7 +465,7 @@ export default function NavigationV2({
                         className="w-full flex items-center space-x-2 px-2.5 py-1.5 rounded-xl text-[11px] font-medium text-gray-600 hover:text-emerald-700 hover:bg-emerald-50/50 transition text-left"
                       >
                         <img src="/logos/jupyter.png" alt="JupyterHub" className="h-3.5 w-3.5 object-contain shrink-0" />
-                        <span>JupyterHub (LAN)</span>
+                        <span>JupyterHub</span>
                       </button>
                       <button
                         onClick={() => handleLaunchPlatform('thingsboard')}
