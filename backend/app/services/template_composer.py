@@ -115,15 +115,22 @@ class TemplateComposer:
             php_ini_host_path = f"{project_src_dir}/.miraigrid_php.ini"
             volumes.append(f"{php_ini_host_path}:/usr/local/etc/php/conf.d/99-miraigrid.ini:ro")
             service_definition["volumes"] = volumes
+            ssl_proxy_init = (
+                "printf 'SetEnvIf X-Forwarded-Proto \"^https$\" HTTPS=on\\n"
+                "SetEnvIf Front-End-Https \"^on$\" HTTPS=on\\n"
+                "SetEnvIf X-Forwarded-Ssl \"^on$\" HTTPS=on\\n' > /etc/apache2/conf-available/ssl-proxy.conf 2>/dev/null; "
+                "a2enconf ssl-proxy 2>/dev/null; "
+                "a2enmod rewrite headers remoteip 2>/dev/null; "
+            )
             if app_subpath:
                 service_definition["command"] = (
-                    f"sh -c 'mkdir -p /var/www/html/{app_subpath} 2>/dev/null; "
+                    f"sh -c '{ssl_proxy_init}"
+                    f"mkdir -p /var/www/html/{app_subpath} 2>/dev/null; "
                     f"if [ ! -f /var/www/html/{app_subpath}/index.php ] && [ ! -f /var/www/html/{app_subpath}/index.html ]; then "
                     f"if [ -f /var/www/html/index.php ]; then cp /var/www/html/index.php /var/www/html/{app_subpath}/index.php 2>/dev/null; fi; "
                     "fi; "
                     f"sed -ri -e \"s!DocumentRoot /var/www/html.*!DocumentRoot /var/www/html/{app_subpath}!g\" /etc/apache2/sites-available/*.conf; "
                     f"sed -ri -e \"s!<Directory /var/www/html.*>!<Directory /var/www/html/{app_subpath}>!g\" /etc/apache2/apache2.conf /etc/apache2/sites-available/*.conf /etc/apache2/conf-available/*.conf; "
-                    "a2enmod rewrite headers 2>/dev/null; "
                     "sed -ri -e \"s!AllowOverride None!AllowOverride All!g\" /etc/apache2/apache2.conf 2>/dev/null; "
                     "chown -R www-data:www-data /var/www/html 2>/dev/null; "
                     "chmod -R 755 /var/www/html 2>/dev/null; "
@@ -131,7 +138,7 @@ class TemplateComposer:
                 )
             else:
                 service_definition["command"] = (
-                    "sh -c 'a2enmod rewrite headers 2>/dev/null; "
+                    f"sh -c '{ssl_proxy_init}"
                     "sed -ri -e \"s!AllowOverride None!AllowOverride All!g\" /etc/apache2/apache2.conf 2>/dev/null; "
                     "chown -R www-data:www-data /var/www/html 2>/dev/null; "
                     "chmod -R 755 /var/www/html 2>/dev/null; "
