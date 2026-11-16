@@ -159,7 +159,7 @@ export default function AboutPage({ user, onNavigate }) {
     {
       id: 'network',
       title: 'Jaringan & Gateway Ingress',
-      subtitle: 'Zero Trust tunnel, MikroTik dynamic routing, DNS manajemen, dan load balancer',
+      subtitle: 'Zero Trust tunnel, dynamic routing, DNS manajemen, dan load balancer',
       icon: Router,
       iconColor: 'text-cyan-600',
       items: [
@@ -169,13 +169,6 @@ export default function AboutPage({ user, onNavigate }) {
           logo: '/logos/cloudflare.svg',
           icon: Globe,
           iconColor: 'text-amber-600',
-        },
-        {
-          id: 'mikrotik',
-          name: 'MikroTik RouterOS',
-          logo: '/logos/mikrotik.svg',
-          icon: Router,
-          iconColor: 'text-blue-700',
         },
         {
           id: 'nginx',
