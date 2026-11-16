@@ -102,48 +102,19 @@ class TemplateComposer:
         elif cfg.get("app_root_subpath"):
             app_subpath = str(cfg.get("app_root_subpath")).strip("/")
 
-        # 1. PHP Engine (8.3, 8.2, 8.1, 8.0, 7.4)
+        # 1. PHP Engine - OpenLiteSpeed High-Performance LSPHP (8.3, 8.2)
         if language == "php":
-            v = version if version in ["8.3", "8.2", "8.1", "8.0", "7.4"] else "8.3"
-            # php:8.3-apache is built with ext-intl, ext-zip, pdo_mysql, pdo_pgsql, composer, etc.
-            service_definition["image"] = f"php:{v}-apache"
-            volumes = [
-                f"{project_src_dir}:/var/www/html",
-                "/usr/local/bin/composer:/usr/local/bin/composer:ro"
-            ]
-            # Mount custom php.ini if exists
-            php_ini_host_path = f"{project_src_dir}/.miraigrid_php.ini"
-            volumes.append(f"{php_ini_host_path}:/usr/local/etc/php/conf.d/99-miraigrid.ini:ro")
-            service_definition["volumes"] = volumes
-            ssl_proxy_init = (
-                "printf 'SetEnvIf X-Forwarded-Proto \"^https$\" HTTPS=on\\n"
-                "SetEnvIf Front-End-Https \"^on$\" HTTPS=on\\n"
-                "SetEnvIf X-Forwarded-Ssl \"^on$\" HTTPS=on\\n' > /etc/apache2/conf-available/ssl-proxy.conf 2>/dev/null; "
-                "a2enconf ssl-proxy 2>/dev/null; "
-                "a2enmod rewrite headers remoteip 2>/dev/null; "
-            )
+            v = version if version in ["8.3", "8.2"] else "8.3"
+            service_definition["image"] = f"miraigrid/runtime-openlitespeed:{v}"
             if app_subpath:
-                service_definition["command"] = (
-                    f"sh -c '{ssl_proxy_init}"
-                    f"mkdir -p /var/www/html/{app_subpath} 2>/dev/null; "
-                    f"if [ ! -f /var/www/html/{app_subpath}/index.php ] && [ ! -f /var/www/html/{app_subpath}/index.html ]; then "
-                    f"if [ -f /var/www/html/index.php ]; then cp /var/www/html/index.php /var/www/html/{app_subpath}/index.php 2>/dev/null; fi; "
-                    "fi; "
-                    f"sed -ri -e \"s!DocumentRoot /var/www/html.*!DocumentRoot /var/www/html/{app_subpath}!g\" /etc/apache2/sites-available/*.conf; "
-                    f"sed -ri -e \"s!<Directory /var/www/html.*>!<Directory /var/www/html/{app_subpath}>!g\" /etc/apache2/apache2.conf /etc/apache2/sites-available/*.conf /etc/apache2/conf-available/*.conf; "
-                    "sed -ri -e \"s!AllowOverride None!AllowOverride All!g\" /etc/apache2/apache2.conf 2>/dev/null; "
-                    "chown -R www-data:www-data /var/www/html 2>/dev/null; "
-                    "chmod -R 755 /var/www/html 2>/dev/null; "
-                    "exec apache2-foreground'"
-                )
+                service_definition["environment"]["MIRAIGRID_APP_SUBPATH"] = app_subpath
+                service_definition["working_dir"] = f"/var/www/vhosts/localhost/html/{app_subpath}"
             else:
-                service_definition["command"] = (
-                    f"sh -c '{ssl_proxy_init}"
-                    "sed -ri -e \"s!AllowOverride None!AllowOverride All!g\" /etc/apache2/apache2.conf 2>/dev/null; "
-                    "chown -R www-data:www-data /var/www/html 2>/dev/null; "
-                    "chmod -R 755 /var/www/html 2>/dev/null; "
-                    "exec apache2-foreground'"
-                )
+                service_definition["working_dir"] = "/var/www/vhosts/localhost/html"
+
+            service_definition["volumes"] = [
+                f"{project_src_dir}:/var/www/vhosts/localhost/html"
+            ]
 
         # 2. Python Engine (3.12, 3.11, 3.10, 3.9)
         elif language == "python":

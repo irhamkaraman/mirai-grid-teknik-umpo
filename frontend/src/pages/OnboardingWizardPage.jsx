@@ -50,7 +50,7 @@ export default function OnboardingWizardPage({ user, onComplete }) {
   const [dbStatusText, setDbStatusText] = useState('')
 
   // Step 3 State: Runtime & File Upload
-  const [selectedRuntime, setSelectedRuntime] = useState('php82')
+  const [selectedRuntime, setSelectedRuntime] = useState('php83')
   const [uploadedFile, setUploadedFile] = useState(null)
   const [useStarterTemplate, setUseStarterTemplate] = useState(true)
   const [provisionedProject, setProvisionedProject] = useState(null)
@@ -632,7 +632,7 @@ export default function OnboardingWizardPage({ user, onComplete }) {
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   {[
-                    { id: 'php82', name: 'PHP 8.2', tag: 'Web / Laravel / CI', logo: '/logos/php.svg' },
+                    { id: 'php83', name: 'PHP 8.3 (OLS)', tag: 'OpenLiteSpeed / Laravel / CI', logo: '/logos/php.svg' },
                     { id: 'node20', name: 'Node.js 20', tag: 'React / Express / Vite', logo: '/logos/node.svg' },
                     { id: 'python311', name: 'Python 3.11', tag: 'FastAPI / Flask / Django', logo: '/logos/python.svg' }
                   ].map((rt) => (

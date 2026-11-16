@@ -267,8 +267,8 @@ async def setup_step3_runtime_and_files(
     rt_lower = runtime.lower().strip()
     if "php" in rt_lower:
         language = "php"
-        version = "8.2"
-        template_type = "php82"
+        version = "8.2" if "82" in rt_lower else "8.3"
+        template_type = f"php{version.replace('.', '')}"
     elif "node" in rt_lower:
         language = "node"
         version = "20"
@@ -279,8 +279,8 @@ async def setup_step3_runtime_and_files(
         template_type = "python311"
     else:
         language = "php"
-        version = "8.2"
-        template_type = "php82"
+        version = "8.3"
+        template_type = "php83"
 
     # Check existing project (either public_html or legacy starter-app)
     existing = await (await db.execute(

@@ -39,7 +39,7 @@ export default function CreateProjectPage({ onBack, onCreated, user: propUser })
   const [selectedVersion, setSelectedVersion] = useState(() => {
     if (initialLang === 'python') return '3.11'
     if (initialLang === 'node') return '20'
-    return '8.2'
+    return '8.3'
   })
   const [actionLoading, setActionLoading] = useState(false)
   const [error, setError] = useState('')
@@ -114,7 +114,7 @@ export default function CreateProjectPage({ onBack, onCreated, user: propUser })
       setSelectedLanguage(l)
       if (l === 'python') setSelectedVersion('3.11')
       else if (l === 'node') setSelectedVersion('20')
-      else setSelectedVersion('8.2')
+      else setSelectedVersion('8.3')
     }
   }, [location.search])
 
@@ -123,14 +123,11 @@ export default function CreateProjectPage({ onBack, onCreated, user: propUser })
       id: 'php',
       name: 'PHP',
       logo: '/logos/php.svg',
-      badge: 'Apache + PDO',
-      defaultVer: '8.2',
+      badge: 'OpenLiteSpeed LSPHP (HTTP/3)',
+      defaultVer: '8.3',
       versions: [
-        { val: '8.3', label: 'PHP 8.3 (Terbaru)' },
-        { val: '8.2', label: 'PHP 8.2 (Recommended)' },
-        { val: '8.1', label: 'PHP 8.1' },
-        { val: '8.0', label: 'PHP 8.0' },
-        { val: '7.4', label: 'PHP 7.4 (Legacy)' }
+        { val: '8.3', label: 'PHP 8.3 (LSPHP - Recommended)' },
+        { val: '8.2', label: 'PHP 8.2 (LSPHP)' }
       ]
     },
     {
