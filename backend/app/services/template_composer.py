@@ -65,6 +65,7 @@ class TemplateComposer:
             "cap_drop": [
                 "SYS_ADMIN",
                 "NET_ADMIN",
+                "NET_RAW",
                 "SYS_RAWIO",
                 "SYS_PTRACE",
                 "SYS_MODULE",
