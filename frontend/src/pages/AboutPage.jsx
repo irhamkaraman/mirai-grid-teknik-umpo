@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import {
   ArrowLeft,
   Server,
@@ -22,6 +22,25 @@ import {
 } from 'lucide-react'
 import Button from '../components/Button'
 import Card from '../components/Card'
+
+function TechLogo({ tech }) {
+  const [hasError, setHasError] = useState(false)
+  const IconComponent = tech.icon
+
+  if (!tech.logo || hasError) {
+    return <IconComponent className={`h-6 w-6 ${tech.iconColor}`} />
+  }
+
+  return (
+    <img
+      src={tech.logo}
+      alt={tech.name}
+      className="h-full w-full object-contain"
+      loading="lazy"
+      onError={() => setHasError(true)}
+    />
+  )
+}
 
 export default function AboutPage({ user, onNavigate }) {
 
@@ -166,11 +185,11 @@ export default function AboutPage({ user, onNavigate }) {
           iconColor: 'text-emerald-600',
         },
         {
-          id: 'tailscale',
-          name: 'Tailscale Mesh VPN',
-          logo: '/logos/tailscale.svg',
+          id: 'openlitespeed',
+          name: 'OpenLiteSpeed (OLS)',
+          logo: '/logos/openlitespeed.png',
           icon: Globe,
-          iconColor: 'text-slate-800',
+          iconColor: 'text-blue-600',
         },
       ],
     },
@@ -183,7 +202,7 @@ export default function AboutPage({ user, onNavigate }) {
       items: [
         {
           id: 'php',
-          name: 'PHP 8.2 / 8.3 & Composer',
+          name: 'PHP 8.2 / 8.3 & OpenLiteSpeed LSPHP',
           logo: '/logos/php.svg',
           icon: Code2,
           iconColor: 'text-indigo-600',
@@ -191,7 +210,7 @@ export default function AboutPage({ user, onNavigate }) {
         {
           id: 'nodejs',
           name: 'Node.js 20 LTS & NPM',
-          logo: '/logos/nodejs.svg',
+          logo: '/logos/nodejs.png',
           icon: Code2,
           iconColor: 'text-emerald-600',
         },
@@ -349,16 +368,7 @@ export default function AboutPage({ user, onNavigate }) {
                         className="flex items-center space-x-3.5 bg-white border border-slate-200/90 rounded-xl group relative overflow-hidden"
                       >
                         <div className="h-11 w-11 sm:h-12 sm:w-12 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center shrink-0 p-2 group-hover:border-slate-300 transition-colors relative z-10">
-                          {tech.logo ? (
-                            <img
-                              src={tech.logo}
-                              alt={tech.name}
-                              className="h-full w-full object-contain"
-                              loading="lazy"
-                            />
-                          ) : (
-                            <IconComponent className={`h-6 w-6 ${tech.iconColor}`} />
-                          )}
+                          <TechLogo tech={tech} />
                         </div>
 
                         <div className="min-w-0 flex-1 relative z-10">
