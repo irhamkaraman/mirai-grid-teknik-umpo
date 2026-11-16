@@ -89,15 +89,21 @@ export default function CronJobsPage({ user, onNavigate }) {
   const [bodyContent, setBodyContent] = useState('')
 
   useEffect(() => {
-    fetchCronJobs()
+    fetchCronJobs(false)
   }, [])
 
-  const fetchCronJobs = async () => {
+  const fetchCronJobs = async (isManual = false) => {
+    setLoading(true)
     try {
       const res = await api.get('/cron-jobs')
       setCronJobs(res.data || [])
+      if (isManual) {
+        toast.success('Daftar cron jobs berhasil diperbarui!')
+      }
     } catch (err) {
-      toast.error('Gagal memuat daftar cron jobs.')
+      toast.error('Gagal memuat daftar cron jobs.', {
+        description: err.response?.data?.detail || err.message
+      })
     } finally {
       setLoading(false)
     }
@@ -331,12 +337,13 @@ export default function CronJobsPage({ user, onNavigate }) {
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
-            onClick={fetchCronJobs}
+            onClick={() => fetchCronJobs(true)}
             disabled={loading}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200/80 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200/80 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 active:scale-95 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-none"
+            title="Segarkan daftar cron jobs"
           >
-            <RefreshCw className={`h-3.5 w-3.5 text-slate-500 ${loading ? 'animate-spin' : ''}`} />
-            <span>Segarkan</span>
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin text-emerald-600' : 'text-slate-500'}`} />
+            <span>{loading ? 'Menyegarkan...' : 'Segarkan'}</span>
           </button>
         </div>
       </div>
