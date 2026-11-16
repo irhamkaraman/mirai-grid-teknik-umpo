@@ -40,12 +40,12 @@ const COMMON_PRESETS = [
 ]
 
 const HTTP_METHODS = [
-  { method: 'GET', color: 'text-emerald-400 border-emerald-600/50 bg-emerald-950/40' },
-  { method: 'POST', color: 'text-amber-400 border-amber-600/50 bg-amber-950/40' },
-  { method: 'PUT', color: 'text-sky-400 border-sky-600/50 bg-sky-950/40' },
-  { method: 'DELETE', color: 'text-rose-400 border-rose-600/50 bg-rose-950/40' },
-  { method: 'PATCH', color: 'text-purple-400 border-purple-600/50 bg-purple-950/40' },
-  { method: 'HEAD', color: 'text-zinc-400 border-zinc-600/50 bg-zinc-900/60' }
+  { method: 'GET', color: 'text-emerald-700 border-emerald-200 bg-emerald-50' },
+  { method: 'POST', color: 'text-blue-700 border-blue-200 bg-blue-50' },
+  { method: 'PUT', color: 'text-amber-700 border-amber-200 bg-amber-50' },
+  { method: 'DELETE', color: 'text-rose-700 border-rose-200 bg-rose-50' },
+  { method: 'PATCH', color: 'text-purple-700 border-purple-200 bg-purple-50' },
+  { method: 'HEAD', color: 'text-slate-700 border-slate-200 bg-slate-50' }
 ]
 
 export default function CronJobsPage({ user, onNavigate }) {
@@ -309,68 +309,59 @@ export default function CronJobsPage({ user, onNavigate }) {
   const getMethodBadge = (method) => {
     const m = (method || 'GET').toUpperCase()
     const found = HTTP_METHODS.find((item) => item.method === m)
-    return found ? found.color : 'text-zinc-400 border-zinc-700 bg-zinc-900/60'
+    return found ? found.color : 'text-slate-600 border-slate-200 bg-slate-50'
   }
 
   return (
-    <div className="space-y-6 w-full animate-in fade-in duration-200 pb-12 font-sans">
-      {/* Top Header Halaman Konsisten */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
-        <div className="flex items-center space-x-3.5">
-          <button
-            type="button"
-            onClick={() => onNavigate('/dashboard')}
-            className="p-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-emerald-600 hover:text-slate-900 transition shadow-sm flex items-center justify-center shrink-0 group"
-            title="Kembali ke Dasbor"
-          >
-            <ArrowLeft className="h-4 w-4 text-emerald-600 group-hover:-translate-x-0.5 transition-transform" />
-          </button>
+    <div className="space-y-6 pb-10">
+      {/* Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-start gap-3.5">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-slate-200/80 bg-white text-emerald-600">
+            <Clock className="h-5 w-5" />
+          </div>
           <div>
-            <div className="flex items-center space-x-2.5">
-              <h2 className="text-2xl font-sans font-bold text-slate-900 flex items-center space-x-2.5">
-                <Clock className="h-6 w-6 text-emerald-600" />
-                <span>Cron Jobs™</span>
-              </h2>
-            </div>
-            <p className="text-xs text-slate-500 font-sans mt-0.5">
+            <h1 className="text-xl font-bold tracking-tight text-slate-900">Cron Jobs</h1>
+            <p className="text-xs text-slate-500 mt-0.5">
               Jadwalkan eksekusi perintah sistem atau request HTTP/S otomatis secara berkala untuk mendukung automasi layanan dan background task.
             </p>
           </div>
         </div>
 
-        <div className="flex items-center space-x-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={fetchCronJobs}
-            className="inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-900 border border-slate-200 text-xs font-semibold transition shadow-sm"
+            disabled={loading}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200/80 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition"
           >
-            <RefreshCw className="h-3.5 w-3.5 text-emerald-600" />
+            <RefreshCw className={`h-3.5 w-3.5 text-slate-500 ${loading ? 'animate-spin' : ''}`} />
             <span>Segarkan</span>
           </button>
         </div>
       </div>
 
       {/* Form Tambah Cron Job Baru */}
-      <section className="bg-white border border-slate-200 rounded-3xl p-6 shadow-2xl">
-        <div className="border-b border-slate-200 pb-4 mb-5 flex flex-col md:flex-row md:items-center justify-between gap-3">
+      <section className="rounded-xl border border-slate-200/80 bg-white p-5">
+        <div className="border-b border-slate-100 pb-4 mb-5 flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div>
-            <h3 className="text-base font-sans font-bold text-slate-900 tracking-wide flex items-center space-x-2">
+            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
               <span>Tambahkan Cron Job Baru</span>
             </h3>
-            <p className="text-xs text-slate-600 mt-1">
+            <p className="text-xs text-slate-500 mt-0.5">
               Konfigurasikan interval waktu eksekusi otomatis menggunakan preset umum atau format 5-bintang standar Linux.
             </p>
           </div>
 
           {/* Mode Switcher: HTTP Request vs CLI Command */}
-          <div className="inline-flex p-1 bg-slate-50 rounded-2xl border border-slate-200 self-start md:self-auto">
+          <div className="inline-flex p-1 bg-slate-100 rounded-xl border border-slate-200/80 self-start md:self-auto">
             <button
               type="button"
               onClick={() => setJobType('http')}
-              className={`flex items-center space-x-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
                 jobType === 'http'
-                  ? 'bg-emerald-600 text-slate-900 shadow-md'
-                  : 'text-slate-500 hover:text-slate-900'
+                  ? 'bg-emerald-600 text-white'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               <Globe className="h-3.5 w-3.5" />
@@ -379,10 +370,10 @@ export default function CronJobsPage({ user, onNavigate }) {
             <button
               type="button"
               onClick={() => setJobType('command')}
-              className={`flex items-center space-x-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
                 jobType === 'command'
-                  ? 'bg-emerald-600 text-slate-900 shadow-md'
-                  : 'text-slate-500 hover:text-slate-900'
+                  ? 'bg-emerald-600 text-white'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               <Terminal className="h-3.5 w-3.5" />
@@ -395,7 +386,7 @@ export default function CronJobsPage({ user, onNavigate }) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Nama Job */}
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5">
+              <label className="block text-xs font-medium text-slate-700 mb-1.5">
                 Nama / Judul Tugas
               </label>
               <input
@@ -403,19 +394,19 @@ export default function CronJobsPage({ user, onNavigate }) {
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Contoh: Ping Healthcheck API atau Sinkronisasi Data"
-                className="w-full bg-slate-50 border border-slate-200 focus:border-emerald-500 rounded-2xl px-4 py-2.5 text-xs text-slate-900 placeholder-slate-400 outline-none transition"
+                className="w-full bg-white border border-slate-200/80 focus:border-emerald-500 rounded-xl px-3.5 py-2 text-xs text-slate-800 placeholder-slate-400 outline-none transition"
               />
             </div>
 
             {/* Preset Dropdown */}
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1.5">
+              <label className="block text-xs font-medium text-slate-700 mb-1.5">
                 Pengaturan Umum (Common Settings)
               </label>
               <select
                 value={selectedPreset}
                 onChange={(e) => handlePresetChange(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 focus:border-emerald-500 rounded-2xl px-4 py-2.5 text-xs text-slate-900 outline-none transition"
+                className="w-full bg-white border border-slate-200/80 focus:border-emerald-500 rounded-xl px-3.5 py-2 text-xs text-slate-800 outline-none transition"
               >
                 {COMMON_PRESETS.map((p, idx) => (
                   <option key={idx} value={p.value}>
@@ -428,7 +419,7 @@ export default function CronJobsPage({ user, onNavigate }) {
 
           {/* 5 Cron Fields Grid */}
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1.5">
+            <label className="block text-xs font-medium text-slate-700 mb-1.5">
               Interval Waktu (Menit, Jam, Hari, Bulan, Hari dlm Minggu)
             </label>
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
@@ -439,7 +430,7 @@ export default function CronJobsPage({ user, onNavigate }) {
                   value={minute}
                   onChange={(e) => setMinute(e.target.value)}
                   placeholder="*"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono text-center text-slate-900 focus:border-emerald-500 outline-none"
+                  className="w-full bg-white border border-slate-200/80 rounded-xl px-2.5 py-2 text-xs font-mono text-center text-slate-800 focus:border-emerald-500 outline-none"
                 />
               </div>
               <div>
@@ -449,7 +440,7 @@ export default function CronJobsPage({ user, onNavigate }) {
                   value={hour}
                   onChange={(e) => setHour(e.target.value)}
                   placeholder="*"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono text-center text-slate-900 focus:border-emerald-500 outline-none"
+                  className="w-full bg-white border border-slate-200/80 rounded-xl px-2.5 py-2 text-xs font-mono text-center text-slate-800 focus:border-emerald-500 outline-none"
                 />
               </div>
               <div>
@@ -459,7 +450,7 @@ export default function CronJobsPage({ user, onNavigate }) {
                   value={day}
                   onChange={(e) => setDay(e.target.value)}
                   placeholder="*"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono text-center text-slate-900 focus:border-emerald-500 outline-none"
+                  className="w-full bg-white border border-slate-200/80 rounded-xl px-2.5 py-2 text-xs font-mono text-center text-slate-800 focus:border-emerald-500 outline-none"
                 />
               </div>
               <div>
@@ -469,7 +460,7 @@ export default function CronJobsPage({ user, onNavigate }) {
                   value={month}
                   onChange={(e) => setMonth(e.target.value)}
                   placeholder="*"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono text-center text-slate-900 focus:border-emerald-500 outline-none"
+                  className="w-full bg-white border border-slate-200/80 rounded-xl px-2.5 py-2 text-xs font-mono text-center text-slate-800 focus:border-emerald-500 outline-none"
                 />
               </div>
               <div>
@@ -479,13 +470,13 @@ export default function CronJobsPage({ user, onNavigate }) {
                   value={weekday}
                   onChange={(e) => setWeekday(e.target.value)}
                   placeholder="*"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono text-center text-slate-900 focus:border-emerald-500 outline-none"
+                  className="w-full bg-white border border-slate-200/80 rounded-xl px-2.5 py-2 text-xs font-mono text-center text-slate-800 focus:border-emerald-500 outline-none"
                 />
               </div>
             </div>
-            <p className="text-[11px] font-mono text-slate-500 mt-1.5">
-              Ekspresi Aktif:{' '}
-              <span className="text-amber-300 font-bold">
+            <p className="text-[11px] font-mono text-slate-500 mt-2 flex items-center gap-1.5">
+              <span>Ekspresi Aktif:</span>
+              <span className="px-2 py-0.5 rounded bg-emerald-50 border border-emerald-200 font-bold text-emerald-800">
                 {`${minute || '*'} ${hour || '*'} ${day || '*'} ${month || '*'} ${weekday || '*'}`}
               </span>
             </p>
@@ -605,7 +596,7 @@ export default function CronJobsPage({ user, onNavigate }) {
                         <button
                           type="button"
                           onClick={() => removeQueryParam(idx)}
-                          className="p-1.5 text-slate-500 hover:text-rose-400 rounded-lg hover:bg-rose-950/30 transition"
+                          className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition"
                           title="Hapus baris"
                         >
                           <X className="h-3.5 w-3.5" />
@@ -650,7 +641,7 @@ export default function CronJobsPage({ user, onNavigate }) {
                         <button
                           type="button"
                           onClick={() => removeHeader(idx)}
-                          className="p-1.5 text-slate-500 hover:text-rose-400 rounded-lg hover:bg-rose-950/30 transition"
+                          className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition"
                           title="Hapus header"
                         >
                           <X className="h-3.5 w-3.5" />
@@ -713,7 +704,7 @@ export default function CronJobsPage({ user, onNavigate }) {
             <button
               type="submit"
               disabled={submitting}
-              className="px-6 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-600 hover:to-emerald-700 text-xs font-bold text-slate-900 shadow-lg transition flex items-center space-x-2 disabled:opacity-50"
+              className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-xs font-semibold text-white transition flex items-center gap-1.5 disabled:opacity-50"
             >
               <Plus className="h-4 w-4" />
               <span>{submitting ? 'Menyimpan...' : 'Tambahkan Cron Job'}</span>
@@ -723,13 +714,13 @@ export default function CronJobsPage({ user, onNavigate }) {
       </section>
 
       {/* Tabel Daftar Cron Jobs Aktif */}
-      <section className="bg-white border border-slate-200 rounded-3xl p-6 shadow-2xl">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4 mb-5">
+      <section className="rounded-xl border border-slate-200/80 bg-white p-5 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
           <div>
-            <h3 className="text-base font-sans font-bold text-slate-900 tracking-wide">
+            <h3 className="text-sm font-bold text-slate-900">
               Daftar Cron Jobs Aktif
             </h3>
-            <p className="text-xs text-slate-600 mt-0.5">
+            <p className="text-xs text-slate-500 mt-0.5">
               Kelola tugas otomatis, status aktif/nonaktif, dan riwayat eksekusi terakhir.
             </p>
           </div>
@@ -737,7 +728,7 @@ export default function CronJobsPage({ user, onNavigate }) {
           {/* Search & Filter Controls */}
           <div className="flex items-center space-x-2">
             <div className="relative">
-              <Search className="h-3.5 w-3.5 absolute left-3 top-2.5 text-slate-500" />
+              <Search className="h-3.5 w-3.5 absolute left-3 top-2.5 text-slate-400" />
               <input
                 type="text"
                 value={searchQuery}
@@ -746,7 +737,7 @@ export default function CronJobsPage({ user, onNavigate }) {
                   setCurrentPage(1)
                 }}
                 placeholder="Cari tugas, URL, command..."
-                className="bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-900 placeholder-slate-400 outline-none"
+                className="bg-white border border-slate-200/80 focus:border-emerald-500 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 outline-none transition"
               />
             </div>
 
@@ -756,7 +747,7 @@ export default function CronJobsPage({ user, onNavigate }) {
                 setStatusFilter(e.target.value)
                 setCurrentPage(1)
               }}
-              className="bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs text-slate-900 outline-none"
+              className="bg-white border border-slate-200/80 focus:border-emerald-500 rounded-xl px-2.5 py-1.5 text-xs text-slate-800 outline-none transition"
             >
               <option value="all">Semua Status</option>
               <option value="active">Aktif</option>
@@ -766,10 +757,10 @@ export default function CronJobsPage({ user, onNavigate }) {
         </div>
 
         {/* Tabel */}
-        <div className="border border-slate-200 rounded-2xl overflow-hidden bg-slate-50">
+        <div className="border border-slate-200/80 rounded-xl overflow-hidden bg-white">
           <div className="overflow-x-auto">
             <table className="w-full text-xs text-left">
-              <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-mono text-[11px]">
+              <thead className="bg-slate-50/80 border-b border-slate-200 text-slate-600 font-semibold text-[11px]">
                 <tr>
                   <th className="p-3.5">Nama & Akun</th>
                   <th className="p-3.5">Tipe & Target</th>
@@ -779,7 +770,7 @@ export default function CronJobsPage({ user, onNavigate }) {
                   <th className="p-3.5 text-right">Aksi</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200">
+              <tbody className="divide-y divide-slate-100">
                 {loading ? (
                   <tr>
                     <td colSpan="6" className="p-8 text-center text-slate-500">
@@ -797,9 +788,9 @@ export default function CronJobsPage({ user, onNavigate }) {
                   </tr>
                 ) : (
                   paginatedJobs.map((job) => (
-                    <tr key={job.id} className="hover:bg-slate-50 transition">
-                      <td className="p-3.5 font-semibold text-slate-900">
-                        <div>{job.title}</div>
+                    <tr key={job.id} className="hover:bg-slate-50/60 transition">
+                      <td className="p-3.5 font-medium text-slate-900">
+                        <div className="font-semibold text-slate-800">{job.title}</div>
                         <div className="text-[10px] font-mono text-slate-500">
                           Akun: {job.username}
                         </div>
@@ -814,23 +805,23 @@ export default function CronJobsPage({ user, onNavigate }) {
                             >
                               {job.http_method || 'GET'}
                             </span>
-                            <span className="text-slate-600 truncate text-xs" title={job.http_url || job.command}>
+                            <span className="text-slate-700 truncate text-xs" title={job.http_url || job.command}>
                               {job.http_url || job.command}
                             </span>
                           </div>
                         ) : (
                           <div className="flex items-center space-x-1.5 font-mono">
-                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold border text-amber-400 border-amber-600/40 bg-amber-950/30">
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold border text-amber-700 border-amber-200 bg-amber-50">
                               CLI
                             </span>
-                            <span className="text-slate-600 truncate text-xs" title={job.command}>
+                            <span className="text-slate-700 truncate text-xs" title={job.command}>
                               {job.command}
                             </span>
                           </div>
                         )}
                       </td>
                       <td className="p-3.5">
-                        <span className="px-2 py-0.5 rounded-lg bg-white border border-slate-200 text-amber-300 font-mono text-xs font-semibold">
+                        <span className="px-2 py-0.5 rounded-lg bg-slate-100 border border-slate-200 text-slate-800 font-mono text-xs font-semibold">
                           {job.schedule}
                         </span>
                       </td>
@@ -839,8 +830,8 @@ export default function CronJobsPage({ user, onNavigate }) {
                           onClick={() => handleToggle(job.id, job.is_active)}
                           className={`px-2.5 py-1 rounded-full text-[10px] font-bold font-mono transition ${
                             job.is_active
-                              ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-700/60'
-                              : 'bg-zinc-900 text-zinc-400 border border-zinc-700'
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
+                              : 'bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200'
                           }`}
                         >
                           {job.is_active ? 'Aktif' : 'Nonaktif'}
@@ -853,22 +844,22 @@ export default function CronJobsPage({ user, onNavigate }) {
                         <button
                           onClick={() => handleRunNow(job)}
                           disabled={executingJobId === job.id}
-                          className="px-2.5 py-1 rounded-xl bg-white hover:bg-slate-200 border border-slate-200 text-amber-300 hover:text-amber-200 transition disabled:opacity-50"
+                          className="px-2.5 py-1 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 hover:text-emerald-700 transition disabled:opacity-50 inline-flex items-center gap-1"
                           title="Jalankan sekarang secara manual"
                         >
                           {executingJobId === job.id ? (
-                            <RefreshCw className="h-3.5 w-3.5 inline animate-spin mr-1" />
+                            <RefreshCw className="h-3.5 w-3.5 animate-spin mr-1 text-emerald-600" />
                           ) : (
-                            <Play className="h-3.5 w-3.5 inline mr-1" />
+                            <Play className="h-3.5 w-3.5 text-emerald-600" />
                           )}
                           <span>Run</span>
                         </button>
                         <button
                           onClick={() => handleRequestDelete(job)}
-                          className="px-2.5 py-1 rounded-xl bg-white hover:bg-rose-950/60 border border-slate-200 hover:border-rose-800 text-rose-300 hover:text-rose-200 transition"
+                          className="px-2.5 py-1 rounded-xl bg-white hover:bg-rose-50 border border-slate-200 hover:border-rose-200 text-slate-500 hover:text-rose-600 transition inline-flex items-center"
                           title="Hapus cron job"
                         >
-                          <Trash2 className="h-3.5 w-3.5 inline" />
+                          <Trash2 className="h-3.5 w-3.5" />
                         </button>
                       </td>
                     </tr>
@@ -880,7 +871,7 @@ export default function CronJobsPage({ user, onNavigate }) {
 
           {/* Pagination Footer */}
           {filteredJobs.length > pageSize && (
-            <div className="flex items-center justify-between p-3.5 bg-slate-50 border-t border-slate-200 text-xs text-slate-500">
+            <div className="flex items-center justify-between p-3.5 bg-slate-50/50 border-t border-slate-200 text-xs text-slate-500">
               <div>
                 Halaman {currentPage} dari {totalPages}
               </div>
@@ -888,14 +879,14 @@ export default function CronJobsPage({ user, onNavigate }) {
                 <button
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                   disabled={currentPage <= 1}
-                  className="p-1.5 rounded-xl bg-white border border-slate-200 text-slate-900 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-200"
+                  className="p-1.5 rounded-xl bg-white border border-slate-200 text-slate-700 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-50"
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </button>
                 <button
                   onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                   disabled={currentPage >= totalPages}
-                  className="p-1.5 rounded-xl bg-white border border-slate-200 text-slate-900 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-200"
+                  className="p-1.5 rounded-xl bg-white border border-slate-200 text-slate-700 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-50"
                 >
                   <ChevronRight className="h-4 w-4" />
                 </button>
@@ -920,27 +911,27 @@ export default function CronJobsPage({ user, onNavigate }) {
       <ModalPortal isOpen={!!runResult}>
         <div
           onClick={() => setRunResult(null)}
-          className="fixed inset-0 !mt-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-150"
+          className="fixed inset-0 !mt-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in duration-150"
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-2xl bg-slate-50 border border-slate-200 rounded-3xl shadow-2xl p-6 text-slate-900 animate-in zoom-in-95 duration-150 flex flex-col max-h-[85vh]"
+            className="w-full max-w-2xl bg-white border border-slate-200/80 rounded-xl p-6 text-slate-900 animate-in zoom-in-95 duration-150 flex flex-col max-h-[85vh]"
           >
             {/* Modal Header */}
-            <div className="flex items-center justify-between pb-4 border-b border-slate-200">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
               <div>
-                <h3 className="text-base font-sans font-bold text-slate-900 flex items-center space-x-2">
+                <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
                   <Clock className="h-4 w-4 text-emerald-600" />
                   <span>Hasil Eksekusi Cron Job</span>
                 </h3>
-                <p className="text-xs text-slate-600 mt-0.5">
-                  Target: <span className="font-semibold text-amber-300">{runResult?.jobTitle}</span>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Target: <span className="font-semibold text-slate-800">{runResult?.jobTitle}</span>
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setRunResult(null)}
-                className="p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-50 rounded-xl transition"
+                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -948,16 +939,16 @@ export default function CronJobsPage({ user, onNavigate }) {
 
             {/* Badges / Metrics Bar */}
             <div className="py-3 flex flex-wrap items-center gap-2 text-xs font-mono">
-              <span className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-slate-600">
-                Tipe: <b className="text-amber-300 uppercase">{runResult?.jobType || 'COMMAND'}</b>
+              <span className="px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-200 text-slate-700 font-medium">
+                Tipe: <b className="text-slate-900 uppercase">{runResult?.jobType || 'COMMAND'}</b>
               </span>
 
               {runResult?.statusCode !== undefined && runResult?.statusCode !== 0 && (
                 <span
-                  className={`px-2.5 py-1 rounded-lg border font-bold ${
+                  className={`px-2.5 py-1 rounded-lg border font-semibold ${
                     runResult?.statusCode >= 200 && runResult?.statusCode < 400
-                      ? 'bg-emerald-950/80 text-emerald-300 border-emerald-700/60'
-                      : 'bg-rose-950/80 text-rose-300 border-rose-700/60'
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      : 'bg-rose-50 text-rose-700 border-rose-200'
                   }`}
                 >
                   HTTP Status: {runResult.statusCode}
@@ -965,16 +956,16 @@ export default function CronJobsPage({ user, onNavigate }) {
               )}
 
               {runResult?.latencyMs !== undefined && (
-                <span className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-sky-300">
+                <span className="px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-200 text-slate-700 font-medium">
                   Latency: {runResult.latencyMs} ms
                 </span>
               )}
 
               <span
-                className={`px-2.5 py-1 rounded-lg border font-bold ${
+                className={`px-2.5 py-1 rounded-lg border font-semibold ${
                   runResult?.success
-                    ? 'bg-emerald-950/80 text-emerald-300 border-emerald-700/60'
-                    : 'bg-rose-950/80 text-rose-300 border-rose-700/60'
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                    : 'bg-rose-50 text-rose-700 border-rose-200'
                 }`}
               >
                 {runResult?.success ? 'Success (Exit 0)' : `Failed (Exit ${runResult?.exitCode ?? 1})`}
@@ -982,19 +973,19 @@ export default function CronJobsPage({ user, onNavigate }) {
             </div>
 
             {/* Terminal / Code Viewer */}
-            <div className="flex-1 overflow-hidden flex flex-col bg-slate-50 border border-slate-200 rounded-2xl">
-              <div className="bg-slate-50 border-b border-slate-200 px-3.5 py-2 flex items-center justify-between text-[11px] font-mono text-slate-500">
+            <div className="flex-1 overflow-hidden flex flex-col bg-slate-900 border border-slate-800 rounded-xl">
+              <div className="bg-slate-950/80 border-b border-slate-800 px-3.5 py-2 flex items-center justify-between text-[11px] font-mono text-slate-400">
                 <span>Execution Logs / Output</span>
                 <button
                   type="button"
                   onClick={handleCopyResult}
-                  className="flex items-center space-x-1 text-slate-600 hover:text-slate-900 bg-white px-2 py-1 rounded-lg border border-slate-200 transition"
+                  className="flex items-center gap-1 text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 px-2 py-1 rounded-md border border-slate-700 transition"
                 >
                   {copiedResult ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
                   <span>{copiedResult ? 'Tersalin' : 'Salin Log'}</span>
                 </button>
               </div>
-              <pre className="flex-1 p-4 overflow-y-auto text-xs font-mono text-slate-600 whitespace-pre-wrap leading-relaxed select-text">
+              <pre className="flex-1 p-4 overflow-y-auto text-xs font-mono text-emerald-400/90 whitespace-pre-wrap leading-relaxed select-text">
                 {runResult?.stdout || runResult?.stderr || 'Tidak ada output dari eksekusi ini.'}
               </pre>
             </div>
@@ -1004,7 +995,7 @@ export default function CronJobsPage({ user, onNavigate }) {
               <button
                 type="button"
                 onClick={() => setRunResult(null)}
-                className="px-5 py-2 rounded-xl text-xs font-semibold bg-white hover:bg-slate-200 border border-slate-200 text-slate-900 transition"
+                className="px-4 py-2 rounded-xl text-xs font-semibold bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 transition"
               >
                 Tutup
               </button>

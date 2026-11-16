@@ -25,8 +25,10 @@ import {
   Rocket,
   GitBranch,
   ShieldAlert,
-  MessageSquareWarning
+  MessageSquareWarning,
+  Clock
 } from 'lucide-react'
+import { toast } from 'sonner'
 import { launchJupyterLab } from '../api/jupyter'
 import { useUpload } from '../context/UploadContext'
 import { formatMBSize } from '../utils/formatters'
@@ -93,7 +95,7 @@ export default function NavigationV2({
       icon: Wrench,
       isDropdown: true,
       dropdownKey: 'tools',
-      activeCheck: (p) => p.startsWith('/deploy') || p.startsWith('/tools/git') || p.startsWith('/git') || p.startsWith('/redis'),
+      activeCheck: (p) => p.startsWith('/deploy') || p.startsWith('/tools/git') || p.startsWith('/git') || p.startsWith('/redis') || p.startsWith('/cron'),
     },
     {
       id: 'databases',
@@ -161,9 +163,12 @@ export default function NavigationV2({
     setShowPlatformMenu(false)
     if (type === 'jupyter') {
       try {
+        toast.info('Menghubungkan ke JupyterHub...')
         await launchJupyterLab()
       } catch (err) {
-        console.error(err)
+        console.error('[JupyterHub Launch Error]:', err)
+        const errMsg = err?.response?.data?.detail || err?.message || 'Gagal meluncurkan JupyterHub'
+        toast.error(errMsg)
       }
       return
     }
@@ -383,6 +388,21 @@ export default function NavigationV2({
                       >
                         <img src="/logos/redis.png" alt="Redis" className="h-3.5 w-3.5 object-contain shrink-0" />
                         <span>Redis</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMobileOpen(false)
+                          requestGuardedNavigation('/cron', navigate)
+                        }}
+                        className={`w-full flex items-center space-x-2 px-2.5 py-1.5 rounded-xl text-[11px] font-medium transition text-left ${
+                          location.pathname.startsWith('/cron')
+                            ? 'bg-emerald-50 text-emerald-700 font-bold'
+                            : 'text-gray-600 hover:text-emerald-700 hover:bg-emerald-50/50'
+                        }`}
+                      >
+                        <Clock className="h-3.5 w-3.5 shrink-0" />
+                        <span>Cron Jobs</span>
                       </button>
                     </div>
                   )}
