@@ -41,12 +41,14 @@ class DatabaseProvisioner:
         try:
             # Enforce md5 password encryption for phpPgAdmin compatibility
             await conn.execute("SET password_encryption = 'md5';")
-            # 1. Create or update user with connection limit
+            # 1. Create or update user with connection limit and statement timeout guardrails
             user_exists = await conn.fetchval("SELECT 1 FROM pg_roles WHERE rolname = $1", db_username)
             if not user_exists:
                 await conn.execute(f'CREATE USER "{db_username}" WITH ENCRYPTED PASSWORD \'{db_password}\' CONNECTION LIMIT 5;')
             else:
                 await conn.execute(f'ALTER USER "{db_username}" WITH ENCRYPTED PASSWORD \'{db_password}\' CONNECTION LIMIT 5;')
+            await conn.execute(f'ALTER ROLE "{db_username}" SET statement_timeout = \'15s\';')
+            await conn.execute(f'ALTER ROLE "{db_username}" SET idle_in_transaction_session_timeout = \'30s\';')
 
             # 2. Create database if not exists
             db_exists = await conn.fetchval("SELECT 1 FROM pg_database WHERE datname = $1", db_name)
