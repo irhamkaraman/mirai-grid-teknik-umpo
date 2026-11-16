@@ -1,165 +1,40 @@
-import { api } from '../api/client'
 import { toast } from 'sonner'
 
 /**
  * Launch isolated database Web GUI (phpMyAdmin or phpPgAdmin) with secure Single Sign-On (SSO).
- * Performs HMAC-SHA256 signature verification on the server side and auto-submits a POST form.
+ * Directly navigates to the backend SSO gateway, which self-authenticates and auto-submits to PMA/PPA.
+ * Completely eliminates blank popup tabs (about:blank), cross-window race conditions, and Incognito cookie blocks.
  * 
  * @param {'postgres' | 'mariadb'} engine
  * @param {number | null} dbId
  */
-export async function launchDatabaseSSO(engine, dbId = null) {
+export function launchDatabaseSSO(engine, dbId = null) {
   const isPg = engine === 'postgres' || String(engine).toLowerCase().includes('postg')
+  const engineParam = isPg ? 'postgres' : 'mariadb'
   const targetLabel = isPg ? 'phpPgAdmin' : 'phpMyAdmin'
-  const windowName = `miraigrid_sso_${isPg ? 'ppa' : 'pma'}_${Date.now()}`
+  const token = localStorage.getItem('miraigrid_token') || ''
 
-  // Ensure cross-subdomain SSO cookie is set for pma/ppa.miraigrid.web.id auth_request
-  try {
-    const token = localStorage.getItem('miraigrid_token')
-    if (token && window.location.hostname.includes('miraigrid.web.id')) {
+  if (!token) {
+    toast.error(`Sesi Anda telah berakhir. Silakan login kembali untuk mengakses ${targetLabel}.`)
+    return
+  }
+
+  // Pre-seed cross-subdomain cookie for .miraigrid.web.id
+  if (window.location.hostname.includes('miraigrid.web.id')) {
+    try {
       document.cookie = `miraigrid_token=${token}; path=/; domain=.miraigrid.web.id; max-age=86400; SameSite=Lax; Secure`
-    }
-  } catch (e) {}
-
-  // Synchronously open blank window to bypass popup blockers
-  let targetWindow = null
-  try {
-    targetWindow = window.open('', windowName)
-    if (targetWindow && targetWindow.document) {
-      targetWindow.document.write(`<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>Otentikasi ${targetLabel} - MiraiGrid</title>
-  <style>
-    body {
-      margin: 0;
-      background-color: #F8FAFC;
-      color: #0F172A;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      flex-direction: column;
-    }
-    .spinner {
-      width: 44px;
-      height: 44px;
-      border: 3px solid #E2E8F0;
-      border-top-color: #10B981;
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-      margin-bottom: 20px;
-    }
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-    h2 {
-      margin: 0 0 8px 0;
-      font-size: 20px;
-      font-weight: 600;
-      color: #0F172A;
-    }
-    p {
-      margin: 0;
-      font-size: 13px;
-      color: #64748B;
-    }
-  </style>
-</head>
-<body>
-  <div class="spinner"></div>
-  <h2>Mengautentikasi ${targetLabel}...</h2>
-  <p>Membuka sesi terisolasi terenkripsi untuk akun Anda</p>
-</body>
-</html>`)
-      targetWindow.document.close()
-    }
-  } catch (e) {
-    console.warn('Could not open preview window synchronously:', e)
+    } catch (e) {}
   }
 
-  const toastId = toast.loading(`Menghubungkan sesi aman ke ${targetLabel}...`)
+  const isDomain = window.location.hostname.includes('miraigrid.web.id')
+  const apiBase = isDomain
+    ? 'https://api.miraigrid.web.id'
+    : `${window.location.protocol}//${window.location.hostname}:8000`
 
-  try {
-    const res = await api.post('/databases/sso-launch', {
-      engine: isPg ? 'postgres' : 'mariadb',
-      db_id: dbId,
-    })
+  const targetUrl = `${apiBase}/api/databases/sso-redirect?engine=${engineParam}${dbId ? `&db_id=${dbId}` : ''}&token=${encodeURIComponent(token)}`
 
-    if (!res.data || !res.data.success) {
-      throw new Error(res.data?.detail || 'Gagal menyiapkan sesi Single Sign-On.')
-    }
+  toast.loading(`Menghubungkan sesi aman ke ${targetLabel}...`, { duration: 3000 })
 
-    const { port, path, fields, db_username } = res.data
-    const host = window.location.hostname
-    const isHttps = window.location.protocol === 'https:'
-    const isDomain = host.includes('miraigrid.web.id')
-    const sub = isPg ? 'ppa.miraigrid.web.id' : 'pma.miraigrid.web.id'
-
-    // Strict Zero-Port HTTPS routing for official domain & secure context
-    let actionUrl = `https://${sub}${path}`
-    if (!isDomain) {
-      if (res.data?.action_url && isHttps) {
-        actionUrl = res.data.action_url
-      } else {
-        const proto = isHttps ? 'https:' : 'http:'
-        actionUrl = `${proto}//${host}:${port}${path}`
-      }
-    }
-
-    // Submit form directly inside the opened popup window document so navigation
-    // never stalls on cross-window target resolution or about:blank stream state
-    if (targetWindow && !targetWindow.closed && targetWindow.document && targetWindow.document.body) {
-      const targetDoc = targetWindow.document
-      const form = targetDoc.createElement('form')
-      form.method = 'POST'
-      form.action = actionUrl
-      form.style.display = 'none'
-
-      Object.entries(fields).forEach(([key, val]) => {
-        const input = targetDoc.createElement('input')
-        input.type = 'hidden'
-        input.name = key
-        input.value = val
-        form.appendChild(input)
-      })
-
-      targetDoc.body.appendChild(form)
-      form.submit()
-    } else {
-      const form = document.createElement('form')
-      form.method = 'POST'
-      form.action = actionUrl
-      form.target = '_blank'
-      form.style.display = 'none'
-
-      Object.entries(fields).forEach(([key, val]) => {
-        const input = document.createElement('input')
-        input.type = 'hidden'
-        input.name = key
-        input.value = val
-        form.appendChild(input)
-      })
-
-      document.body.appendChild(form)
-      form.submit()
-      setTimeout(() => {
-        try {
-          document.body.removeChild(form)
-        } catch (e) {}
-      }, 1000)
-    }
-
-    toast.success(`Berhasil login ke ${targetLabel} sebagai '${db_username}'!`, { id: toastId })
-  } catch (err) {
-    if (targetWindow && !targetWindow.closed) {
-      try {
-        targetWindow.close()
-      } catch (e) {}
-    }
-    const errMsg = err.response?.data?.detail || err.message || `Gagal auto-login ke ${targetLabel}.`
-    toast.error(errMsg, { id: toastId })
-  }
+  // Synchronously open target gateway in new tab — completely bypasses popup blockers and about:blank
+  window.open(targetUrl, '_blank')
 }
